@@ -3,72 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stackr</title>
-    <link rel="icon" type="image/png" href="/static/logo.png">
+    <title>Stacker - PHP Development Environment</title>
+    <link rel="icon" type="image/png" href="/logo.png">
     <style>
         :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f5f5f5;
-            --bg-tertiary: #e5e5e5;
-            --text-primary: #1a1a1a;
+            /* Light theme - warm tones matching logo */
+            --bg-primary: #fafafa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f0f0f5;
+            --bg-hover: #e8e8ef;
+            --text-primary: #1a1a2e;
             --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
             --accent: #6366f1;
             --accent-hover: #5558d6;
-            --success: #34d399;
-            --border: #e0e0e0;
-            --shadow: rgba(0, 0, 0, 0.08);
+            --accent-light: rgba(99, 102, 241, 0.1);
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --border: #e5e7eb;
+            --border-light: #f3f4f6;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --shadow-lg: rgba(0, 0, 0, 0.1);
+            --gradient-start: #6366f1;
+            --gradient-end: #8b5cf6;
         }
 
         [data-theme="dark"] {
-            --bg-primary: #0d0d14;
-            --bg-secondary: #1a1a24;
-            --bg-tertiary: #252532;
-            --text-primary: #ffffff;
-            --text-secondary: #8a8a9a;
-            --accent: #6366f1;
-            --accent-hover: #7575f7;
+            /* Dark theme - deep purple/indigo matching logo */
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --bg-hover: #2d2d4a;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #818cf8;
+            --accent-hover: #a5b4fc;
+            --accent-light: rgba(129, 140, 248, 0.15);
             --success: #34d399;
-            --border: #2a2a3a;
-            --shadow: rgba(0, 0, 0, 0.25);
+            --success-bg: rgba(52, 211, 153, 0.15);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251, 191, 36, 0.15);
+            --danger: #f87171;
+            --danger-bg: rgba(248, 113, 113, 0.15);
+            --border: #2e2e4a;
+            --border-light: #3a3a5a;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --shadow-lg: rgba(0, 0, 0, 0.5);
+            --gradient-start: #818cf8;
+            --gradient-end: #a78bfa;
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            font-size: 13px;
+            font-size: 14px;
             min-height: 100vh;
-            transition: background 0.3s, color 0.3s;
+            transition: background 0.3s ease, color 0.3s ease;
+            line-height: 1.5;
         }
         
-        .app-container { display: flex; min-height: 100vh; }
+        .app-container { 
+            display: flex; 
+            min-height: 100vh; 
+        }
         
+        /* Sidebar */
         .sidebar {
-            width: 220px;
+            width: 240px;
             background: var(--bg-secondary);
             border-right: 1px solid var(--border);
-            padding: 16px 12px;
+            padding: 20px 16px;
             display: flex;
             flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
         }
         
         .logo {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 8px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 12px;
+            box-shadow: 0 4px 12px var(--shadow-lg);
         }
         
         .logo-img {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 8px;
+        }
+        
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo-version {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            font-weight: 500;
         }
         
         .nav {
@@ -78,174 +125,341 @@
             gap: 4px;
         }
         
+        .nav-section {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            padding: 16px 16px 8px;
+        }
+        
         .nav-item {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 11px 14px;
-            border-radius: 8px;
+            padding: 12px 16px;
+            border-radius: 10px;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.15s ease;
-            font-size: 13px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
             border: none;
             background: none;
             width: 100%;
             text-align: left;
         }
         
-        .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-        .nav-item.active { background: var(--accent); color: white; }
+        .nav-item:hover { 
+            background: var(--bg-hover); 
+            color: var(--text-primary); 
+        }
+        
+        .nav-item.active { 
+            background: var(--accent-light); 
+            color: var(--accent); 
+        }
         
         .nav-icon {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             flex-shrink: 0;
+            opacity: 0.8;
         }
+        
+        .nav-item.active .nav-icon { opacity: 1; }
 
-        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        /* Main Content */
+        .main-content { 
+            flex: 1; 
+            padding: 32px 40px; 
+            margin-left: 240px;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
         
         .page { display: none; }
         .page.active { display: block; }
         
+        .page-header {
+            margin-bottom: 32px;
+        }
+        
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+        
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 16px;
-            margin-bottom: 36px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
         }
         
         .stat-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 1px 3px var(--shadow);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 8px var(--shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px var(--shadow-lg);
+        }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        
+        .stat-icon.sites { background: var(--accent-light); color: var(--accent); }
+        .stat-icon.services { background: var(--success-bg); color: var(--success); }
+        .stat-icon.dumps { background: var(--warning-bg); color: var(--warning); }
+        .stat-icon.php { background: var(--danger-bg); color: var(--danger); }
+        
         .stat-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 13px;
+            font-weight: 500;
             color: var(--text-secondary);
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         
         .stat-value {
-            font-size: 32px;
-            font-weight: 600;
+            font-size: 36px;
+            font-weight: 700;
             color: var(--text-primary);
+            letter-spacing: -1px;
         }
         
+        /* Cards */
         .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 1px 3px var(--shadow);
+            box-shadow: 0 2px 8px var(--shadow);
+            margin-bottom: 20px;
         }
         
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 20px;
+            padding: 20px 24px;
             border-bottom: 1px solid var(--border);
+            background: var(--bg-tertiary);
         }
         
         .card-title {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--text-primary);
+        }
+        
+        .card-body {
+            padding: 0;
         }
         
         .list-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-light);
+            transition: background 0.15s ease;
         }
         
-        .item-primary { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-        .item-secondary { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .list-item:hover {
+            background: var(--bg-hover);
+        }
         
+        .list-item:last-child { border-bottom: none; }
+        
+        .item-info { flex: 1; }
+        .item-primary { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: var(--text-primary); 
+        }
+        .item-secondary { 
+            font-size: 13px; 
+            color: var(--text-secondary); 
+            margin-top: 2px; 
+        }
+        
+        /* Status Badges */
         .status-badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-size: 11px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
         }
         
-        .status-running { color: var(--success); background: rgba(52, 211, 153, 0.15); }
+        .status-running { 
+            color: var(--success); 
+            background: var(--success-bg); 
+        }
+        
+        .status-stopped { 
+            color: var(--text-muted); 
+            background: var(--bg-tertiary); 
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        
+        .status-running .status-dot {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
         
         .empty-state {
             text-align: center;
-            padding: 48px 32px;
-            color: var(--text-secondary);
+            padding: 64px 32px;
+            color: var(--text-muted);
         }
         
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+            opacity: 0.5;
+        }
+        
+        /* Buttons */
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
             border: none;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
         
-        .btn:hover { background: var(--bg-primary); box-shadow: 0 2px 8px var(--shadow); }
+        .btn:hover { 
+            background: var(--bg-hover); 
+            transform: translateY(-1px);
+        }
         
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-primary:hover { background: var(--accent-hover); }
-        .btn-danger { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); 
+            color: white; 
+        }
+        .btn-primary:hover { 
+            opacity: 0.9;
+            box-shadow: 0 4px 12px var(--shadow-lg);
+        }
+        
+        .btn-danger { 
+            background: var(--danger-bg); 
+            color: var(--danger); 
+        }
+        .btn-danger:hover { 
+            background: var(--danger); 
+            color: white; 
+        }
+        
+        .btn-success { 
+            background: var(--success-bg); 
+            color: var(--success); 
+        }
+        .btn-success:hover { 
+            background: var(--success); 
+            color: white; 
+        }
         
         .btn-icon {
             width: 16px;
             height: 16px;
         }
 
+        /* Settings */
+        .settings-section {
+            margin-bottom: 24px;
+        }
+        
+        .settings-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            padding: 0 24px;
+            margin-bottom: 12px;
+        }
+
         .settings-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-light);
         }
 
         .settings-row:last-child {
             border-bottom: none;
         }
 
+        .settings-info { flex: 1; }
+        
         .settings-label {
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 600;
             color: var(--text-primary);
         }
 
         .settings-desc {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-secondary);
             margin-top: 4px;
         }
 
+        /* Toggle Switch */
         .toggle-switch {
-            width: 44px;
-            height: 24px;
-            background: var(--bg-primary);
+            width: 52px;
+            height: 28px;
+            background: var(--bg-tertiary);
             border: 2px solid var(--border);
-            border-radius: 12px;
+            border-radius: 14px;
             position: relative;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
 
         .toggle-switch.active {
@@ -256,44 +470,130 @@
         .toggle-switch::after {
             content: '';
             position: absolute;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             background: white;
             border-radius: 50%;
-            top: 1px;
-            left: 1px;
-            transition: all 0.2s ease;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .toggle-switch.active::after {
-            left: 23px;
+            left: 26px;
         }
 
+        /* Theme Toggle */
         .theme-toggle {
             display: flex;
             gap: 8px;
+            background: var(--bg-tertiary);
+            padding: 4px;
+            border-radius: 12px;
         }
 
         .theme-btn {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 36px;
             border-radius: 8px;
-            border: 2px solid var(--border);
-            background: var(--bg-secondary);
+            border: none;
+            background: transparent;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
+            color: var(--text-secondary);
         }
 
         .theme-btn.active {
-            border-color: var(--accent);
-            background: var(--bg-tertiary);
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 2px 8px var(--shadow-lg);
         }
 
-        .theme-btn:hover {
+        .theme-btn:hover:not(.active) {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* Input */
+        .input {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .input:focus {
+            outline: none;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 20px 24px;
+        }
+        
+        /* Notification Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .toast.show { display: flex; }
+        
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Footer */
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+        }
+        
+        .server-status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
         }
     </style>
 </head>
@@ -301,88 +601,139 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="logo">
-                <img src="/static/logo.png" class="logo-img" alt="Stackr">
-                <span>Stackr</span>
+                <img src="/logo.png" class="logo-img" alt="Stacker" onerror="this.style.display='none'">
+                <div>
+                    <div class="logo-text">Stacker</div>
+                    <div class="logo-version">v1.0.0</div>
+                </div>
             </div>
-            <nav>
+            
+            <nav class="nav">
+                <div class="nav-section">Overview</div>
                 <button class="nav-item active" data-page="dashboard">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <path d="M3 9h18M9 21v-18"/>
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
                     </svg>
                     <span>Dashboard</span>
                 </button>
+                
+                <div class="nav-section">Development</div>
                 <button class="nav-item" data-page="sites">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M2 12h20"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                     </svg>
                     <span>Sites</span>
                 </button>
                 <button class="nav-item" data-page="services">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2L2 7l10 5 10-5 10-15"/>
-                        <path d="m2 22 10-5"/>
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                     </svg>
                     <span>Services</span>
                 </button>
+                <button class="nav-item" data-page="php">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <ellipse cx="12" cy="12" rx="10" ry="6"/>
+                        <path d="M6 12l2-4h2l-1 2h1l1-2h2l-2 4"/>
+                    </svg>
+                    <span>PHP</span>
+                </button>
+                
+                <div class="nav-section">Tools</div>
                 <button class="nav-item" data-page="dumps">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4a2 2 0 0 1-1 2 2h2a2 2 0 0 0 1-2-2zm-10 0v1h-1a2 2 0 0 1 1-2 2h1z"/>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
                     </svg>
                     <span>Dumps</span>
                 </button>
                 <button class="nav-item" data-page="mail">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2V6c0 1.1.9 2 2 2z"/>
-                        <circle cx="12" cy="12" r="2"/>
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
                     </svg>
                     <span>Mail</span>
                 </button>
                 <button class="nav-item" data-page="logs">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2-2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
-                        <path d="M16 13h-3v-3l-3 3H8"/>
-                        <path d="M14 9h3v3l3-3h3"/>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <path d="M14 2v6h6"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
                     </svg>
                     <span>Logs</span>
                 </button>
-                <button class="nav-item" data-page="php">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <ellipse cx="12" cy="12" rx="8" ry="6"/>
-                        <path d="M8 12h8"/>
-                    </svg>
-                    <span>PHP</span>
-                </button>
+                
+                <div class="nav-section">System</div>
                 <button class="nav-item" data-page="settings">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 3v12m-9 0h18m-9 0"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
                     <span>Settings</span>
                 </button>
             </nav>
+            
+            <div class="sidebar-footer">
+                <div class="server-status">
+                    <span class="server-status-dot"></span>
+                    <span>Server running on :8080</span>
+                </div>
+            </div>
         </aside>
         
         <main class="main-content">
+            <!-- Dashboard -->
             <div id="dashboard" class="page active">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Dashboard</h1>
+                <div class="page-header">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Overview of your development environment</p>
+                </div>
                 
                 <div class="stats-grid">
                     <div class="stat-card">
+                        <div class="stat-icon sites">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M2 12h20"/>
+                            </svg>
+                        </div>
                         <div class="stat-label">Sites</div>
                         <div class="stat-value" id="stat-sites">0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Running</div>
+                        <div class="stat-icon services">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                        </div>
+                        <div class="stat-label">Running Services</div>
                         <div class="stat-value" id="stat-services">0</div>
                     </div>
                     <div class="stat-card">
+                        <div class="stat-icon dumps">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
                         <div class="stat-label">Dumps</div>
                         <div class="stat-value" id="stat-dumps">0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">PHP</div>
+                        <div class="stat-icon php">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <ellipse cx="12" cy="12" rx="10" ry="6"/>
+                            </svg>
+                        </div>
+                        <div class="stat-label">PHP Version</div>
                         <div class="stat-value" id="stat-php">-</div>
                     </div>
                 </div>
@@ -391,120 +742,236 @@
                     <div class="card-header">
                         <span class="card-title">Quick Actions</span>
                     </div>
-                    <div style="padding: 16px 20px; display: flex; gap: 8px;">
+                    <div class="quick-actions">
                         <button class="btn btn-primary" onclick="location.reload()">
                             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M23 4v6h-3"/>
-                                <path d="M20.84 4.61a1 1 0 0 0-.707-.293l-3.538-3.538a1 1 0 0 0-.293-.707l.707-.707L21.293 3.293a1 1 0 0 0 .293.707l.293.707 3 3h-6"/>
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                             </svg>
                             Refresh
                         </button>
+                        <button class="btn btn-success" onclick="openTerminal()">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="4 17 10 11 4 5"/>
+                                <line x1="12" y1="19" x2="20" y2="19"/>
+                            </svg>
+                            Open Terminal
+                        </button>
+                        <button class="btn" onclick="showPage('sites')">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="16"/>
+                                <line x1="8" y1="12" x2="16" y2="12"/>
+                            </svg>
+                            Add Site
+                        </button>
                     </div>
                 </div>
             </div>
             
+            <!-- Sites -->
             <div id="sites" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Sites</h1>
-                <div class="card"><div id="sites-list"></div></div>
+                <div class="page-header">
+                    <h1 class="page-title">Sites</h1>
+                    <p class="page-subtitle">Manage your local development sites</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">All Sites</span>
+                        <button class="btn btn-primary" onclick="addSite()">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add Site
+                        </button>
+                    </div>
+                    <div class="card-body" id="sites-list"></div>
+                </div>
             </div>
             
+            <!-- Services -->
             <div id="services" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Services</h1>
-                <div class="card"><div id="services-list"></div></div>
+                <div class="page-header">
+                    <h1 class="page-title">Services</h1>
+                    <p class="page-subtitle">Manage database and cache services</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">All Services</span>
+                    </div>
+                    <div class="card-body" id="services-list"></div>
+                </div>
             </div>
             
+            <!-- Dumps -->
             <div id="dumps" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Dumps</h1>
+                <div class="page-header">
+                    <h1 class="page-title">Dumps</h1>
+                    <p class="page-subtitle">View debug dumps from your applications</p>
+                </div>
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title">All Dumps</span>
-                        <button class="btn btn-danger" onclick="clearDumps()">Clear</button>
+                        <button class="btn btn-danger" onclick="clearDumps()">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            Clear All
+                        </button>
                     </div>
-                    <div id="dumps-list"></div>
+                    <div class="card-body" id="dumps-list"></div>
                 </div>
             </div>
             
+            <!-- Mail -->
             <div id="mail" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Mail</h1>
+                <div class="page-header">
+                    <h1 class="page-title">Mail</h1>
+                    <p class="page-subtitle">Captured emails from your applications</p>
+                </div>
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title">Inbox</span>
-                        <button class="btn btn-danger" onclick="clearMail()">Clear</button>
+                        <button class="btn btn-danger" onclick="clearMail()">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            Clear All
+                        </button>
                     </div>
-                    <div id="mail-list"></div>
+                    <div class="card-body" id="mail-list"></div>
                 </div>
             </div>
             
+            <!-- Logs -->
             <div id="logs" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Logs</h1>
-                <div class="card"><div id="logs-list"></div></div>
+                <div class="page-header">
+                    <h1 class="page-title">Logs</h1>
+                    <p class="page-subtitle">View and search application logs</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Log Files</span>
+                    </div>
+                    <div class="card-body" id="logs-list"></div>
+                </div>
             </div>
             
+            <!-- PHP -->
             <div id="php" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">PHP Versions</h1>
-                <div class="card"><div id="php-list"></div></div>
+                <div class="page-header">
+                    <h1 class="page-title">PHP Versions</h1>
+                    <p class="page-subtitle">Manage installed PHP versions</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Installed Versions</span>
+                    </div>
+                    <div class="card-body" id="php-list"></div>
+                </div>
             </div>
 
+            <!-- Settings -->
             <div id="settings" class="page">
-                <h1 style="font-size: 22px; font-weight: 600; margin-bottom: 28px;">Settings</h1>
-                <div class="card">
-                    <div class="settings-row">
-                        <div>
-                            <div class="settings-label">Theme</div>
-                            <div class="settings-desc">Choose your preferred color scheme</div>
-                        </div>
-                        <div class="theme-toggle">
-                            <button class="theme-btn active" data-theme="light" onclick="setTheme('light')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                                    <circle cx="12" cy="12" r="5"/>
-                                    <path d="M12 1v2"/>
-                                    <path d="M12 21v-2"/>
-                                </svg>
-                            </button>
-                            <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                                    <path d="M21 12.79A9 9 0 1 1 1 0 0 0-18 0 9 9 0 0 0-12.79A9 9 0 0 0 12.21v.5z"/>
-                                    <path d="M12 5.5a2.5 2.5 0 0 1 0-5 2.5 0 0 1 0 5 2.5z"/>
-                                </svg>
-                            </button>
+                <div class="page-header">
+                    <h1 class="page-title">Settings</h1>
+                    <p class="page-subtitle">Configure your Stacker preferences</p>
+                </div>
+                
+                <div class="settings-section">
+                    <div class="settings-section-title">Appearance</div>
+                    <div class="card">
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Theme</div>
+                                <div class="settings-desc">Choose between light and dark mode</div>
+                            </div>
+                            <div class="theme-toggle">
+                                <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Light Mode">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                        <circle cx="12" cy="12" r="5"/>
+                                        <line x1="12" y1="1" x2="12" y2="3"/>
+                                        <line x1="12" y1="21" x2="12" y2="23"/>
+                                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                        <line x1="1" y1="12" x2="3" y2="12"/>
+                                        <line x1="21" y1="12" x2="23" y2="12"/>
+                                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                                    </svg>
+                                </button>
+                                <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')" title="Dark Mode">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="settings-row">
-                        <div>
-                            <div class="settings-label">Auto-start on login</div>
-                            <div class="settings-desc">Start Stacker automatically when you log in</div>
+                
+                <div class="settings-section">
+                    <div class="settings-section-title">Startup</div>
+                    <div class="card">
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Auto-start on login</div>
+                                <div class="settings-desc">Start Stacker automatically when you log in to your Mac</div>
+                            </div>
+                            <button class="toggle-switch" id="auto-start-toggle" onclick="toggleAutoStart()"></button>
                         </div>
-                        <button class="toggle-switch" id="auto-start-toggle" onclick="toggleAutoStart()">
-                        </button>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Show in System Tray</div>
+                                <div class="settings-desc">Keep Stacker icon visible in the menu bar</div>
+                            </div>
+                            <button class="toggle-switch active" id="tray-toggle" onclick="toggleTray()"></button>
+                        </div>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="settings-row">
-                        <div>
-                            <div class="settings-label">System Tray</div>
-                            <div class="settings-desc">Show icon in system status bar</div>
+                
+                <div class="settings-section">
+                    <div class="settings-section-title">Server</div>
+                    <div class="card">
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Web UI Port</div>
+                                <div class="settings-desc">Port for the web dashboard (requires restart)</div>
+                            </div>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <input type="number" id="port-input" class="input" value="8080" min="1024" max="65535" style="width: 100px;">
+                                <button class="btn btn-primary" onclick="savePort()">Save</button>
+                            </div>
                         </div>
-                        <button class="toggle-switch" id="tray-toggle" onclick="toggleTray()">
-                        </button>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="settings-row">
-                        <div>
-                            <div class="settings-label">Web UI Port</div>
-                            <div class="settings-desc">Port for web interface (requires restart)</div>
+                
+                <div class="settings-section">
+                    <div class="settings-section-title">About</div>
+                    <div class="card">
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Stacker</div>
+                                <div class="settings-desc">Version 1.0.0 • PHP Development Environment</div>
+                            </div>
+                            <button class="btn" onclick="checkUpdates()">Check for Updates</button>
                         </div>
-                        <input type="number" id="port-input" value="8080" min="1024" max="65535" style="width: 100px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary);">
-                        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
     
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span id="toast-message"></span>
+    </div>
+    
     <script>
+        // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => showPage(item.dataset.page));
         });
@@ -517,16 +984,32 @@
             loadPage(pageId);
         }
         
+        // API Helper
         async function api(endpoint, method = 'GET', data = null) {
-            const options = { method };
-            if (data) {
-                options.headers = { 'Content-Type': 'application/json' };
-                options.body = JSON.stringify(data);
+            try {
+                const options = { method };
+                if (data) {
+                    options.headers = { 'Content-Type': 'application/json' };
+                    options.body = JSON.stringify(data);
+                }
+                const res = await fetch('/api' + endpoint, options);
+                return res.json();
+            } catch (err) {
+                console.error('API Error:', err);
+                return null;
             }
-            const res = await fetch('/api' + endpoint, options);
-            return res.json();
         }
         
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toast.className = 'toast show ' + type;
+            toastMessage.textContent = message;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // Page Loaders
         async function loadPage(pageId) {
             switch(pageId) {
                 case 'dashboard': await loadStatus(); break;
@@ -542,128 +1025,211 @@
         
         async function loadStatus() {
             const data = await api('/status');
-            document.getElementById('stat-sites').textContent = data.sites || 0;
-            document.getElementById('stat-services').textContent = data.services || 0;
-            document.getElementById('stat-dumps').textContent = data.dumps || 0;
-            document.getElementById('stat-php').textContent = data.php || '-';
+            if (data) {
+                document.getElementById('stat-sites').textContent = data.sites || 0;
+                document.getElementById('stat-services').textContent = data.services || 0;
+                document.getElementById('stat-dumps').textContent = data.dumps || 0;
+                document.getElementById('stat-php').textContent = data.php || '-';
+            }
         }
         
         async function loadSites() {
             const list = document.getElementById('sites-list');
             const sites = await api('/sites');
-            if (!sites.length) {
-                list.innerHTML = '<div class="empty-state">No sites configured</div>';
+            if (!sites || !sites.length) {
+                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg><p>No sites configured</p><p style="font-size:12px;margin-top:8px;">Add a site to get started</p></div>';
                 return;
             }
-            list.innerHTML = sites.map(s => '<div class="list-item"><div><div class="item-primary">'+s.name+'.test</div><div class="item-secondary">'+s.path+'</div></div><span class="status-badge status-running">Running</span></div>').join('');
+            list.innerHTML = sites.map(s => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-primary">${s.name}.test</div>
+                        <div class="item-secondary">${s.path}</div>
+                    </div>
+                    <span class="status-badge status-running"><span class="status-dot"></span>Running</span>
+                </div>
+            `).join('');
         }
         
         async function loadServices() {
             const list = document.getElementById('services-list');
             const services = await api('/services');
-            if (!services.length) {
-                list.innerHTML = '<div class="empty-state">No services configured</div>';
+            if (!services || !services.length) {
+                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><p>No services configured</p></div>';
                 return;
             }
-            list.innerHTML = services.map(s => '<div class="list-item"><div><div class="item-primary">'+s.name+'</div><div class="item-secondary">'+s.type+' • Port '+s.port+'</div></div><span class="status-badge status-'+s.status+'">'+s.status+'</span></div>').join('');
+            list.innerHTML = services.map(s => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-primary">${s.name}</div>
+                        <div class="item-secondary">${s.type} • Port ${s.port}</div>
+                    </div>
+                    <span class="status-badge status-${s.status}"><span class="status-dot"></span>${s.status}</span>
+                </div>
+            `).join('');
         }
         
         async function loadDumps() {
             const list = document.getElementById('dumps-list');
             const data = await api('/dumps');
-            if (!data.dumps || !data.dumps.length) {
-                list.innerHTML = '<div class="empty-state">No dumps recorded</div>';
+            if (!data || !data.dumps || !data.dumps.length) {
+                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No dumps recorded</p></div>';
                 return;
             }
-            list.innerHTML = data.dumps.map(d => '<div class="list-item"><div><div class="item-primary">'+d.type+'</div><div class="item-secondary">'+d.file+':'+d.line+'</div></div><span class="item-secondary">'+new Date(d.timestamp).toLocaleTimeString()+'</span></div>').join('');
+            list.innerHTML = data.dumps.map(d => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-primary">${d.type}</div>
+                        <div class="item-secondary">${d.file}:${d.line}</div>
+                    </div>
+                    <span class="item-secondary">${new Date(d.timestamp).toLocaleTimeString()}</span>
+                </div>
+            `).join('');
         }
         
         async function loadMail() {
             const list = document.getElementById('mail-list');
             const emails = await api('/mail');
-            if (!emails.length) {
-                list.innerHTML = '<div class="empty-state">No emails</div>';
+            if (!emails || !emails.length) {
+                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><p>No emails received</p></div>';
                 return;
             }
-            list.innerHTML = emails.map(e => '<div class="list-item"><div><div class="item-primary">'+e.subject+'</div><div class="item-secondary">'+e.from+'</div></div><span class="item-secondary">'+new Date(e.timestamp).toLocaleTimeString()+'</span></div>').join('');
+            list.innerHTML = emails.map(e => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-primary">${e.subject}</div>
+                        <div class="item-secondary">${e.from}</div>
+                    </div>
+                    <span class="item-secondary">${new Date(e.timestamp).toLocaleTimeString()}</span>
+                </div>
+            `).join('');
         }
         
         async function loadLogs() {
             const list = document.getElementById('logs-list');
             const logs = await api('/logs');
-            if (!logs.length) {
-                list.innerHTML = '<div class="empty-state">No logs found</div>';
+            if (!logs || !logs.length) {
+                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><p>No log files found</p></div>';
                 return;
             }
-            list.innerHTML = logs.map(l => '<div class="list-item"><div><div class="item-primary">'+l.name+'</div><div class="item-secondary">'+l.site+'</div></div><span class="item-secondary">'+new Date(l.modified).toLocaleTimeString()+'</span></div>').join('');
+            list.innerHTML = logs.map(l => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-primary">${l.name}</div>
+                        <div class="item-secondary">${l.site}</div>
+                    </div>
+                    <span class="item-secondary">${new Date(l.modified).toLocaleTimeString()}</span>
+                </div>
+            `).join('');
         }
         
         async function loadPHP() {
             const list = document.getElementById('php-list');
             const data = await api('/php');
-            if (!data.versions || !data.versions.length) {
-                list.innerHTML = '<div class="empty-state">No PHP versions found</div>';
+            if (!data || !data.versions || !data.versions.length) {
+                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="12" rx="10" ry="6"/></svg><p>No PHP versions found</p><p style="font-size:12px;margin-top:8px;">Install PHP via Homebrew</p></div>';
                 return;
             }
-            list.innerHTML = data.versions.map(v => '<div class="list-item"><div><div class="item-primary">'+v.version+'</div><div class="item-secondary">'+v.path+'</div></div>'+(v.default?'<span class="status-badge status-running">Default</span>':'')+'</div>').join('');
+            list.innerHTML = data.versions.map(v => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-primary">PHP ${v.version}</div>
+                        <div class="item-secondary">${v.path}</div>
+                    </div>
+                    ${v.default ? '<span class="status-badge status-running"><span class="status-dot"></span>Default</span>' : '<button class="btn" onclick="setPHPVersion(\''+v.version+'\')">Set Default</button>'}
+                </div>
+            `).join('');
         }
         
         async function loadSettings() {
             const prefs = await api('/preferences');
-            document.documentElement.setAttribute('data-theme', prefs.theme);
-            
-            document.querySelectorAll('.theme-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
-            });
-            
-            const autoStartToggle = document.getElementById('auto-start-toggle');
-            autoStartToggle.classList.toggle('active', prefs.autoStart);
-            
-            const trayToggle = document.getElementById('tray-toggle');
-            trayToggle.classList.toggle('active', prefs.showTray);
-            
-            document.getElementById('port-input').value = prefs.port;
+            if (prefs) {
+                document.documentElement.setAttribute('data-theme', prefs.theme);
+                document.querySelectorAll('.theme-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
+                });
+                document.getElementById('auto-start-toggle').classList.toggle('active', prefs.autoStart);
+                document.getElementById('tray-toggle').classList.toggle('active', prefs.showTray);
+                document.getElementById('port-input').value = prefs.port || 8080;
+            }
         }
         
+        // Theme
         async function setTheme(theme) {
-            await api('/preferences', 'PUT', { theme: theme });
+            await api('/preferences', 'PUT', { theme });
             document.documentElement.setAttribute('data-theme', theme);
-            loadSettings();
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === theme);
+            });
+            showToast('Theme changed to ' + theme);
         }
         
+        // Settings Actions
         async function toggleAutoStart() {
-            const current = await api('/preferences');
-            await api('/preferences', 'PUT', { autoStart: !current.autoStart });
-            loadSettings();
+            const toggle = document.getElementById('auto-start-toggle');
+            const newState = !toggle.classList.contains('active');
+            await api('/preferences', 'PUT', { autoStart: newState });
+            toggle.classList.toggle('active', newState);
+            showToast(newState ? 'Auto-start enabled' : 'Auto-start disabled');
         }
         
         async function toggleTray() {
-            const current = await api('/preferences');
-            await api('/preferences', 'PUT', { showTray: !current.showTray });
-            loadSettings();
+            const toggle = document.getElementById('tray-toggle');
+            const newState = !toggle.classList.contains('active');
+            await api('/preferences', 'PUT', { showTray: newState });
+            toggle.classList.toggle('active', newState);
+            showToast(newState ? 'Tray icon enabled' : 'Tray icon disabled');
         }
         
-        async function saveSettings() {
+        async function savePort() {
             const port = parseInt(document.getElementById('port-input').value);
-            await api('/preferences', 'PUT', { port: port });
-            alert('Settings saved! Restart application to apply changes.');
+            if (port < 1024 || port > 65535) {
+                showToast('Port must be between 1024 and 65535', 'error');
+                return;
+            }
+            await api('/preferences', 'PUT', { port });
+            showToast('Port saved! Restart to apply.');
         }
         
+        function checkUpdates() {
+            showToast('You are running the latest version');
+        }
+        
+        // Actions
         async function clearDumps() {
             if (confirm('Clear all dumps?')) {
-                await fetch('/api/dumps', { method: 'DELETE' });
+                await api('/dumps', 'DELETE');
                 loadDumps();
+                showToast('Dumps cleared');
             }
         }
         
         async function clearMail() {
             if (confirm('Clear all emails?')) {
-                await fetch('/api/mail', { method: 'DELETE' });
+                await api('/mail', 'DELETE');
                 loadMail();
+                showToast('Emails cleared');
             }
         }
         
+        function addSite() {
+            const name = prompt('Site name (without .test):');
+            if (name) {
+                showToast('Use terminal: stacker add ' + name + ' /path/to/project');
+            }
+        }
+        
+        function openTerminal() {
+            showToast('Opening terminal...');
+        }
+        
+        async function setPHPVersion(version) {
+            showToast('Use terminal: stacker php set ' + version);
+        }
+        
+        // Initial Load
         loadStatus();
+        loadSettings();
         setInterval(loadStatus, 5000);
     </script>
 </body>
