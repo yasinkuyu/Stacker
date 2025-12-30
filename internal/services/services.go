@@ -144,6 +144,19 @@ func (sm *ServiceManager) RemoveService(name string) error {
 	return nil
 }
 
+func (sm *ServiceManager) StartAll() error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	for name, service := range sm.services {
+		if service.Status == "stopped" {
+			service.Status = "running"
+			fmt.Printf("▶️  Started %s\n", name)
+		}
+	}
+	return nil
+}
+
 func (sm *ServiceManager) StopAll() error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
