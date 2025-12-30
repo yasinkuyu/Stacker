@@ -1,0 +1,51 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+stacker-app
+stacker-app.exe
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Config files (optional - uncomment if you want to keep local config out)
+# config.yaml
+# .stacker-app/
+
+# Build artifacts
+dist/
+build/
+
+# Base64 encoded files (temporary)
+*.b64
