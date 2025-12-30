@@ -25,26 +25,54 @@ A cross-platform local development environment for PHP applications with all Pro
 
 ### Web UI & System Tray
 - 🖥️ **Web Interface** - Modern dark-themed web dashboard
-- 📱 **System Tray** - Status bar icon on Windows/Linux
+- 📱 **System Tray** - Status bar icon on all platforms
 - 🎨 **Responsive Design** - Clean and intuitive interface
+- 🚀 **Auto-start** - Start automatically on system login (macOS/Linux/Windows)
 
 ## Installation
 
 ### Download & Run (Recommended)
 
 #### macOS
-1. Download the `.app` bundle from [Releases](https://github.com/yasinkuyu/Stacker/releases)
+1. Download `.app` bundle from [Releases](https://github.com/yasinkuyu/Stacker/releases)
 2. Double-click `Stacker.app` to run
 3. System tray icon will appear in the menu bar
 
 **Note**: For tray icon support on macOS, run the `.app` bundle (not the binary from terminal).
 
+##### Auto-start on macOS
+```bash
+# Enable auto-start on login
+./stacker startup enable
+
+# Disable auto-start
+./stacker startup disable
+```
+
 #### Linux & Windows
-1. Download the binary from [Releases](https://github.com/yasinkuyu/Stacker/releases)
+1. Download binary from [Releases](https://github.com/yasinkuyu/Stacker/releases)
 2. Run from terminal:
 ```bash
 chmod +x stacker
 ./stacker ui
+```
+
+##### Auto-start on Linux (Systemd)
+```bash
+# Enable auto-start
+./stacker startup enable
+
+# Disable auto-start
+./stacker startup disable
+```
+
+##### Auto-start on Windows
+```bash
+# Enable auto-start
+./stacker startup enable
+
+# Disable auto-start
+./stacker startup disable
 ```
 
 ### Build from Source
@@ -86,8 +114,11 @@ The build script creates:
 
 ### Server
 ```bash
-# Start the development server
+# Start development server
 ./stacker serve
+
+# Start Web UI with system tray
+./stacker ui
 ```
 
 ### Dumps

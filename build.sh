@@ -33,7 +33,7 @@ cat > dist/Stacker-arm64.app/Contents/Info.plist << 'EOF'
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.yasinkuyu.stacker</string>
+    <string>com.insya.stacker</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
@@ -47,6 +47,8 @@ cat > dist/Stacker-arm64.app/Contents/Info.plist << 'EOF'
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
     <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSUIElement</key>
     <true/>
 </dict>
 </plist>
