@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-stacker-app
-stacker-app.exe
+stacker
+stacker.exe
 
 # Test binary, built with `go test -c`
 *.test

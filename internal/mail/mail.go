@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"stacker-app/internal/config"
+	"github.com/yasinkuyu/Stacker/internal/config"
 	"os"
 	"path/filepath"
 	"strings"

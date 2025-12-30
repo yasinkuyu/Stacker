@@ -6,14 +6,14 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
-	"stacker-app/internal/config"
-	"stacker-app/internal/dumps"
-	"stacker-app/internal/logs"
-	"stacker-app/internal/mail"
-	"stacker-app/internal/php"
-	"stacker-app/internal/services"
-	"stacker-app/internal/tray"
-	"stacker-app/internal/xdebug"
+	"github.com/yasinkuyu/Stacker/internal/config"
+	"github.com/yasinkuyu/Stacker/internal/dumps"
+	"github.com/yasinkuyu/Stacker/internal/logs"
+	"github.com/yasinkuyu/Stacker/internal/mail"
+	"github.com/yasinkuyu/Stacker/internal/php"
+	"github.com/yasinkuyu/Stacker/internal/services"
+	"github.com/yasinkuyu/Stacker/internal/tray"
+	"github.com/yasinkuyu/Stacker/internal/xdebug"
 )
 
 type WebServer struct {

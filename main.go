@@ -1,7 +1,7 @@
 package main
 
 import (
-	"stacker-app/internal/cli"
+	"github.com/yasinkuyu/Stacker/internal/cli"
 )
 
 func main() {

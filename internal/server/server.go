@@ -3,7 +3,7 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"stacker-app/internal/config"
+	"github.com/yasinkuyu/Stacker/internal/config"
 	"log"
 	"net"
 	"net/http"

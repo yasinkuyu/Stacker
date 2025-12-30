@@ -3,7 +3,7 @@ package dumps
 import (
 	"encoding/json"
 	"fmt"
-	"stacker-app/internal/config"
+	"github.com/yasinkuyu/Stacker/internal/config"
 	"os"
 	"path/filepath"
 	"sync"

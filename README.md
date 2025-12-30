@@ -1,6 +1,8 @@
-# Stacker App
+# Stacker
 
 A cross-platform local development environment for PHP applications with all Pro features. Built with Go for maximum performance.
+
+**GitHub Repository**: https://github.com/yasinkuyu/Stacker
 
 ## Features
 
@@ -21,41 +23,32 @@ A cross-platform local development environment for PHP applications with all Pro
 - 🔗 **Forge Integration** - Deploy to Laravel Forge
 - 📝 **Stacker Config** - `stacker.yml` for project configuration
 
+### Web UI & System Tray
+- 🖥️ **Web Interface** - Modern dark-themed web dashboard
+- 📱 **System Tray** - Status bar icon on Windows/Linux
+- 🎨 **Responsive Design** - Clean and intuitive interface
+
 ## Installation
-
-### Download Binaries
-```bash
-# macOS (Apple Silicon)
-curl -L https://releases.stacker.app/latest/darwin-arm64 -o stacker-app
-chmod +x stacker-app
-
-# macOS (Intel)
-curl -L https://releases.stacker.app/latest/darwin-amd64 -o stacker-app
-chmod +x stacker-app
-
-# Linux
-curl -L https://releases.stacker.app/latest/linux-amd64 -o stacker-app
-chmod +x stacker-app
-
-# Windows
-curl -L https://releases.stacker.app/latest/windows-amd64.exe -o stacker-app.exe
-```
 
 ### Build from Source
 ```bash
-git clone https://github.com/yourusername/stacker-app.git
-cd stacker-app
-go build -o stacker-app main.go
+git clone https://github.com/yasinkuyu/Stacker.git
+cd Stacker
+go build -o stacker main.go
+chmod +x stacker
 ```
+
+### Download Releases
+Visit the [Releases page](https://github.com/yasinkuyu/Stacker/releases) to download pre-built binaries for your platform.
 
 ## Quick Start
 
 ```bash
 # Add a site
-./stacker-app add myproject /path/to/project
+./stacker add myproject /path/to/project
 
 # Start the server
-./stacker-app serve
+./stacker serve
 
 # Visit https://myproject.test
 ```
@@ -65,112 +58,112 @@ go build -o stacker-app main.go
 ### Site Management
 ```bash
 # Add a new site
-./stacker-app add <name> <path>
+./stacker add <name> <path>
 
 # List all sites
-./stacker-app list
+./stacker list
 
 # Remove a site
-./stacker-app remove <name>
+./stacker remove <name>
 ```
 
 ### Server
 ```bash
 # Start the development server
-./stacker-app serve
+./stacker serve
 ```
 
 ### Dumps
 ```bash
 # List all dumps
-./stacker-app dumps list
+./stacker dumps list
 
 # Clear all dumps
-./stacker-app dumps clear
+./stacker dumps clear
 ```
 
 ### Mail
 ```bash
 # List all emails
-./stacker-app mail list
+./stacker mail list
 
 # Clear all emails
-./stacker-app mail clear
+./stacker mail clear
 ```
 
 ### Logs
 ```bash
 # List all log files
-./stacker-app logs list
+./stacker logs list
 
 # Tail a log file
-./stacker-app logs tail <file>
+./stacker logs tail <file>
 
 # Search logs
-./stacker-app logs search <query>
+./stacker logs search <query>
 ```
 
 ### Services
 ```bash
 # List all services
-./stacker-app services list
+./stacker services list
 
 # Add a service
-./stacker-app services add <name> <type> <port>
+./stacker services add <name> <type> <port>
 
 # Start a service
-./stacker-app services start <name>
+./stacker services start <name>
 
 # Stop a service
-./stacker-app services stop <name>
+./stacker services stop <name>
 
 # Stop all services
-./stacker-app services stop-all
+./stacker services stop-all
 ```
 
 ### PHP Management
 ```bash
 # List PHP versions
-./stacker-app php list
+./stacker php list
 
 # Set default PHP version
-./stacker-app php set <version>
+./stacker php set <version>
 ```
 
 ### Node.js Management
 ```bash
 # List Node.js versions
-./stacker-app node list
+./stacker node list
 
 # Set default Node.js version
-./stacker-app node set <version>
+./stacker node set <version>
 
 # Install a Node.js version
-./stacker-app node install <version>
+./stacker node install <version>
 ```
 
 ### XDebug
 ```bash
 # Enable XDebug
-./stacker-app xdebug enable
+./stacker xdebug enable
 
 # Disable XDebug
-./stacker-app xdebug disable
+./stacker xdebug disable
 ```
 
 ### Laravel Forge Integration
 ```bash
 # List Forge servers
-FORGE_API_KEY=your_key ./stacker-app forge servers
+FORGE_API_KEY=your_key ./stacker forge servers
 
 # Deploy a site
-FORGE_API_KEY=your_key ./stacker-app forge deploy <server-id> <site-id>
+FORGE_API_KEY=your_key ./stacker forge deploy <server-id> <site-id>
 ```
 
 ### Status
 ```bash
 # Show system status
-./stacker-app status
+./stacker status
 ```
 
 ## Configuration
