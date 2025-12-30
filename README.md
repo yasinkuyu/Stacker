@@ -30,16 +30,33 @@ A cross-platform local development environment for PHP applications with all Pro
 
 ## Installation
 
+### Download & Run (Recommended)
+
+#### macOS
+1. Download the `.app` bundle from [Releases](https://github.com/yasinkuyu/Stacker/releases)
+2. Double-click `Stacker.app` to run
+3. System tray icon will appear in the menu bar
+
+**Note**: For tray icon support on macOS, run the `.app` bundle (not the binary from terminal).
+
+#### Linux & Windows
+1. Download the binary from [Releases](https://github.com/yasinkuyu/Stacker/releases)
+2. Run from terminal:
+```bash
+chmod +x stacker
+./stacker ui
+```
+
 ### Build from Source
 ```bash
 git clone https://github.com/yasinkuyu/Stacker.git
 cd Stacker
-go build -o stacker main.go
-chmod +x stacker
+./build.sh
 ```
 
-### Download Releases
-Visit the [Releases page](https://github.com/yasinkuyu/Stacker/releases) to download pre-built binaries for your platform.
+The build script creates:
+- macOS `.app` bundles (with tray icon)
+- Standalone binaries (Linux/Windows)
 
 ## Quick Start
 

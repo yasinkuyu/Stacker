@@ -3,9 +3,6 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"path/filepath"
-	"runtime"
 	"github.com/yasinkuyu/Stacker/internal/config"
 	"github.com/yasinkuyu/Stacker/internal/dumps"
 	"github.com/yasinkuyu/Stacker/internal/logs"
@@ -14,6 +11,9 @@ import (
 	"github.com/yasinkuyu/Stacker/internal/services"
 	"github.com/yasinkuyu/Stacker/internal/tray"
 	"github.com/yasinkuyu/Stacker/internal/xdebug"
+	"net/http"
+	"path/filepath"
+	"runtime"
 )
 
 type WebServer struct {
@@ -64,11 +64,16 @@ func (ws *WebServer) Start() error {
 
 	fmt.Printf("\n📦 Stackr is running\n")
 	fmt.Printf("🌐 Web UI: %s\n", webURL)
-	fmt.Printf("⏹️  Press Ctrl+C to stop\n\n")
 
-	if runtime.GOOS != "darwin" {
+	if runtime.GOOS == "darwin" {
+		fmt.Println("💡 Open Web UI in your browser")
+		fmt.Println("⏹️  Press Ctrl+C to stop\n")
+	} else {
+		fmt.Println("📋 System tray icon available in status bar")
+		fmt.Println("⏹️  Press Ctrl+C to stop\n")
 		go ws.trayMgr.Run()
 	}
+
 	return http.ListenAndServe(fmt.Sprintf(":%d", ws.port), nil)
 }
 
