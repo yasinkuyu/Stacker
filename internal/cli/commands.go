@@ -2,8 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 	"github.com/yasinkuyu/Stacker/internal/config"
 	"github.com/yasinkuyu/Stacker/internal/dumps"
 	"github.com/yasinkuyu/Stacker/internal/forge"
@@ -17,6 +15,8 @@ import (
 	"github.com/yasinkuyu/Stacker/internal/utils"
 	"github.com/yasinkuyu/Stacker/internal/web"
 	"github.com/yasinkuyu/Stacker/internal/xdebug"
+	"os"
+	"os/signal"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ import (
 var cfgFile string
 
 var rootCmd = &cobra.Command{
-	Use:   "stacker-app",
+	Use:   "stacker",
 	Short: "A full-stack development environment for PHP",
 	Long:  `A cross-platform local development environment for PHP applications with all advanced features.`,
 }
