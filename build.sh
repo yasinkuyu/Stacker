@@ -3,14 +3,14 @@
 echo "Building Stacker..."
 
 # Build for current platform (macOS arm64)
-CGO_ENABLED=1 go build -o dist/stacker-mac-arm64 main.go
-CGO_ENABLED=1 GOARCH=amd64 go build -o dist/stacker-mac-amd64 main.go
+CGO_ENABLED=1 go build -ldflags="-s -w" -o dist/stacker-mac-arm64 main.go
+CGO_ENABLED=1 GOARCH=amd64 go build -ldflags="-s -w" -o dist/stacker-mac-amd64 main.go
 
 # Linux (no tray for standalone)
-CGO_ENABLED=0 go build -tags no_tray -o dist/stacker-linux-amd64 main.go
+CGO_ENABLED=0 go build -ldflags="-s -w" -tags no_tray -o dist/stacker-linux-amd64 main.go
 
 # Windows
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -tags no_tray -o dist/stacker-windows-amd64.exe main.go
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -tags no_tray -o dist/stacker-windows-amd64.exe main.go
 
 # Create macOS app bundles
 echo ""

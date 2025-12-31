@@ -1701,7 +1701,13 @@
         // Site Management
         // ==========================================
 
-        function addSite() {
+        async function addSite() {
+            const data = await api('/php');
+            const phpVersions = data && data.versions ? data.versions : [];
+            const phpOptions = phpVersions.map(v =>
+                `<option value="${v.version}">PHP ${v.version}${v.default ? ' (Default)' : ''}</option>`
+            ).join('');
+
             const content = `
                 <div class="form-group">
                     <label class="form-label">Site Name</label>
@@ -1719,11 +1725,7 @@
                     <label class="form-label">PHP Version</label>
                     <select class="form-select" id="sitePhp">
                         <option value="">Use Default</option>
-                        <option value="8.3">PHP 8.3</option>
-                        <option value="8.2">PHP 8.2</option>
-                        <option value="8.1">PHP 8.1</option>
-                        <option value="8.0">PHP 8.0</option>
-                        <option value="7.4">PHP 7.4</option>
+                        ${phpOptions}
                     </select>
                 </div>
                 <div class="form-group">
@@ -1741,8 +1743,14 @@
             openDrawPanel('Add New Site', content, saveSite);
         }
 
-        function editSite(site) {
+        async function editSite(site) {
             currentSite = site;
+            const data = await api('/php');
+            const phpVersions = data && data.versions ? data.versions : [];
+            const phpOptions = phpVersions.map(v =>
+                `<option value="${v.version}" ${site.php === v.version ? 'selected' : ''}>PHP ${v.version}${v.default ? ' (Default)' : ''}</option>`
+            ).join('');
+
             const content = `
                 <div class="form-group">
                     <label class="form-label">Site Name</label>
@@ -1756,9 +1764,7 @@
                     <label class="form-label">PHP Version</label>
                     <select class="form-select" id="sitePhp">
                         <option value="">Use Default</option>
-                        <option value="8.3" ${site.php === '8.3' ? 'selected' : ''}>PHP 8.3</option>
-                        <option value="8.2" ${site.php === '8.2' ? 'selected' : ''}>PHP 8.2</option>
-                        <option value="8.1" ${site.php === '8.1' ? 'selected' : ''}>PHP 8.1</option>
+                        ${phpOptions}
                     </select>
                 </div>
                 <div class="form-group">

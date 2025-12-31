@@ -65,11 +65,22 @@ var uiCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.Load(cfgFile)
 		ws := web.NewWebServer(cfg)
+
+		// Start web server in background
+		go func() {
+			if err := ws.Start(); err != nil {
+				fmt.Printf("Error starting server: %v\n", err)
+				os.Exit(1)
+			}
+		}()
+
+		// Open browser
 		go tray.OpenBrowser("http://localhost:8080")
-		if err := ws.Start(); err != nil {
-			fmt.Printf("Error starting server: %v\n", err)
-			os.Exit(1)
-		}
+
+		// Run tray manager (blocks)
+		tm := tray.NewTrayManager()
+		tm.SetWebURL("http://localhost:8080")
+		tm.Run()
 	},
 }
 

@@ -359,6 +359,8 @@ func (ws *WebServer) createSiteConfig(site Site) {
 		protocol = "https"
 	}
 
+	phpPort := ws.getPHPPort(site.PHP)
+
 	config := fmt.Sprintf(`# Stacker Site Config: %s
 # Generated: %s
 server {
@@ -368,15 +370,44 @@ server {
     index index.php index.html;
 
     location ~ \.php$ {
-        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_pass 127.0.0.1:%d;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
     }
 }
 # Access: %s://%s.test
-`, site.Name, time.Now().Format(time.RFC3339), site.Name, site.Path, protocol, site.Name)
+`, site.Name, time.Now().Format(time.RFC3339), site.Name, site.Path, phpPort, protocol, site.Name)
 
 	os.WriteFile(configPath, []byte(config), 0644)
+}
+
+func (ws *WebServer) getPHPPort(version string) int {
+	if version == "" {
+		pm := php.NewPHPManager()
+		pm.DetectPHPVersions()
+		if def := pm.GetDefault(); def != nil {
+			version = def.Version
+		} else {
+			return 9000 // Last fallback
+		}
+	}
+
+	// Map versions like 8.3 -> 9083, 7.4 -> 9074
+	// Remove dots and prefix with 90
+	clean := strings.ReplaceAll(version, ".", "")
+	var port int
+	fmt.Sscanf(clean, "%d", &port)
+
+	if port == 0 {
+		return 9000
+	}
+
+	// If port is < 100 (like 83), prefix with 90
+	if port < 100 {
+		return 9000 + port
+	}
+
+	return port
 }
 
 // ===========================================
