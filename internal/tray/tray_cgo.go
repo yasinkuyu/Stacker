@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"time"
+
 	"github.com/getlantern/systray"
 	"github.com/yasinkuyu/Stacker/internal/php"
 	"github.com/yasinkuyu/Stacker/internal/services"
@@ -18,6 +20,15 @@ import (
 
 //go:embed icon.png
 var iconData []byte
+
+//go:embed icon_green.png
+var iconGreen []byte
+
+//go:embed icon_orange.png
+var iconOrange []byte
+
+//go:embed icon_red.png
+var iconRed []byte
 
 type TrayManager struct {
 	webURL        string
@@ -196,6 +207,49 @@ func (tm *TrayManager) onReady() {
 			}()
 		}
 	}()
+
+	// Watcher for service status to update tray icon
+	go tm.watchStatus()
+}
+
+func (tm *TrayManager) watchStatus() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			tm.updateIconByStatus()
+		case <-tm.quitChan:
+			return
+		}
+	}
+}
+
+func (tm *TrayManager) updateIconByStatus() {
+	svcs := tm.svcManager.GetServices()
+	running := 0
+	total := len(svcs)
+
+	if total == 0 {
+		// If no services configured, show red or neutral
+		systray.SetIcon(iconRed)
+		return
+	}
+
+	for _, s := range svcs {
+		if s.Status == "running" {
+			running++
+		}
+	}
+
+	if running == total && total > 0 {
+		systray.SetIcon(iconGreen)
+	} else if running > 0 {
+		systray.SetIcon(iconOrange)
+	} else {
+		systray.SetIcon(iconRed)
+	}
 }
 
 func (tm *TrayManager) onExit() {

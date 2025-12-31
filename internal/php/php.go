@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/yasinkuyu/Stacker/internal/utils"
 )
 
 type PHPVersion struct {
@@ -40,6 +42,7 @@ func (pm *PHPManager) DetectPHPVersions() error {
 		"/usr/local/bin/php",
 		"/opt/homebrew/bin/php",
 		"/opt/homebrew/opt/php*/bin/php",
+		filepath.Join(utils.GetStackerDir(), "bin", "php*", "bin", "php"),
 	}
 
 	for _, path := range paths {

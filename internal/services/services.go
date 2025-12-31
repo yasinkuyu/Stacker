@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/yasinkuyu/Stacker/internal/utils"
 )
 
 type Service struct {
@@ -26,9 +28,28 @@ type ServiceManager struct {
 }
 
 func NewServiceManager() *ServiceManager {
-	home, _ := os.UserHomeDir()
-	baseDir := filepath.Join(home, ".stacker-app", "services")
+	baseDir := utils.GetStackerDir()
 	os.MkdirAll(baseDir, 0755)
+
+	// Create directory structure like MAMP
+	dirs := []string{
+		"bin",        // Executables (php, mysql, nginx)
+		"conf",       // Configuration files
+		"conf/nginx", // Nginx configs
+		"conf/php",   // PHP configs
+		"conf/mysql", // MySQL configs
+		"data",       // Data directories
+		"data/mysql", // MySQL databases
+		"data/redis", // Redis data
+		"logs",       // Log files
+		"tmp",        // Temporary files
+		"sites",      // Hosted sites
+		"ssl",        // SSL certificates
+	}
+
+	for _, dir := range dirs {
+		os.MkdirAll(filepath.Join(baseDir, dir), 0755)
+	}
 
 	return &ServiceManager{
 		services: make(map[string]*Service),
@@ -151,7 +172,7 @@ func (sm *ServiceManager) StartAll() error {
 	for name, service := range sm.services {
 		if service.Status == "stopped" {
 			service.Status = "running"
-			fmt.Printf("▶️  Started %s\n", name)
+			fmt.Printf("[STARTING] %s\n", name)
 		}
 	}
 	return nil
@@ -164,7 +185,7 @@ func (sm *ServiceManager) StopAll() error {
 	for name, service := range sm.services {
 		if service.Status == "running" {
 			service.Status = "stopped"
-			fmt.Printf("⏹️  Stopped %s\n", name)
+			fmt.Printf("[STOPPED] %s\n", name)
 		}
 	}
 	return nil
@@ -226,9 +247,9 @@ func (sm *ServiceManager) FormatStatus() string {
 	status.WriteString("Services:\n")
 
 	for _, service := range sm.services {
-		icon := "⏹️"
+		icon := "[ ]"
 		if service.Status == "running" {
-			icon = "✅"
+			icon = "[v]"
 		}
 
 		status.WriteString(fmt.Sprintf("%s %s (%s) - %s:%d\n",
