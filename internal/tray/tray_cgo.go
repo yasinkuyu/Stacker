@@ -31,11 +31,12 @@ var iconOrange []byte
 var iconRed []byte
 
 type TrayManager struct {
-	webURL        string
-	quitChan      chan bool
-	phpManager    *php.PHPManager
-	svcManager    *services.ServiceManager
-	xdebugEnabled bool
+	webURL           string
+	quitChan         chan bool
+	phpManager       *php.PHPManager
+	svcManager       *services.ServiceManager
+	xdebugEnabled    bool
+	serviceMenuItems map[string]*systray.MenuItem
 }
 
 func NewTrayManager() *TrayManager {
@@ -96,11 +97,36 @@ func (tm *TrayManager) onReady() {
 	mStopAll := mServices.AddSubMenuItem("Stop All", "Stop all services")
 	mServices.AddSubMenuItem("", "")
 
-	// Individual services
-	mMySQL := mServices.AddSubMenuItem("MySQL", "MySQL Database")
-	mRedis := mServices.AddSubMenuItem("Redis", "Redis Cache")
-	mMeilisearch := mServices.AddSubMenuItem("Meilisearch", "Meilisearch")
-	mMinIO := mServices.AddSubMenuItem("MinIO", "MinIO Object Storage")
+	// Get installed services and create menu items
+	svcs := tm.svcManager.GetServices()
+	serviceMenuItems := make(map[string]*systray.MenuItem)
+
+	// Default services (not installed)
+	if len(svcs) == 0 {
+		defaultServices := []string{"mysql", "mariadb", "nginx", "apache", "redis"}
+		for _, svcType := range defaultServices {
+			item := mServices.AddSubMenuItem(fmt.Sprintf("○ %s (not installed)", strings.ToUpper(svcType)), fmt.Sprintf("%s not installed", svcType))
+			item.Disable()
+			serviceMenuItems[svcType] = item
+		}
+	}
+
+	// Installed services
+	for _, svc := range svcs {
+		statusIcon := "○"
+		if svc.Status == "running" {
+			statusIcon = "●"
+		}
+
+		item := mServices.AddSubMenuItem(
+			fmt.Sprintf("%s %s (%s)", statusIcon, strings.ToUpper(svc.Type), svc.Version),
+			fmt.Sprintf("%s %s - %s", svc.Status, svc.Type, svc.Version),
+		)
+		serviceMenuItems[svc.Name] = item
+	}
+
+	// Store for updates
+	tm.serviceMenuItems = serviceMenuItems
 
 	systray.AddSeparator()
 
@@ -108,6 +134,7 @@ func (tm *TrayManager) onReady() {
 	mDumps := systray.AddMenuItem("Dumps", "View dumps")
 	mMail := systray.AddMenuItem("Mail", "View captured emails")
 	mLogs := systray.AddMenuItem("Logs", "View logs")
+	mLogsDrawer := mLogs.AddSubMenuItem("View Log Drawer", "Open log drawer in web UI")
 
 	systray.AddSeparator()
 
@@ -175,6 +202,9 @@ func (tm *TrayManager) onReady() {
 
 			case <-mLogs.ClickedCh:
 				tm.openBrowserPath("/#logs")
+
+			case <-mLogsDrawer.ClickedCh:
+				tm.openBrowserPath("/?drawer=logs")
 
 			case <-mSettings.ClickedCh:
 				tm.openBrowserPath("/#settings")
@@ -310,6 +340,42 @@ func (tm *TrayManager) toggleService(name string, menuItem *systray.MenuItem) {
 	} else {
 		tm.svcManager.StartService(name)
 		menuItem.Check()
+	}
+}
+
+func (tm *TrayManager) updateServiceStatus() {
+	svcs := tm.svcManager.GetServices()
+
+	for name, item := range tm.serviceMenuItems {
+		statusIcon := "○"
+		for _, svc := range svcs {
+			if svc.Name == name && svc.Status == "running" {
+				statusIcon = "●"
+				break
+			}
+		}
+
+		parts := strings.Fields(item.Title())
+		if len(parts) >= 2 {
+			newTitle := fmt.Sprintf("%s %s", statusIcon, strings.Join(parts[1:], " "))
+			item.SetTitle(newTitle)
+		}
+	}
+
+	tm.updateIconByStatus()
+}
+
+func (tm *TrayManager) watchStatus() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			tm.updateServiceStatus()
+		case <-tm.quitChan:
+			return
+		}
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/yasinkuyu/Stacker/internal/config"
@@ -294,21 +295,23 @@ var servicesListCmd = &cobra.Command{
 }
 
 var servicesAddCmd = &cobra.Command{
-	Use:   "add [name] [type] [port]",
-	Short: "Add a service",
-	Args:  cobra.ExactArgs(3),
+	Use:   "add [type] [version]",
+	Short: "Install a service (mysql, mariadb, nginx, apache, redis)",
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		name := args[0]
-		svcType := args[1]
-		port := 0
-		fmt.Sscanf(args[2], "%d", &port)
+		svcType := args[0]
+		version := args[1]
+
+		fmt.Printf("📦 Installing %s %s...\n", svcType, version)
 		sm := services.NewServiceManager()
-		sm.AddService(&services.Service{
-			Name: name,
-			Type: svcType,
-			Port: port,
-		})
-		fmt.Printf("✅ Service added: %s (%s)\n", name, svcType)
+
+		if err := sm.InstallService(svcType, version); err != nil {
+			fmt.Printf("❌ Failed to install service: %v\n", err)
+			return
+		}
+
+		fmt.Printf("✅ Service %s-%s installed successfully\n", svcType, version)
+		fmt.Printf("   Use 'stacker services start %s-%s' to start\n", svcType, version)
 	},
 }
 
@@ -349,6 +352,72 @@ var servicesStopAllCmd = &cobra.Command{
 		sm := services.NewServiceManager()
 		sm.StopAll()
 		fmt.Println("⏹️  All services stopped")
+	},
+}
+
+var servicesUninstallCmd = &cobra.Command{
+	Use:   "uninstall [name]",
+	Short: "Uninstall a service",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		name := args[0]
+		sm := services.NewServiceManager()
+
+		fmt.Printf("🗑️  Uninstalling service: %s\n", name)
+		if err := sm.UninstallService(name); err != nil {
+			fmt.Printf("❌ Failed to uninstall service: %v\n", err)
+			return
+		}
+
+		fmt.Printf("✅ Service %s uninstalled successfully\n", name)
+	},
+}
+
+var servicesInstallCmd = &cobra.Command{
+	Use:   "install [type] [version]",
+	Short: "Install a service (mysql, mariadb, nginx, apache, redis)",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		svcType := args[0]
+		version := args[1]
+
+		fmt.Printf("📦 Installing %s %s...\n", svcType, version)
+		sm := services.NewServiceManager()
+
+		if err := sm.InstallService(svcType, version); err != nil {
+			fmt.Printf("❌ Failed to install service: %v\n", err)
+			return
+		}
+
+		fmt.Printf("✅ Service %s-%s installed successfully\n", svcType, version)
+		fmt.Printf("   Use 'stacker services start %s-%s' to start\n", svcType, version)
+	},
+}
+
+var servicesVersionsCmd = &cobra.Command{
+	Use:   "versions [type]",
+	Short: "List available service versions",
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		svcType := ""
+		if len(args) > 0 {
+			svcType = args[0]
+		}
+
+		sm := services.NewServiceManager()
+		versions := sm.GetAvailableVersions(svcType)
+
+		if len(versions) == 0 {
+			fmt.Println("No available versions found")
+			return
+		}
+
+		fmt.Println("Available Service Versions:")
+		fmt.Println("═════════════════════════")
+
+		for _, v := range versions {
+			fmt.Printf("  • %s %s (%s)\n", strings.ToUpper(v.Type), v.Version, v.Arch)
+		}
 	},
 }
 
@@ -554,10 +623,13 @@ func init() {
 
 	rootCmd.AddCommand(servicesCmd)
 	servicesCmd.AddCommand(servicesListCmd)
+	servicesCmd.AddCommand(servicesVersionsCmd)
+	servicesCmd.AddCommand(servicesInstallCmd)
 	servicesCmd.AddCommand(servicesAddCmd)
 	servicesCmd.AddCommand(servicesStartCmd)
 	servicesCmd.AddCommand(servicesStopCmd)
 	servicesCmd.AddCommand(servicesStopAllCmd)
+	servicesCmd.AddCommand(servicesUninstallCmd)
 
 	rootCmd.AddCommand(phpCmd)
 	phpCmd.AddCommand(phpListCmd)

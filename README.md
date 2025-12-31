@@ -1,6 +1,6 @@
 # Stacker
 
-A cross-platform local development environment for PHP applications with all Pro features. Built with Go for maximum performance.
+**A cross-platform, standalone local development environment for PHP applications with all Pro features. Built with Go for maximum performance.**
 
 **GitHub Repository**: https://github.com/yasinkuyu/Stacker
 
@@ -16,16 +16,24 @@ A cross-platform local development environment for PHP applications with all Pro
 - 📦 **Dumps** - Intercept and view `dump()` and `dd()` calls
 - 📧 **Mail Service** - Local email catcher and viewer
 - 📄 **Log Viewer** - View, search, and tail log files
-- ⚙️ **Services** - MySQL, PostgreSQL, Redis, Meilisearch, MinIO
+- ⚙️ **Services** - MariaDB, MySQL, Nginx, Apache, Redis
 - 🐘 **PHP Management** - Multiple PHP versions (7.4-8.4) with XDebug support
 - 🎯 **XDebug** - Automatic XDebug detection and management
 - 📦 **Node.js** - NVM integration for Node.js version management
 - 🔗 **Forge Integration** - Deploy to Laravel Forge
 - 📝 **Stacker Config** - `stacker.yml` for project configuration
 
+### ✨ Standalone Features
+- 🚀 **No System Dependencies** - All services run independently in Stacker's data directory
+- 📦 **Source Compilation** - Downloads and compiles services from source code
+- 🔄 **Version Management** - Install multiple versions of each service
+- 📊 **PID Tracking** - Monitor and manage service processes
+- 💾 **Database Initialization** - Auto-setup databases with configuration
+- 📱 **Tray Status** - Real-time service status in system tray
+
 ### Web UI & System Tray
 - 🖥️ **Web Interface** - Modern dark-themed web dashboard
-- 📱 **System Tray** - Status bar icon on all platforms
+- 📱 **System Tray** - Status bar icon on all platforms with live service indicators
 - 🎨 **Responsive Design** - Clean and intuitive interface
 - 🚀 **Auto-start** - Start automatically on system login (macOS/Linux/Windows)
 
@@ -36,18 +44,9 @@ A cross-platform local development environment for PHP applications with all Pro
 #### macOS
 1. Download `.app` bundle from [Releases](https://github.com/yasinkuyu/Stacker/releases)
 2. Double-click `Stacker.app` to run
-3. System tray icon will appear in the menu bar
+3. System tray icon will appear in menu bar
 
-**Note**: For tray icon support on macOS, run the `.app` bundle (not the binary from terminal).
-
-##### Auto-start on macOS
-```bash
-# Enable auto-start on login
-./stacker startup enable
-
-# Disable auto-start
-./stacker startup disable
-```
+**Note**: For tray icon support on macOS, run `.app` bundle (not binary from terminal).
 
 #### Linux & Windows
 1. Download binary from [Releases](https://github.com/yasinkuyu/Stacker/releases)
@@ -55,24 +54,6 @@ A cross-platform local development environment for PHP applications with all Pro
 ```bash
 chmod +x stacker
 ./stacker ui
-```
-
-##### Auto-start on Linux (Systemd)
-```bash
-# Enable auto-start
-./stacker startup enable
-
-# Disable auto-start
-./stacker startup disable
-```
-
-##### Auto-start on Windows
-```bash
-# Enable auto-start
-./stacker startup enable
-
-# Disable auto-start
-./stacker startup disable
 ```
 
 ### Build from Source
@@ -89,13 +70,13 @@ The build script creates:
 ## Quick Start
 
 ```bash
-# Add a site
-./stacker add myproject /path/to/project
+# Start Web UI
+./stacker ui
 
-# Start the server
-./stacker serve
+# Or start as tray app
+./stacker tray
 
-# Visit https://myproject.test
+# Open browser: http://localhost:8080
 ```
 
 ## Commands
@@ -117,53 +98,42 @@ The build script creates:
 # Start development server
 ./stacker serve
 
-# Start Web UI with system tray
+# Start Web UI
 ./stacker ui
+
+# Start tray app
+./stacker tray
 ```
 
-### Dumps
+### Services (Standalone)
 ```bash
-# List all dumps
-./stacker dumps list
+# List available service versions
+./stacker services versions
+./stacker services versions mariadb
 
-# Clear all dumps
-./stacker dumps clear
-```
+# Install a service (downloads, compiles, configures)
+./stacker services install mariadb 11.2
+./stacker services install nginx 1.25
+./stacker services install redis 7.2
+./stacker services install apache 2.4
 
-### Mail
-```bash
-# List all emails
-./stacker mail list
-
-# Clear all emails
-./stacker mail clear
-```
-
-### Logs
-```bash
-# List all log files
-./stacker logs list
-
-# Tail a log file
-./stacker logs tail <file>
-
-# Search logs
-./stacker logs search <query>
-```
-
-### Services
-```bash
-# List all services
+# List installed services
 ./stacker services list
 
-# Add a service
-./stacker services add <name> <type> <port>
-
 # Start a service
-./stacker services start <name>
+./stacker services start mariadb-11.2
 
 # Stop a service
-./stacker services stop <name>
+./stacker services stop mariadb-11.2
+
+# Restart a service
+./stacker services restart mariadb-11.2
+
+# Uninstall a service
+./stacker services uninstall mariadb-11.2
+
+# Start all services
+./stacker services start-all
 
 # Stop all services
 ./stacker services stop-all
@@ -174,8 +144,11 @@ The build script creates:
 # List PHP versions
 ./stacker php list
 
+# Install PHP
+./stacker php install 8.3
+
 # Set default PHP version
-./stacker php set <version>
+./stacker php set 8.3
 ```
 
 ### Node.js Management
@@ -184,10 +157,10 @@ The build script creates:
 ./stacker node list
 
 # Set default Node.js version
-./stacker node set <version>
+./stacker node set 18.0
 
 # Install a Node.js version
-./stacker node install <version>
+./stacker node install 18.0
 ```
 
 ### XDebug
@@ -214,6 +187,16 @@ FORGE_API_KEY=your_key ./stacker forge deploy <server-id> <site-id>
 ./stacker status
 ```
 
+## Supported Services
+
+| Service | Versions | Install Type |
+|---------|----------|--------------|
+| MariaDB | 11.2, 10.11, 10.6 | Source → Compile |
+| MySQL | 8.0, 5.7 | Source → Compile |
+| Nginx | 1.25, 1.24 | Source → Compile |
+| Apache | 2.4 | Source → Compile |
+| Redis | 7.2, 7.0 | Source → Compile |
+
 ## Configuration
 
 ### stacker.yml
@@ -223,8 +206,8 @@ Create a `stacker.yml` file in your project root:
 ```yaml
 php: "8.3"
 services:
-  - type: mysql
-    version: "8.0"
+  - type: mariadb
+    version: "11.2"
     port: 3306
   - type: redis
     port: 6379
@@ -238,6 +221,29 @@ env:
   APP_DEBUG: "true"
 ```
 
+## Data Directory
+
+All services and data are stored independently:
+
+```
+~/Library/Application Support/Stacker/    # macOS
+~/.stacker/                               # Linux
+%APPDATA%/Stacker/                      # Windows
+
+├── bin/              # Service binaries
+│   ├── mariadb/     # Compiled MariaDB
+│   ├── mysql/       # Compiled MySQL
+│   ├── nginx/       # Compiled Nginx
+│   ├── apache/      # Compiled Apache
+│   └── redis/       # Compiled Redis
+├── conf/             # Configuration files
+├── data/             # Data files (databases, cache, etc)
+├── logs/             # Log files
+├── pids/             # Process IDs
+├── sites.json        # Site configuration
+└── services.json     # Service status
+```
+
 ## Environment Variables
 
 - `STACKER_CONFIG` - Path to config file (default: `$HOME/.stacker-app/config.yaml`)
@@ -249,6 +255,8 @@ env:
 - PHP 7.4-8.4 (installed on system)
 - mkcert (for HTTPS support)
 - NVM (optional, for Node.js management)
+- cmake (required for MariaDB/MySQL compilation)
+- make (required for service compilation)
 
 ## Cross-Platform Support
 
@@ -263,3 +271,4 @@ MIT License
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.
+

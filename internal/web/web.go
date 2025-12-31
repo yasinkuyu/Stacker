@@ -1,6 +1,8 @@
 package web
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -53,11 +55,13 @@ var (
 )
 
 type WebServer struct {
-	config         *config.Config
-	dumpManager    *dumps.DumpManager
-	mailManager    *mail.MailManager
-	serviceManager *services.ServiceManager
-	stackerDir     string
+	config          *config.Config
+	dumpManager     *dumps.DumpManager
+	mailManager     *mail.MailManager
+	serviceManager  *services.ServiceManager
+	stackerDir      string
+	installProgress map[string]int
+	progressMu      sync.RWMutex
 }
 
 func NewWebServer(cfg *config.Config) *WebServer {
@@ -69,11 +73,12 @@ func NewWebServer(cfg *config.Config) *WebServer {
 	loadPreferences(stackerDir)
 
 	return &WebServer{
-		config:         cfg,
-		dumpManager:    dumps.NewDumpManager(cfg),
-		mailManager:    mail.NewMailManager(cfg),
-		serviceManager: sm,
-		stackerDir:     stackerDir,
+		config:          cfg,
+		dumpManager:     dumps.NewDumpManager(cfg),
+		mailManager:     mail.NewMailManager(cfg),
+		serviceManager:  sm,
+		stackerDir:      stackerDir,
+		installProgress: make(map[string]int),
 	}
 }
 
@@ -118,12 +123,17 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/sites", ws.handleSites)
 	http.HandleFunc("/api/sites/", ws.handleSiteByName)
 	http.HandleFunc("/api/services", ws.handleServices)
+	http.HandleFunc("/api/services/versions", ws.handleServiceVersions)
 	http.HandleFunc("/api/services/install", ws.handleServiceInstall)
+	http.HandleFunc("/api/services/uninstall", ws.handleServiceUninstall)
+	http.HandleFunc("/api/services/start/", ws.handleServiceStart)
+	http.HandleFunc("/api/services/stop/", ws.handleServiceStop)
 	http.HandleFunc("/api/dumps", ws.handleDumps)
 	http.HandleFunc("/api/mail", ws.handleMail)
 	http.HandleFunc("/api/logs", ws.handleLogs)
 	http.HandleFunc("/api/php", ws.handlePHP)
 	http.HandleFunc("/api/php/install", ws.handlePHPInstall)
+	http.HandleFunc("/api/php/install-status", ws.handlePHPInstallStatus)
 	http.HandleFunc("/api/php/default", ws.handlePHPDefault)
 	http.HandleFunc("/api/preferences", ws.handlePreferences)
 	http.HandleFunc("/api/open-folder", ws.handleOpenFolder)
@@ -381,6 +391,136 @@ server {
 	os.WriteFile(configPath, []byte(config), 0644)
 }
 
+type ProgressReader struct {
+	io.Reader
+	Total   int64
+	Current int64
+	OnProg  func(int)
+}
+
+func (pr *ProgressReader) Read(p []byte) (n int, err error) {
+	n, err = pr.Reader.Read(p)
+	pr.Current += int64(n)
+	if pr.Total > 0 {
+		pr.OnProg(int(float64(pr.Current) / float64(pr.Total) * 100))
+	}
+	return
+}
+
+func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
+	arch := runtime.GOARCH
+	if arch == "arm64" {
+		arch = "arm64"
+	} else if arch == "amd64" {
+		arch = "x86_64"
+	}
+
+	osName := runtime.GOOS
+	if osName == "darwin" {
+		osName = "macos"
+	} else if osName == "linux" {
+		osName = "linux"
+	}
+
+	fullVersion := version + ".0"
+
+	// Use PHP official downloads or alternative
+	// GitHub: https://github.com/php/web-php/releases
+	var url string
+
+	switch version {
+	case "8.3":
+		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.3.15/php-%s-%s.tar.gz", fullVersion, osName, arch)
+	case "8.2":
+		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.2.26/php-%s-%s.tar.gz", fullVersion, osName, arch)
+	case "8.1":
+		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.1.29/php-%s-%s.tar.gz", fullVersion, osName, arch)
+	case "8.0":
+		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.0.30/php-%s-%s.tar.gz", fullVersion, osName, arch)
+	case "7.4":
+		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-7.4.33/php-%s-%s.tar.gz", fullVersion, osName, arch)
+	default:
+		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.3.15/php-%s-%s.tar.gz", fullVersion, osName, arch)
+	}
+
+	fmt.Printf("⬇️ Downloading PHP %s from %s...\n", version, url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download PHP: %s (status %d)", url, resp.StatusCode)
+	}
+
+	// Set progress to 0
+	ws.progressMu.Lock()
+	ws.installProgress[version] = 0
+	ws.progressMu.Unlock()
+
+	pr := &ProgressReader{
+		Reader: resp.Body,
+		Total:  resp.ContentLength,
+		OnProg: func(p int) {
+			ws.progressMu.Lock()
+			ws.installProgress[version] = p
+			ws.progressMu.Unlock()
+		},
+	}
+
+	gzr, err := gzip.NewReader(pr)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		target := filepath.Join(targetDir, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
+				return err
+			}
+			f.Close()
+		}
+	}
+
+	// Ensure the binary is named 'php' and is executable
+	// In static-php bundles, the binary is usually named 'php' in the root
+	phpBinary := filepath.Join(targetDir, "php")
+	os.Chmod(phpBinary, 0755)
+
+	// Set progress to 100
+	ws.progressMu.Lock()
+	ws.installProgress[version] = 100
+	ws.progressMu.Unlock()
+
+	fmt.Printf("✅ PHP %s installed to %s\n", version, phpBinary)
+	return nil
+}
+
 func (ws *WebServer) getPHPPort(version string) int {
 	if version == "" {
 		pm := php.NewPHPManager()
@@ -415,20 +555,17 @@ func (ws *WebServer) getPHPPort(version string) int {
 // ===========================================
 
 func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
-	svcs := ws.serviceManager.GetServices()
-
 	w.Header().Set("Content-Type", "application/json")
-	if svcs == nil || len(svcs) == 0 {
-		// Return default services status
-		defaultServices := []map[string]interface{}{
-			{"name": "Nginx", "type": "nginx", "port": 80, "status": "stopped"},
-			{"name": "MySQL", "type": "mysql", "port": 3306, "status": "stopped"},
-			{"name": "Redis", "type": "redis", "port": 6379, "status": "stopped"},
-		}
-		json.NewEncoder(w).Encode(defaultServices)
-		return
+
+	svcs := ws.serviceManager.GetServices()
+	available := ws.serviceManager.GetAvailableVersions("")
+
+	response := map[string]interface{}{
+		"installed": svcs,
+		"available": available,
 	}
-	json.NewEncoder(w).Encode(svcs)
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
@@ -438,44 +575,98 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 	}
 
 	var req struct {
-		Name string `json:"name"`
-		Port int    `json:"port"`
+		Type    string `json:"type"`
+		Version string `json:"version"`
+		Port    int    `json:"port"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Create service directory
-	serviceDir := filepath.Join(ws.stackerDir, "bin", req.Name)
-	dataDir := filepath.Join(ws.stackerDir, "data", req.Name)
-	confDir := filepath.Join(ws.stackerDir, "conf", req.Name)
-	os.MkdirAll(serviceDir, 0755)
-	os.MkdirAll(dataDir, 0755)
-	os.MkdirAll(confDir, 0755)
-
-	// Add service to manager
-	ws.serviceManager.AddService(&services.Service{
-		Name:    req.Name,
-		Type:    req.Name,
-		Port:    req.Port,
-		Status:  "stopped",
-		DataDir: dataDir,
-	})
-
-	// Create a status file
-	statusFile := filepath.Join(serviceDir, "status.json")
-	statusData := map[string]interface{}{
-		"name":      req.Name,
-		"port":      req.Port,
-		"installed": time.Now().Format(time.RFC3339),
-		"status":    "installed",
-	}
-	data, _ := json.MarshalIndent(statusData, "", "  ")
-	os.WriteFile(statusFile, data, 0644)
+	go func() {
+		if err := ws.serviceManager.InstallService(req.Type, req.Version); err != nil {
+			fmt.Printf("Error installing service: %v\n", err)
+		}
+	}()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "installed", "name": req.Name})
+	json.NewEncoder(w).Encode(map[string]string{"status": "installing", "type": req.Type, "version": req.Version})
+}
+
+func (ws *WebServer) handleServiceVersions(w http.ResponseWriter, r *http.Request) {
+	svcType := r.URL.Query().Get("type")
+	versions := ws.serviceManager.GetAvailableVersions(svcType)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"versions": versions})
+}
+
+func (ws *WebServer) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := ws.serviceManager.UninstallService(req.Name); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "uninstalled", "name": req.Name})
+}
+
+func (ws *WebServer) handleServiceStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Service name required", http.StatusBadRequest)
+		return
+	}
+	serviceName := parts[4]
+
+	if err := ws.serviceManager.StartService(serviceName); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "started", "name": serviceName})
+}
+
+func (ws *WebServer) handleServiceStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Service name required", http.StatusBadRequest)
+		return
+	}
+	serviceName := parts[4]
+
+	if err := ws.serviceManager.StopService(serviceName); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "stopped", "name": serviceName})
 }
 
 func (ws *WebServer) handleDumps(w http.ResponseWriter, r *http.Request) {
@@ -570,26 +761,27 @@ func (ws *WebServer) handlePHPInstall(w http.ResponseWriter, r *http.Request) {
 	os.MkdirAll(phpBinDir, 0755)
 	os.MkdirAll(confDir, 0755)
 
-	// In a real app, we would download pre-built binaries here.
-	// For now, to make the UI "work" and versions detectable,
-	// we'll create a dummy php shell script that reports the requested version.
-	phpBinary := filepath.Join(phpBinDir, "php")
-	dummyPHP := fmt.Sprintf("#!/bin/bash\necho \"PHP %s.0 (cli) (built: %s)\"\n", req.Version, time.Now().Format("Jan _2 2006 15:04:05"))
-	os.WriteFile(phpBinary, []byte(dummyPHP), 0755)
+	// Download real PHP binary in background
+	go func(version string, xdebug bool, binDir string, cDir string) {
+		err := ws.downloadAndExtractPHP(version, binDir)
+		if err != nil {
+			fmt.Printf("Error downloading PHP %s: %v\n", version, err)
+			return
+		}
 
-	// Create a status file
-	statusFile := filepath.Join(ws.stackerDir, "bin", "php"+req.Version, "status.json")
-	statusData := map[string]interface{}{
-		"version":   req.Version,
-		"xdebug":    req.XDebug,
-		"installed": time.Now().Format(time.RFC3339),
-		"status":    "installed",
-	}
-	data, _ := json.MarshalIndent(statusData, "", "  ")
-	os.WriteFile(statusFile, data, 0644)
+		// Create a status file
+		statusFile := filepath.Join(ws.stackerDir, "bin", "php"+version, "status.json")
+		statusData := map[string]interface{}{
+			"version":   version,
+			"xdebug":    xdebug,
+			"installed": time.Now().Format(time.RFC3339),
+			"status":    "installed",
+		}
+		data, _ := json.MarshalIndent(statusData, "", "  ")
+		os.WriteFile(statusFile, data, 0644)
 
-	// Create php.ini
-	phpIni := fmt.Sprintf(`; Stacker PHP %s Configuration
+		// Create php.ini
+		phpIni := fmt.Sprintf(`; Stacker PHP %s Configuration
 ; Generated: %s
 
 [PHP]
@@ -602,10 +794,10 @@ error_reporting = E_ALL
 
 [Date]
 date.timezone = UTC
-`, req.Version, time.Now().Format(time.RFC3339))
+`, version, time.Now().Format(time.RFC3339))
 
-	if req.XDebug {
-		phpIni += `
+		if xdebug {
+			phpIni += `
 [xdebug]
 zend_extension=xdebug
 xdebug.mode=debug
@@ -613,12 +805,28 @@ xdebug.client_host=127.0.0.1
 xdebug.client_port=9003
 xdebug.start_with_request=trigger
 `
-	}
+		}
 
-	os.WriteFile(filepath.Join(confDir, "php"+req.Version+".ini"), []byte(phpIni), 0644)
+		os.WriteFile(filepath.Join(cDir, "php"+version+".ini"), []byte(phpIni), 0644)
+		fmt.Printf("✅ PHP %s configuration finalized\n", version)
+	}(req.Version, req.XDebug, phpBinDir, confDir)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "installed", "version": req.Version})
+	json.NewEncoder(w).Encode(map[string]string{"status": "starting", "version": req.Version})
+}
+
+func (ws *WebServer) handlePHPInstallStatus(w http.ResponseWriter, r *http.Request) {
+	version := r.URL.Query().Get("version")
+	if version == "" {
+		http.Error(w, "Missing version", http.StatusBadRequest)
+		return
+	}
+
+	ws.progressMu.RLock()
+	progress := ws.installProgress[version]
+	ws.progressMu.RUnlock()
+
+	json.NewEncoder(w).Encode(map[string]int{"progress": progress})
 }
 
 func (ws *WebServer) handlePHPDefault(w http.ResponseWriter, r *http.Request) {
