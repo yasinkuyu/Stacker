@@ -449,6 +449,77 @@ func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
 	return ""
 }
 
+func (sm *ServiceManager) findMySQLBinary(installDir string) string {
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			if strings.Contains(strings.ToLower(entry.Name()), "mysql") {
+				binaryPath := filepath.Join(installDir, entry.Name())
+				if _, err := os.Stat(filepath.Join(binaryPath, "bin", "mysqld")); err == nil {
+					return binaryPath
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func (sm *ServiceManager) findApacheBinary(installDir string) string {
+	// Direct check
+	if _, err := os.Stat(filepath.Join(installDir, "bin", "httpd")); err == nil {
+		return filepath.Join(installDir, "bin", "httpd")
+	}
+
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Subdirectory check (e.g., httpd-2.4.58/bin/httpd)
+			binaryPath := filepath.Join(installDir, entry.Name(), "bin", "httpd")
+			if _, err := os.Stat(binaryPath); err == nil {
+				return binaryPath
+			}
+
+			// Check for apache2/bin/httpd
+			binaryPath = filepath.Join(installDir, entry.Name(), "apache2", "bin", "httpd")
+			if _, err := os.Stat(binaryPath); err == nil {
+				return binaryPath
+			}
+		}
+	}
+	return ""
+}
+
+func (sm *ServiceManager) findNginxBinary(installDir string) string {
+	// Direct check
+	if _, err := os.Stat(filepath.Join(installDir, "sbin", "nginx")); err == nil {
+		return filepath.Join(installDir, "sbin", "nginx")
+	}
+
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Check nginx-bin/sbin/nginx or similar
+			binaryPath := filepath.Join(installDir, entry.Name(), "sbin", "nginx")
+			if _, err := os.Stat(binaryPath); err == nil {
+				return binaryPath
+			}
+		}
+	}
+	return ""
+}
+
 func (sm *ServiceManager) createMariaDBConfig(configDir, dataDir string, port int) error {
 	binaryPath := sm.findMariaDBBinary(filepath.Join(sm.baseDir, "bin", "mariadb"))
 	basedir := "/usr/local"
@@ -772,13 +843,35 @@ func (sm *ServiceManager) StartService(name string) error {
 			return fmt.Errorf("MariaDB binary not found")
 		}
 		cmd = sm.startMariaDB(svc, binaryPath)
+	case "mysql":
+		sm.updateInstallProgress(svc.Type, svc.Version, 30)
+		binaryPath = sm.findMySQLBinary(svc.BinaryDir)
+		if binaryPath == "" {
+			return fmt.Errorf("MySQL binary not found")
+		}
+		cmd = sm.startMySQL(svc, binaryPath)
 	case "nginx":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
-		binaryPath = filepath.Join(svc.BinaryDir, "nginx-bin", "sbin", "nginx")
+		binaryPath = sm.findNginxBinary(svc.BinaryDir)
+		if binaryPath == "" {
+			binaryPath = filepath.Join(svc.BinaryDir, "nginx-bin", "sbin", "nginx")
+		}
+		if _, err := os.Stat(binaryPath); err != nil {
+			return fmt.Errorf("Nginx binary not found at %s", binaryPath)
+		}
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
-		binaryPath = filepath.Join(svc.BinaryDir, "apache-bin", "bin", "httpd")
+		binaryPath = sm.findApacheBinary(svc.BinaryDir)
+		if binaryPath == "" {
+			// Fallback to old path just in case
+			binaryPath = filepath.Join(svc.BinaryDir, "apache-bin", "bin", "httpd")
+		}
+
+		if _, err := os.Stat(binaryPath); err != nil {
+			return fmt.Errorf("Apache binary not found at %s", binaryPath)
+		}
+
 		cmd = sm.startApache(svc, binaryPath)
 	case "redis":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -922,6 +1015,18 @@ func (sm *ServiceManager) RestartService(name string) error {
 
 func (sm *ServiceManager) startMariaDB(svc *Service, binaryPath string) *exec.Cmd {
 	cmd := exec.Command(filepath.Join(binaryPath, "bin", "mariadbd"),
+		"--defaults-file="+filepath.Join(svc.ConfigDir, "my.cnf"),
+		fmt.Sprintf("--port=%d", svc.Port),
+	)
+	cmd.Env = append(os.Environ(),
+		"LD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
+		"DYLD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
+	)
+	return cmd
+}
+
+func (sm *ServiceManager) startMySQL(svc *Service, binaryPath string) *exec.Cmd {
+	cmd := exec.Command(filepath.Join(binaryPath, "bin", "mysqld"),
 		"--defaults-file="+filepath.Join(svc.ConfigDir, "my.cnf"),
 		fmt.Sprintf("--port=%d", svc.Port),
 	)
