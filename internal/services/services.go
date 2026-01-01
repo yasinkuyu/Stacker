@@ -3,10 +3,12 @@ package services
 import (
 	"archive/tar"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -108,7 +110,7 @@ func NewServiceManager() *ServiceManager {
 
 	// Dynamic versions from update.json
 	var availableVersions []ServiceVersion
-	services := []string{"php", "mariadb", "mysql", "redis", "nginx", "apache", "composer", "nodejs"}
+	services := []string{"mariadb", "mysql", "redis", "nginx", "apache", "composer", "nodejs"}
 
 	for _, svc := range services {
 		remoteVers := config.GetAvailableVersions(svc, "")
@@ -512,6 +514,11 @@ func (sm *ServiceManager) initializeMariaDB(binaryPath, configDir, dataDir strin
 }
 
 func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
+	// Direct check (if stripped)
+	if _, err := os.Stat(filepath.Join(installDir, "bin", "mariadbd")); err == nil {
+		return installDir
+	}
+
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
 		return ""
@@ -531,6 +538,11 @@ func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
 }
 
 func (sm *ServiceManager) findMySQLBinary(installDir string) string {
+	// Direct check (if stripped)
+	if _, err := os.Stat(filepath.Join(installDir, "bin", "mysqld")); err == nil {
+		return installDir
+	}
+
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
 		return ""
@@ -1100,12 +1112,64 @@ func (sm *ServiceManager) GetInstallProgress(svcType, version string) int {
 	return sm.installStatus[key]
 }
 
-func (sm *ServiceManager) downloadAndExtract(url, targetDir string, progressCallback func(int)) error {
-	fmt.Printf("⬇️ Downloading from %s...\n", url)
-
+func (sm *ServiceManager) getGHCRToken(scope string) (string, error) {
+	url := fmt.Sprintf("https://ghcr.io/token?service=ghcr.io&scope=%s", scope)
 	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("http get failed: %w", err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to get ghcr token: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	return result.Token, nil
+}
+
+func (sm *ServiceManager) downloadAndExtract(urlStr, targetDir string, progressCallback func(int)) error {
+	fmt.Printf("⬇️ Downloading from %s...\n", urlStr)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return fmt.Errorf("create request failed: %w", err)
+	}
+
+	if strings.Contains(urlStr, "ghcr.io") {
+		// Example: https://ghcr.io/v2/homebrew/core/nginx/blobs/sha256:...
+		// Repo = homebrew/core/nginx
+		u, err := url.Parse(urlStr)
+		if err == nil {
+			pathParts := strings.Split(strings.Trim(u.Path, "/"), "/")
+			if len(pathParts) >= 4 && pathParts[0] == "v2" {
+				repoParts := []string{}
+				for i := 1; i < len(pathParts); i++ {
+					if pathParts[i] == "blobs" {
+						break
+					}
+					repoParts = append(repoParts, pathParts[i])
+				}
+				if len(repoParts) > 0 {
+					repo := strings.Join(repoParts, "/")
+					token, _ := sm.getGHCRToken("repository:" + repo + ":pull")
+					if token != "" {
+						req.Header.Set("Authorization", "Bearer "+token)
+					}
+				}
+			}
+		}
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 

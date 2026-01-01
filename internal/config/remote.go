@@ -222,6 +222,9 @@ func GetAvailableVersions(serviceType string, platform string) []ServiceVersion 
 	var serviceTypes []string
 	if serviceType == "" {
 		for k := range remoteCfg.Services {
+			if k == "php" {
+				continue
+			}
 			serviceTypes = append(serviceTypes, k)
 		}
 	} else {
@@ -321,6 +324,9 @@ func GetDefaultVersions(serviceType string) []ServiceVersion {
 	var serviceTypes []string
 	if serviceType == "" {
 		for k := range defaults {
+			if k == "php" {
+				continue
+			}
 			serviceTypes = append(serviceTypes, k)
 		}
 	} else {

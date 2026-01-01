@@ -675,11 +675,13 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 			ws.serviceManager.SetInstallError(req.Type, req.Version, err.Error())
 			fmt.Printf("Error installing service: %v\n", err)
 		} else {
-			// Auto-start after install
-			svcName := req.Type + "-" + req.Version
-			fmt.Printf("🚀 Auto-starting %s after install...\n", svcName)
-			if err := ws.serviceManager.StartService(svcName); err != nil {
-				fmt.Printf("⚠️ Failed to auto-start %s: %v\n", svcName, err)
+			// Auto-start after install (except for tools like composer/nodejs)
+			if req.Type != "composer" && req.Type != "nodejs" {
+				svcName := req.Type + "-" + req.Version
+				fmt.Printf("🚀 Auto-starting %s after install...\n", svcName)
+				if err := ws.serviceManager.StartService(svcName); err != nil {
+					fmt.Printf("⚠️ Failed to auto-start %s: %v\n", svcName, err)
+				}
 			}
 		}
 	}()
