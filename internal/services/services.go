@@ -744,19 +744,30 @@ func getMariaDBBinaryURL(osName, arch, version string) string {
 }
 
 func getMySQLBinaryURL(osName, arch, version string) string {
+	// Map major versions to full versions
+	fullVersions := map[string]string{
+		"8.0": "8.0.40",
+		"5.7": "5.7.44",
+	}
+	fullVer := fullVersions[version]
+	if fullVer == "" {
+		fullVer = version
+	}
+
 	switch osName {
 	case "macos":
+		// Use tar.gz instead of DMG for easier extraction
 		if arch == "arm64" {
-			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-arm64.dmg", version, version)
+			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-arm64.tar.gz", version, fullVer)
 		}
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-x86_64.dmg", version, version)
+		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-x86_64.tar.gz", version, fullVer)
 	case "linux":
 		if arch == "arm64" {
-			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-aarch64.tar.xz", version, version)
+			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-aarch64.tar.xz", version, fullVer)
 		}
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-x86_64.tar.xz", version, version)
+		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-x86_64.tar.xz", version, fullVer)
 	default:
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s.tar.gz", version, version)
+		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s.tar.gz", version, fullVer)
 	}
 }
 
