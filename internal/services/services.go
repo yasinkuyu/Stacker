@@ -761,30 +761,44 @@ func getMySQLBinaryURL(osName, arch, version string) string {
 }
 
 func getNginxBinaryURL(osName, arch, version string) string {
+	// Map major versions to full versions
+	fullVersions := map[string]string{
+		"1.24": "1.24.0",
+		"1.26": "1.26.2",
+		"1.27": "1.27.3",
+	}
+	fullVer := fullVersions[version]
+	if fullVer == "" {
+		fullVer = version
+	}
+
 	switch osName {
 	case "macos":
-		if arch == "arm64" {
-			return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
-		}
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
 	case "linux":
-		if arch == "arm64" {
-			return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
-		}
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
 	default:
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
 	}
 }
 
 func getApacheBinaryURL(osName, arch, version string) string {
+	// Map major versions to full versions
+	fullVersions := map[string]string{
+		"2.4": "2.4.62",
+	}
+	fullVer := fullVersions[version]
+	if fullVer == "" {
+		fullVer = version
+	}
+
 	switch osName {
 	case "macos":
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", version)
+		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
 	case "linux":
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", version)
+		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
 	default:
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", version)
+		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
 	}
 }
 
