@@ -160,9 +160,9 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 	configDir := filepath.Join(sm.baseDir, "conf", svcType, version)
 	dataDir := filepath.Join(sm.baseDir, "data", svcType, version)
 
-	os.MkdirAll(installDir, 0755)
-	os.MkdirAll(configDir, 0755)
 	os.MkdirAll(dataDir, 0755)
+
+	utils.LogService(svcType, "install", "started")
 
 	var err error
 	switch svcType {
@@ -469,6 +469,11 @@ func (sm *ServiceManager) findMySQLBinary(installDir string) string {
 }
 
 func (sm *ServiceManager) findApacheBinary(installDir string) string {
+	// Check compiled binary location first
+	if _, err := os.Stat(filepath.Join(installDir, "apache-bin", "bin", "httpd")); err == nil {
+		return filepath.Join(installDir, "apache-bin", "bin", "httpd")
+	}
+
 	// Direct check
 	if _, err := os.Stat(filepath.Join(installDir, "bin", "httpd")); err == nil {
 		return filepath.Join(installDir, "bin", "httpd")
@@ -1018,8 +1023,7 @@ func (sm *ServiceManager) StartService(name string) error {
 }
 
 func (sm *ServiceManager) StopService(name string) error {
-	sm.mu.Lock()
-	svc, ok := sm.services[name]
+	utils.LogService(name, "stop", "request")
 	if !ok {
 		sm.mu.Unlock()
 		return fmt.Errorf("service %s not found", name)
