@@ -723,9 +723,12 @@ func (ws *WebServer) handleServiceUninstall(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := ws.serviceManager.UninstallService(req.Name); err != nil {
+		utils.LogError(fmt.Sprintf("Failed to uninstall service %s: %v", req.Name, err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	utils.LogService(req.Name, "uninstall", "success")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "uninstalled", "name": req.Name})
@@ -993,7 +996,13 @@ func (ws *WebServer) handlePHPDefault(w http.ResponseWriter, r *http.Request) {
 
 	pm := php.NewPHPManager()
 	pm.DetectPHPVersions()
-	pm.SetDefault(req.Version)
+	if err := pm.SetDefault(req.Version); err != nil {
+		utils.LogError(fmt.Sprintf("Failed to set default PHP to %s: %v", req.Version, err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.LogInfo(fmt.Sprintf("PHP default version changed to %s", req.Version))
 
 	// Save default version
 	defaultFile := filepath.Join(ws.stackerDir, "php_default.txt")

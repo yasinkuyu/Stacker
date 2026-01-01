@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -160,6 +161,8 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 	configDir := filepath.Join(sm.baseDir, "conf", svcType, version)
 	dataDir := filepath.Join(sm.baseDir, "data", svcType, version)
 
+	os.MkdirAll(installDir, 0755)
+	os.MkdirAll(configDir, 0755)
 	os.MkdirAll(dataDir, 0755)
 
 	utils.LogService(svcType, "install", "started")
@@ -799,6 +802,7 @@ func (sm *ServiceManager) UninstallService(name string) error {
 
 	sm.mu.Lock()
 	delete(sm.services, name)
+	sm.saveServices()
 	sm.mu.Unlock()
 	return nil
 }
@@ -1002,9 +1006,12 @@ func (sm *ServiceManager) StartService(name string) error {
 	sm.updateInstallProgress(svc.Type, svc.Version, 60)
 
 	if err := cmd.Start(); err != nil {
+		utils.LogService(name, "start", "failed: "+err.Error())
 		sm.updateInstallProgress(svc.Type, svc.Version, -1)
 		return fmt.Errorf("failed to start %s: %w", name, err)
 	}
+
+	utils.LogService(name, "start", "success")
 
 	sm.updateInstallProgress(svc.Type, svc.Version, 90)
 
@@ -1024,6 +1031,8 @@ func (sm *ServiceManager) StartService(name string) error {
 
 func (sm *ServiceManager) StopService(name string) error {
 	utils.LogService(name, "stop", "request")
+	sm.mu.Lock()
+	svc, ok := sm.services[name]
 	if !ok {
 		sm.mu.Unlock()
 		return fmt.Errorf("service %s not found", name)
@@ -1175,11 +1184,16 @@ func (sm *ServiceManager) GetServices() []*Service {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 
-	var services []*Service
+	var svcs []*Service
 	for _, service := range sm.services {
-		services = append(services, service)
+		svcs = append(svcs, service)
 	}
-	return services
+
+	sort.Slice(svcs, func(i, j int) bool {
+		return svcs[i].Name < svcs[j].Name
+	})
+
+	return svcs
 }
 
 func (sm *ServiceManager) GetService(name string) *Service {
@@ -1251,27 +1265,24 @@ func (sm *ServiceManager) StopAll() error {
 }
 
 func (sm *ServiceManager) saveServiceStatus(svc *Service) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	// services map is the source of truth, but we update it from memory if needed
+	// (though usually sm.services[svc.Name] = svc should have been done before calling this)
+	sm.services[svc.Name] = svc
+	sm.saveServices()
+}
+
+func (sm *ServiceManager) saveServices() {
 	statusPath := filepath.Join(sm.baseDir, "services.json")
-	var services []*Service
+	var svcs []*Service
 
-	if data, err := os.ReadFile(statusPath); err == nil {
-		json.Unmarshal(data, &services)
+	for _, s := range sm.services {
+		svcs = append(svcs, s)
 	}
 
-	var found bool
-	for i, s := range services {
-		if s.Name == svc.Name {
-			services[i] = svc
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		services = append(services, svc)
-	}
-
-	data, _ := json.MarshalIndent(services, "", "  ")
+	data, _ := json.MarshalIndent(svcs, "", "  ")
 	os.WriteFile(statusPath, data, 0644)
 }
 

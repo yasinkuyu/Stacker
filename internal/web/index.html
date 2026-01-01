@@ -2006,7 +2006,7 @@
                             <div
                                 style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 1px;">
                                 Developer</div>
-                            <div style="font-weight: 600; font-size: 15px;">Yasin Kuyu</div>
+                            <div style="font-weight: 600; font-size: 15px;">Insya</div>
                         </div>
                         <div
                             style="padding: 20px; background: var(--bg-tertiary); border-radius: 16px; border: 1px solid var(--border);">
@@ -2364,8 +2364,14 @@
                     statusText.textContent = 'Server running on :9999';
 
                     // Load recent sites
-                    const sites = await api('/sites');
                     const recentSitesEl = document.getElementById('recent-sites');
+                    recentSitesEl.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
+                            <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
+                            <span style="color: var(--text-muted); font-size: 11px;">Loading sites...</span>
+                        </div>
+                    `;
+                    const sites = await api('/sites');
                     if (sites && sites.length) {
                         recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
                             <div class="list-item" style="padding: 12px 16px;">
@@ -2390,21 +2396,30 @@
                     }
 
                     // Load quick services
-                    const servicesData = await api('/services');
                     const quickServicesEl = document.getElementById('quick-services');
+                    quickServicesEl.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
+                            <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
+                            <span style="color: var(--text-muted); font-size: 11px;">Loading services...</span>
+                        </div>
+                    `;
+                    const servicesData = await api('/services');
                     if (servicesData && servicesData.installed) {
                         const installed = servicesData.installed;
                         if (installed.length) {
                             quickServicesEl.innerHTML = installed.slice(0, 5).map(s => `
                                 <div class="list-item" style="padding: 10px 0; border-bottom: none;">
                                     <div class="item-info">
-                                        <div class="item-primary" style="font-size: 13px;">${s.type.toUpperCase()} ${s.version}</div>
+                                        <div class="item-primary" style="font-size: 13px; font-weight: 600;">${s.type.toUpperCase()} ${s.version}</div>
+                                        <div class="item-secondary" style="font-size: 11px; color: var(--text-muted);">Port: ${s.port || 'Default'}</div>
                                     </div>
-                                    <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 11px;">
+                                    <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 10px; margin-right: 8px;">
                                         <span class="status-dot"></span>${s.status}
                                     </span>
-                                    <button class="icon-btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" style="width: 28px; height: 28px;" title="${s.status === 'running' ? 'Stop' : 'Start'}">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" 
+                                        style="width: 32px; height: 32px; padding: 0; justify-content: center;" 
+                                        title="${s.status === 'running' ? 'Stop' : 'Start'}">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                             ${s.status === 'running'
                                     ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
                                     : '<polygon points="5 3 19 12 5 21 5 3"/>'}
