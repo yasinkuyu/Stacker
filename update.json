@@ -14,7 +14,11 @@
                 "8.1": "8.1.34",
                 "8.0": "8.0.30"
             },
-            "source": "https://static-php.dev"
+            "sources": [
+                "https://static-php.dev",
+                "https://dl.static-php.dev",
+                "https://github.com/crazywhalecc/static-php-cli/releases"
+            ]
         },
         "mariadb": {
             "versions": {
@@ -22,14 +26,22 @@
                 "10.11": "10.11.11",
                 "10.6": "10.6.21"
             },
-            "source": "https://archive.mariadb.org"
+            "sources": [
+                "https://archive.mariadb.org",
+                "https://downloads.mariadb.org",
+                "https://mirror.mariadb.org"
+            ]
         },
         "mysql": {
             "versions": {
                 "8.0": "8.0.40",
                 "5.7": "5.7.44"
             },
-            "source": "https://dev.mysql.com"
+            "sources": [
+                "https://dev.mysql.com",
+                "https://cdn.mysql.com",
+                "https://downloads.mysql.com"
+            ]
         },
         "redis": {
             "versions": {
@@ -37,7 +49,10 @@
                 "7.2": "7.2.6",
                 "7.0": "7.0.15"
             },
-            "source": "https://github.com/redis/redis"
+            "sources": [
+                "https://github.com/redis/redis",
+                "https://download.redis.io"
+            ]
         },
         "nginx": {
             "versions": {
@@ -45,19 +60,30 @@
                 "1.26": "1.26.2",
                 "1.24": "1.24.0"
             },
-            "source": "https://nginx.org"
+            "sources": [
+                "https://nginx.org",
+                "https://hg.nginx.org",
+                "https://github.com/nginx/nginx"
+            ]
         },
         "apache": {
             "versions": {
                 "2.4": "2.4.62"
             },
-            "source": "https://httpd.apache.org"
+            "sources": [
+                "https://httpd.apache.org",
+                "https://archive.apache.org",
+                "https://dlcdn.apache.org"
+            ]
         },
         "composer": {
             "versions": {
                 "2": "2.8.4"
             },
-            "source": "https://getcomposer.org"
+            "sources": [
+                "https://getcomposer.org",
+                "https://github.com/composer/composer"
+            ]
         },
         "nodejs": {
             "versions": {
@@ -65,7 +91,11 @@
                 "20": "20.18.1",
                 "18": "18.20.5"
             },
-            "source": "https://nodejs.org"
+            "sources": [
+                "https://nodejs.org",
+                "https://unofficial-builds.nodejs.org",
+                "https://github.com/nodejs/node"
+            ]
         }
     }
 }
