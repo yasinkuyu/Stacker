@@ -653,15 +653,56 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 	binDir := filepath.Join(installDir, "apache-bin")
 	os.MkdirAll(binDir, 0755)
 
+	// Clean environment to prevent interference from other tools (like MAMP)
+	env := os.Environ()
+	cleanEnv := make([]string, 0)
+	for _, e := range env {
+		if !strings.HasPrefix(e, "LDFLAGS=") &&
+			!strings.HasPrefix(e, "CPPFLAGS=") &&
+			!strings.HasPrefix(e, "CFLAGS=") &&
+			!strings.HasPrefix(e, "LIBS=") {
+			cleanEnv = append(cleanEnv, e)
+		}
+	}
+
+	// Try to find dependencies in Homebrew (common on macOS)
+	extraArgs := []string{}
+	if runtime.GOOS == "darwin" {
+		brewPrefix := "/usr/local"
+		if runtime.GOARCH == "arm64" {
+			brewPrefix = "/opt/homebrew"
+		}
+
+		deps := []string{"apr", "apr-util", "pcre"}
+		for _, dep := range deps {
+			path := filepath.Join(brewPrefix, "opt", dep)
+			if _, err := os.Stat(path); err == nil {
+				if dep == "pcre" {
+					extraArgs = append(extraArgs, "--with-pcre="+path)
+				} else {
+					extraArgs = append(extraArgs, "--with-"+dep+"="+path)
+				}
+			}
+		}
+	}
+
 	// Run configure
 	fmt.Println("⚙️ Running ./configure...")
-	configureCmd := exec.Command("./configure", "--prefix="+binDir, "--enable-so", "--enable-ssl", "--enable-rewrite")
+	args := append([]string{"--prefix=" + binDir, "--enable-so", "--enable-ssl", "--enable-rewrite"}, extraArgs...)
+	configureCmd := exec.Command("./configure", args...)
 	configureCmd.Dir = installDir
+	configureCmd.Env = cleanEnv
 	configureCmd.Stdout = os.Stdout
 	configureCmd.Stderr = os.Stderr
 	if err := configureCmd.Run(); err != nil {
 		sm.updateInstallProgress("apache", version, -1)
-		return fmt.Errorf("apache configure failed: %w. 💡 Make sure Xcode Command Line Tools are installed: xcode-select --install", err)
+		return fmt.Errorf("apache configure failed: %w. 💡 Try installing dependencies: brew install pcre apr apr-util", err)
+	}
+
+	// Verify Makefile exists
+	if _, err := os.Stat(filepath.Join(installDir, "Makefile")); err != nil {
+		sm.updateInstallProgress("apache", version, -1)
+		return fmt.Errorf("apache configure completed but Makefile not generated. 💡 Try: brew install pcre apr apr-util")
 	}
 
 	sm.updateInstallProgress("apache", version, 85)
@@ -670,6 +711,7 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 	fmt.Println("🔨 Running make...")
 	makeCmd := exec.Command("make", "-j4")
 	makeCmd.Dir = installDir
+	makeCmd.Env = cleanEnv
 	makeCmd.Stdout = os.Stdout
 	makeCmd.Stderr = os.Stderr
 	if err := makeCmd.Run(); err != nil {
@@ -683,6 +725,7 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 	fmt.Println("📦 Running make install...")
 	installCmd := exec.Command("make", "install")
 	installCmd.Dir = installDir
+	installCmd.Env = cleanEnv
 	installCmd.Stdout = os.Stdout
 	installCmd.Stderr = os.Stderr
 	if err := installCmd.Run(); err != nil {
