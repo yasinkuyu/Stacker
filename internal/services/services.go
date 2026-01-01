@@ -569,10 +569,52 @@ func (sm *ServiceManager) installNginx(version, installDir, configDir string) er
 }
 
 func (sm *ServiceManager) compileNginx(version, installDir, configDir string) error {
-	fmt.Printf("⚠️ Nginx %s downloaded to %s\n", version, installDir)
-	fmt.Println("⚠️ Please run: cd", installDir, "&& ./configure --prefix=/path/to/install && make && make install")
+	fmt.Printf("🔧 Compiling Nginx %s...\n", version)
+	sm.updateInstallProgress("nginx", version, 75)
+
+	binDir := filepath.Join(installDir, "nginx-bin")
+	os.MkdirAll(binDir, 0755)
+
+	// Run configure
+	fmt.Println("⚙️ Running ./configure...")
+	configureCmd := exec.Command("./configure", "--prefix="+binDir)
+	configureCmd.Dir = installDir
+	configureCmd.Stdout = os.Stdout
+	configureCmd.Stderr = os.Stderr
+	if err := configureCmd.Run(); err != nil {
+		sm.updateInstallProgress("nginx", version, -1)
+		return fmt.Errorf("nginx configure failed: %w. 💡 Make sure Xcode Command Line Tools are installed: xcode-select --install", err)
+	}
+
+	sm.updateInstallProgress("nginx", version, 85)
+
+	// Run make
+	fmt.Println("🔨 Running make...")
+	makeCmd := exec.Command("make", "-j4")
+	makeCmd.Dir = installDir
+	makeCmd.Stdout = os.Stdout
+	makeCmd.Stderr = os.Stderr
+	if err := makeCmd.Run(); err != nil {
+		sm.updateInstallProgress("nginx", version, -1)
+		return fmt.Errorf("nginx make failed: %w", err)
+	}
+
+	sm.updateInstallProgress("nginx", version, 95)
+
+	// Run make install
+	fmt.Println("📦 Running make install...")
+	installCmd := exec.Command("make", "install")
+	installCmd.Dir = installDir
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+	if err := installCmd.Run(); err != nil {
+		sm.updateInstallProgress("nginx", version, -1)
+		return fmt.Errorf("nginx make install failed: %w", err)
+	}
+
 	sm.createNginxConfig(configDir)
 	sm.updateInstallProgress("nginx", version, 100)
+	fmt.Printf("✅ Nginx %s compiled and installed successfully\n", version)
 	return nil
 }
 
@@ -597,10 +639,52 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 }
 
 func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir string) error {
-	fmt.Printf("⚠️ Apache %s downloaded to %s\n", version, installDir)
-	fmt.Println("⚠️ Please run: cd", installDir, "&& ./configure --prefix=/path/to/install && make && make install")
+	fmt.Printf("🔧 Compiling Apache %s...\n", version)
+	sm.updateInstallProgress("apache", version, 75)
+
+	binDir := filepath.Join(installDir, "apache-bin")
+	os.MkdirAll(binDir, 0755)
+
+	// Run configure
+	fmt.Println("⚙️ Running ./configure...")
+	configureCmd := exec.Command("./configure", "--prefix="+binDir, "--enable-so", "--enable-ssl", "--enable-rewrite")
+	configureCmd.Dir = installDir
+	configureCmd.Stdout = os.Stdout
+	configureCmd.Stderr = os.Stderr
+	if err := configureCmd.Run(); err != nil {
+		sm.updateInstallProgress("apache", version, -1)
+		return fmt.Errorf("apache configure failed: %w. 💡 Make sure Xcode Command Line Tools are installed: xcode-select --install", err)
+	}
+
+	sm.updateInstallProgress("apache", version, 85)
+
+	// Run make
+	fmt.Println("🔨 Running make...")
+	makeCmd := exec.Command("make", "-j4")
+	makeCmd.Dir = installDir
+	makeCmd.Stdout = os.Stdout
+	makeCmd.Stderr = os.Stderr
+	if err := makeCmd.Run(); err != nil {
+		sm.updateInstallProgress("apache", version, -1)
+		return fmt.Errorf("apache make failed: %w", err)
+	}
+
+	sm.updateInstallProgress("apache", version, 95)
+
+	// Run make install
+	fmt.Println("📦 Running make install...")
+	installCmd := exec.Command("make", "install")
+	installCmd.Dir = installDir
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+	if err := installCmd.Run(); err != nil {
+		sm.updateInstallProgress("apache", version, -1)
+		return fmt.Errorf("apache make install failed: %w", err)
+	}
+
 	sm.createApacheConfig(configDir, dataDir, installDir)
 	sm.updateInstallProgress("apache", version, 100)
+	fmt.Printf("✅ Apache %s compiled and installed successfully\n", version)
 	return nil
 }
 
@@ -741,13 +825,15 @@ func (sm *ServiceManager) downloadAndExtract(url, targetDir string, progressCall
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("http get failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
+
+	fmt.Printf("📦 Content-Length: %d bytes\n", resp.ContentLength)
 
 	var reader io.Reader = resp.Body
 	if progressCallback != nil && resp.ContentLength > 0 {
@@ -757,11 +843,15 @@ func (sm *ServiceManager) downloadAndExtract(url, targetDir string, progressCall
 			OnProg: progressCallback,
 		}
 		reader = pr
+	} else if progressCallback != nil {
+		// Server didn't provide Content-Length, simulate progress
+		fmt.Println("⚠️ No Content-Length header, progress will jump")
+		progressCallback(50) // Show 50% to indicate download in progress
 	}
 
 	gzr, err := gzip.NewReader(reader)
 	if err != nil {
-		return err
+		return fmt.Errorf("gzip reader failed: %w", err)
 	}
 	defer gzr.Close()
 
@@ -810,10 +900,11 @@ func (sm *ServiceManager) downloadAndExtract(url, targetDir string, progressCall
 }
 
 type progressReader struct {
-	Reader  io.Reader
-	Total   int64
-	Current int64
-	OnProg  func(int)
+	Reader       io.Reader
+	Total        int64
+	Current      int64
+	OnProg       func(int)
+	lastProgress int
 }
 
 // Helper functions removed. URLs are now dynamically fetched from update.json via internal/config/remote.go
@@ -822,7 +913,12 @@ func (pr *progressReader) Read(p []byte) (n int, err error) {
 	n, err = pr.Reader.Read(p)
 	pr.Current += int64(n)
 	if pr.Total > 0 && pr.OnProg != nil {
-		pr.OnProg(int(float64(pr.Current) / float64(pr.Total) * 100))
+		progress := int(float64(pr.Current) / float64(pr.Total) * 100)
+		// Only report if progress changed by at least 1%
+		if progress != pr.lastProgress {
+			pr.lastProgress = progress
+			pr.OnProg(progress)
+		}
 	}
 	return
 }
@@ -1402,4 +1498,34 @@ func (sm *ServiceManager) extractTarGz(src, dst string) error {
 		}
 	}
 	return nil
+}
+
+// StartStatusWorker starts a background goroutine that periodically checks
+// and updates the status of all installed services
+func (sm *ServiceManager) StartStatusWorker(interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		fmt.Printf("🔄 Service status worker started (checking every %v)\n", interval)
+
+		for {
+			<-ticker.C
+			sm.checkAllServicesStatus()
+		}
+	}()
+}
+
+// checkAllServicesStatus updates the status of all installed services
+func (sm *ServiceManager) checkAllServicesStatus() {
+	sm.mu.RLock()
+	serviceNames := make([]string, 0, len(sm.services))
+	for name := range sm.services {
+		serviceNames = append(serviceNames, name)
+	}
+	sm.mu.RUnlock()
+
+	for _, name := range serviceNames {
+		sm.GetStatus(name)
+	}
 }

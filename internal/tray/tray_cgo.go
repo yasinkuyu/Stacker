@@ -313,6 +313,8 @@ func (tm *TrayManager) updateIconByStatus() {
 }
 
 func (tm *TrayManager) onExit() {
+	fmt.Println("🛑 Stacker is shutting down, stopping all services...")
+	tm.svcManager.StopAll()
 	close(tm.quitChan)
 }
 
