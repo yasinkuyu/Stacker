@@ -93,8 +93,8 @@ func NewServiceManager() *ServiceManager {
 	// Platform-specific pre-built binaries
 	availableVersions := []ServiceVersion{
 		// MariaDB - Pre-built binaries for each platform
-		{Type: "mariadb", Version: "11.2", Available: true, Arch: arch,
-			URL: getMariaDBBinaryURL(osName, arch, "11.2")},
+		{Type: "mariadb", Version: "11.4", Available: true, Arch: arch,
+			URL: getMariaDBBinaryURL(osName, arch, "11.4")},
 		{Type: "mariadb", Version: "10.11", Available: true, Arch: arch,
 			URL: getMariaDBBinaryURL(osName, arch, "10.11")},
 		{Type: "mariadb", Version: "10.6", Available: true, Arch: arch,
@@ -106,11 +106,25 @@ func NewServiceManager() *ServiceManager {
 		{Type: "mysql", Version: "5.7", Available: true, Arch: arch,
 			URL: getMySQLBinaryURL(osName, arch, "5.7")},
 
-		// Redis - Pre-built binaries
+		// Redis - Source compilation
+		{Type: "redis", Version: "7.4", Available: true, Arch: arch,
+			URL: getRedisBinaryURL(osName, arch, "7.4")},
 		{Type: "redis", Version: "7.2", Available: true, Arch: arch,
 			URL: getRedisBinaryURL(osName, arch, "7.2")},
 		{Type: "redis", Version: "7.0", Available: true, Arch: arch,
 			URL: getRedisBinaryURL(osName, arch, "7.0")},
+
+		// Nginx - Source compilation
+		{Type: "nginx", Version: "1.27", Available: true, Arch: arch,
+			URL: getNginxBinaryURL(osName, arch, "1.27")},
+		{Type: "nginx", Version: "1.26", Available: true, Arch: arch,
+			URL: getNginxBinaryURL(osName, arch, "1.26")},
+		{Type: "nginx", Version: "1.24", Available: true, Arch: arch,
+			URL: getNginxBinaryURL(osName, arch, "1.24")},
+
+		// Apache - Source compilation
+		{Type: "apache", Version: "2.4", Available: true, Arch: arch,
+			URL: getApacheBinaryURL(osName, arch, "2.4")},
 	}
 
 	sm := &ServiceManager{
