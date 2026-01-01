@@ -409,53 +409,25 @@ func (pr *ProgressReader) Read(p []byte) (n int, err error) {
 }
 
 func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
-	arch := runtime.GOARCH
-	osName := runtime.GOOS
+	fullVersion := config.GetFullVersion("php", version)
 
-	// Map PHP versions to full versions (verified available on static-php.dev)
-	fullVersions := map[string]string{
-		"8.0": "8.0.30",
-		"8.1": "8.1.34",
-		"8.2": "8.2.30",
-		"8.3": "8.3.29",
-		"8.4": "8.4.16",
-	}
-	fullVersion := fullVersions[version]
-	if fullVersion == "" {
-		fullVersion = version + ".0"
-	}
-
-	// Build platform-specific URL for static-php.dev
-	// URL format: https://dl.static-php.dev/static-php-cli/common/php-{version}-cli-{os}-{arch}.tar.gz
+	// Get available PHP versions to find the correct URL
+	phpVers := config.GetAvailableVersions("php")
 	var urls []string
-	switch osName {
-	case "darwin":
-		if arch == "arm64" {
-			urls = []string{
-				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-macos-aarch64.tar.gz", fullVersion),
-			}
-		} else {
-			urls = []string{
-				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-macos-x86_64.tar.gz", fullVersion),
-			}
+	for _, v := range phpVers {
+		if v.Version == version {
+			urls = []string{v.URL}
+			break
 		}
-	case "linux":
-		if arch == "arm64" {
-			urls = []string{
-				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-linux-aarch64.tar.gz", fullVersion),
-			}
-		} else {
-			urls = []string{
-				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-linux-x86_64.tar.gz", fullVersion),
-			}
-		}
-	default:
-		return fmt.Errorf("unsupported OS: %s", osName)
+	}
+
+	if len(urls) == 0 {
+		return fmt.Errorf("PHP version %s not found in remote config", version)
 	}
 
 	var lastErr error
 	for i, url := range urls {
-		fmt.Printf("⬇️ Downloading PHP %s from %s...\n", version, url)
+		fmt.Printf("⬇️ Downloading PHP %s from %s...\n", fullVersion, url)
 
 		resp, err := http.Get(url)
 		if err != nil {
@@ -632,6 +604,11 @@ func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	svcs := ws.serviceManager.GetServices()
+	// Update status for each service before returning
+	for _, svc := range svcs {
+		ws.serviceManager.GetStatus(svc.Name)
+	}
+
 	available := ws.serviceManager.GetAvailableVersions("")
 
 	response := map[string]interface{}{

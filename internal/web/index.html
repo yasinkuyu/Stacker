@@ -89,8 +89,11 @@
             display: flex;
             flex-direction: column;
             position: fixed;
-            height: 100vh;
+            top: 0;
+            left: 0;
+            height: calc(100vh - 32px);
             overflow-y: auto;
+            z-index: 1000;
         }
 
         .logo {
@@ -180,10 +183,14 @@
         /* Main Content */
         .main-content {
             flex: 1;
-            padding: 32px 40px;
+            padding: 24px 40px;
             margin-left: 240px;
-            min-height: 100vh;
+            min-height: calc(100vh - 32px);
+            margin-bottom: 32px;
             background: var(--bg-primary);
+            position: relative;
+            z-index: 1;
+            overflow-x: hidden;
         }
 
         .page {
@@ -516,14 +523,17 @@
 
         /* Toggle Switch */
         .toggle-switch {
-            width: 52px;
-            height: 28px;
+            width: 44px;
+            height: 24px;
             background: var(--bg-tertiary);
             border: 2px solid var(--border);
-            border-radius: 14px;
+            border-radius: 12px;
             position: relative;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0;
+            display: inline-block;
+            vertical-align: middle;
         }
 
         .toggle-switch.active {
@@ -534,18 +544,18 @@
         .toggle-switch::after {
             content: '';
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             background: white;
             border-radius: 50%;
             top: 2px;
             left: 2px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
         .toggle-switch.active::after {
-            left: 26px;
+            left: 22px;
         }
 
         /* Theme Toggle */
@@ -648,22 +658,27 @@
             }
         }
 
-        /* Footer */
-        .sidebar-footer {
-            margin-top: auto;
-            padding-top: 16px;
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: var(--bg-secondary);
             border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            z-index: 1000;
         }
 
-        .server-status {
+        .status-bar-item {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 12px 16px;
-            font-size: 13px;
-            color: var(--text-secondary);
-            background: var(--bg-tertiary);
-            border-radius: 10px;
         }
 
         .server-status-dot {
@@ -672,6 +687,23 @@
             background: var(--success);
             border-radius: 50%;
             animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         /* Draw Panel - Slide-in Side Panel */
@@ -1289,17 +1321,50 @@
         }
 
         body[data-slim="true"] .toggle-switch {
-            width: 38px;
-            height: 22px;
-            flex-shrink: 0;
+            width: 32px;
+            height: 18px;
+            border-radius: 9px;
+            border-width: 1.5px;
+        }
+
+        body[data-slim="true"] .toggle-switch::after {
+            width: 12px;
+            height: 12px;
+            top: 1.5px;
+            left: 1.5px;
         }
 
         body[data-slim="true"] .toggle-switch.active::after {
-            left: 18px;
+            left: 15.5px;
+        }
+
+        body[data-slim="true"] aside {
+            width: 64px;
+            bottom: 32px;
+        }
+
+        body[data-slim="true"] .main-content {
+            margin-left: 64px;
+            padding-bottom: 32px;
         }
 
         body[data-slim="true"] .draw-panel {
             width: 400px;
+        }
+
+        .service-version-select {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            margin-right: 8px;
+            outline: none;
+        }
+
+        .service-version-select:focus {
+            border-color: var(--accent);
         }
 
         body[data-slim="true"] .draw-panel-header {
@@ -1444,24 +1509,33 @@
                     <span>Logs</span>
                 </button>
 
-                <div class="nav-section">System</div>
-                <button class="nav-item" data-page="settings">
+                <div class="nav-section">Info</div>
+                <button class="nav-item" data-page="changelog">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3" />
-                        <path
-                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="15" y2="15" />
                     </svg>
-                    <span>Settings</span>
+                    <span>Change Log</span>
+                </button>
+                <button class="nav-item" data-page="about">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <span>About</span>
                 </button>
             </nav>
-
-            <div class="sidebar-footer">
-                <div class="server-status">
-                    <span class="server-status-dot"></span>
-                    <span>Server running on :8080</span>
-                </div>
-            </div>
         </aside>
+
+        <div class="status-bar">
+            <div class="status-bar-item">
+                <span class="server-status-dot"></span>
+                <span id="server-status-text">Server running on :8080</span>
+            </div>
+        </div>
 
         <main class="main-content">
             <!-- Dashboard -->
@@ -2885,13 +2959,13 @@
                     }
 
                     async function uninstallService(name) {
-                        if (!confirm(`Are you sure you want to uninstall ${name}?`)) {
+                        if (!confirm(`Are you sure you want to uninstall ${name}? This will delete all binaries, configurations, and data related to this service.`)) {
                             return;
                         }
 
                         try {
                             await api('/services/uninstall', 'POST', { name });
-                            showToast(`Service ${name} uninstalled`);
+                            showToast(`Service ${name} uninstalled successfully`);
                             loadServices();
                         } catch (error) {
                             showToast(`Error uninstalling service: ${error.message}`);
@@ -3057,11 +3131,23 @@
                     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
                     port: '6379',
                     colorClass: 'redis'
+                },
+                composer: {
+                    name: 'Composer',
+                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
+                    port: 'phar',
+                    colorClass: 'php'
+                },
+                nodejs: {
+                    name: 'Node.js',
+                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
+                    port: 'bin',
+                    colorClass: 'nodejs'
                 }
             };
 
             // Get all service types
-            const allTypes = ['nginx', 'apache', 'mysql', 'mariadb', 'redis'];
+            const allTypes = ['nginx', 'apache', 'mysql', 'mariadb', 'redis', 'composer', 'nodejs'];
 
             let html = '';
             allTypes.forEach(type => {
@@ -3072,7 +3158,10 @@
                 const availableVersions = availableByType[type] || [];
 
                 let actions = '';
+                let versionInfo = '';
+
                 if (installedService) {
+                    versionInfo = `<span class="site-badge" style="margin-right: 8px;">${installedService.version}</span>`;
                     if (installedService.status === 'running') {
                         actions = `
                             <button class="btn" onclick="stopService('${installedService.name}')" style="padding: 6px 12px; font-size: 12px;">Stop</button>
@@ -3084,8 +3173,14 @@
                         `;
                     }
                 } else if (availableVersions.length > 0) {
+                    const versionOptions = availableVersions.map(v => `<option value="${v}">${v}</option>`).join('');
+                    versionInfo = `
+                        <select class="service-version-select" id="install-version-${type}">
+                            ${versionOptions}
+                        </select>
+                    `;
                     actions = `
-                        <button class="btn btn-primary" onclick="openInstallService('${type}', '${availableVersions[0]}')" style="padding: 6px 12px; font-size: 12px;">Install</button>
+                        <button class="btn btn-primary" onclick="prepareInstallService('${type}')" style="padding: 6px 12px; font-size: 12px;">Install</button>
                     `;
                 } else {
                     actions = '<span style="color: var(--text-muted); font-size: 12px;">Not available</span>';
@@ -3106,7 +3201,10 @@
                                 <div class="service-port">:${info.port}</div>
                             </div>
                         </div>
-                        ${installedService ? `<span class="status-badge status-${status}"><span class="status-dot"></span>${status}</span>` : ''}
+                        <div style="display: flex; align-items: center;">
+                            ${versionInfo}
+                            ${installedService ? `<span class="status-badge status-${status}"><span class="status-dot"></span>${status}</span>` : ''}
+                        </div>
                         <div class="service-actions">
                             ${actions}
                         </div>
@@ -3115,6 +3213,12 @@
             });
 
             list.innerHTML = html;
+        }
+
+        async function prepareInstallService(type) {
+            const versionSelect = document.getElementById(`install-version-${type}`);
+            const version = versionSelect.value;
+            openInstallService(type, version);
         }
 
         async function openInstallService(type, version) {

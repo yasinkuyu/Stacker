@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yasinkuyu/Stacker/internal/config"
 	"github.com/yasinkuyu/Stacker/internal/utils"
 )
 
@@ -30,6 +31,7 @@ type Service struct {
 	BinaryDir string `json:"binary_dir"`
 	PID       int    `json:"pid"`
 	Installed string `json:"installed"`
+	LastCheck string `json:"last_check,omitempty"`
 }
 
 type ServiceVersion struct {
@@ -90,41 +92,37 @@ func NewServiceManager() *ServiceManager {
 		osName = "linux"
 	}
 
-	// Platform-specific pre-built binaries
-	availableVersions := []ServiceVersion{
-		// MariaDB - Pre-built binaries for each platform
-		{Type: "mariadb", Version: "11.4", Available: true, Arch: arch,
-			URL: getMariaDBBinaryURL(osName, arch, "11.4")},
-		{Type: "mariadb", Version: "10.11", Available: true, Arch: arch,
-			URL: getMariaDBBinaryURL(osName, arch, "10.11")},
-		{Type: "mariadb", Version: "10.6", Available: true, Arch: arch,
-			URL: getMariaDBBinaryURL(osName, arch, "10.6")},
+	// Dynamic versions from update.json
+	var availableVersions []ServiceVersion
+	services := []string{"mariadb", "mysql", "redis", "nginx", "apache", "composer", "nodejs"}
 
-		// MySQL - Pre-built binaries
-		{Type: "mysql", Version: "8.0", Available: true, Arch: arch,
-			URL: getMySQLBinaryURL(osName, arch, "8.0")},
-		{Type: "mysql", Version: "5.7", Available: true, Arch: arch,
-			URL: getMySQLBinaryURL(osName, arch, "5.7")},
+	for _, svc := range services {
+		remoteVers := config.GetAvailableVersions(svc)
+		for _, rv := range remoteVers {
+			availableVersions = append(availableVersions, ServiceVersion{
+				Type:      rv.Type,
+				Version:   rv.Version,
+				Available: rv.Available,
+				Arch:      rv.Arch,
+				URL:       rv.URL,
+			})
+		}
+	}
 
-		// Redis - Source compilation
-		{Type: "redis", Version: "7.4", Available: true, Arch: arch,
-			URL: getRedisBinaryURL(osName, arch, "7.4")},
-		{Type: "redis", Version: "7.2", Available: true, Arch: arch,
-			URL: getRedisBinaryURL(osName, arch, "7.2")},
-		{Type: "redis", Version: "7.0", Available: true, Arch: arch,
-			URL: getRedisBinaryURL(osName, arch, "7.0")},
-
-		// Nginx - Source compilation
-		{Type: "nginx", Version: "1.27", Available: true, Arch: arch,
-			URL: getNginxBinaryURL(osName, arch, "1.27")},
-		{Type: "nginx", Version: "1.26", Available: true, Arch: arch,
-			URL: getNginxBinaryURL(osName, arch, "1.26")},
-		{Type: "nginx", Version: "1.24", Available: true, Arch: arch,
-			URL: getNginxBinaryURL(osName, arch, "1.24")},
-
-		// Apache - Source compilation
-		{Type: "apache", Version: "2.4", Available: true, Arch: arch,
-			URL: getApacheBinaryURL(osName, arch, "2.4")},
+	// Fallback to hardcoded defaults if remote config fails or is empty
+	if len(availableVersions) == 0 {
+		for _, svc := range services {
+			defaults := config.GetDefaultVersions(svc)
+			for _, dv := range defaults {
+				availableVersions = append(availableVersions, ServiceVersion{
+					Type:      dv.Type,
+					Version:   dv.Version,
+					Available: dv.Available,
+					Arch:      dv.Arch,
+					URL:       dv.URL,
+				})
+			}
+		}
 	}
 
 	sm := &ServiceManager{
@@ -178,6 +176,10 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 		err = sm.installApache(version, installDir, configDir, dataDir)
 	case "redis":
 		err = sm.installRedis(version, installDir, configDir, dataDir)
+	case "composer":
+		err = sm.installComposer(version, installDir)
+	case "nodejs":
+		err = sm.installNodejs(version, installDir)
 	default:
 		return fmt.Errorf("unsupported service type: %s", svcType)
 	}
@@ -331,6 +333,10 @@ func (sm *ServiceManager) compileMariaDB(version, installDir, configDir, dataDir
 	makeCmd.Stdout = os.Stdout
 	makeCmd.Stderr = os.Stderr
 	if err := makeCmd.Run(); err != nil {
+		sm.updateInstallProgress("mariadb", version, -1)
+		if runtime.GOOS == "darwin" {
+			return fmt.Errorf("mariadb make failed. 💡 Try installing Xcode Command Line Tools: xcode-select --install. Error: %w", err)
+		}
 		return fmt.Errorf("mariadb make failed: %w", err)
 	}
 
@@ -339,6 +345,7 @@ func (sm *ServiceManager) compileMariaDB(version, installDir, configDir, dataDir
 	installCmd.Stdout = os.Stdout
 	installCmd.Stderr = os.Stderr
 	if err := installCmd.Run(); err != nil {
+		sm.updateInstallProgress("mariadb", version, -1)
 		return fmt.Errorf("mariadb install failed: %w", err)
 	}
 
@@ -599,24 +606,33 @@ func (sm *ServiceManager) compileRedis(version, installDir, configDir, dataDir s
 
 func (sm *ServiceManager) UninstallService(name string) error {
 	sm.mu.Lock()
-	defer sm.mu.Unlock()
-
 	svc, ok := sm.services[name]
 	if !ok {
+		sm.mu.Unlock()
 		return fmt.Errorf("service %s not found", name)
 	}
 
-	sm.StopService(name)
+	// Use internal stop that doesn't lock
+	sm.stopServiceInternal(svc)
+	sm.mu.Unlock()
 
 	installDir := svc.BinaryDir
 	configDir := svc.ConfigDir
 	dataDir := svc.DataDir
 
-	os.RemoveAll(installDir)
-	os.RemoveAll(configDir)
-	os.RemoveAll(dataDir)
+	if installDir != "" {
+		os.RemoveAll(installDir)
+	}
+	if configDir != "" {
+		os.RemoveAll(configDir)
+	}
+	if dataDir != "" {
+		os.RemoveAll(dataDir)
+	}
 
+	sm.mu.Lock()
 	delete(sm.services, name)
+	sm.mu.Unlock()
 	return nil
 }
 
@@ -712,123 +728,7 @@ type progressReader struct {
 	OnProg  func(int)
 }
 
-// Helper functions to get platform-specific binary URLs
-// MariaDB versions: 10.11.11 (LTS), 11.4.5 (LTS), 11.8.1 (latest stable)
-func getMariaDBBinaryURL(osName, arch, version string) string {
-	// Map major versions to full versions with verified working URLs
-	fullVersions := map[string]string{
-		"10.6":  "10.6.21",
-		"10.11": "10.11.11",
-		"11.2":  "11.2.7",
-		"11.4":  "11.4.5",
-		"11.8":  "11.8.1",
-	}
-	fullVer := fullVersions[version]
-	if fullVer == "" {
-		fullVer = version + ".0"
-	}
-
-	switch osName {
-	case "macos":
-		// macOS pre-built binaries are no longer available from MariaDB
-		// Use source compilation instead
-		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/source/mariadb-%s.tar.gz", fullVer, fullVer)
-	case "linux":
-		if arch == "arm64" {
-			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-aarch64/mariadb-%s-linux-systemd-aarch64.tar.gz", fullVer, fullVer)
-		}
-		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-x86_64/mariadb-%s-linux-systemd-x86_64.tar.gz", fullVer, fullVer)
-	default:
-		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/source/mariadb-%s.tar.gz", fullVer, fullVer)
-	}
-}
-
-func getMySQLBinaryURL(osName, arch, version string) string {
-	// Map major versions to full versions
-	fullVersions := map[string]string{
-		"8.0": "8.0.40",
-		"5.7": "5.7.44",
-	}
-	fullVer := fullVersions[version]
-	if fullVer == "" {
-		fullVer = version
-	}
-
-	switch osName {
-	case "macos":
-		// Use tar.gz instead of DMG for easier extraction
-		if arch == "arm64" {
-			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-arm64.tar.gz", version, fullVer)
-		}
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-x86_64.tar.gz", version, fullVer)
-	case "linux":
-		if arch == "arm64" {
-			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-aarch64.tar.xz", version, fullVer)
-		}
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-x86_64.tar.xz", version, fullVer)
-	default:
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s.tar.gz", version, fullVer)
-	}
-}
-
-func getNginxBinaryURL(osName, arch, version string) string {
-	// Map major versions to full versions
-	fullVersions := map[string]string{
-		"1.24": "1.24.0",
-		"1.26": "1.26.2",
-		"1.27": "1.27.3",
-	}
-	fullVer := fullVersions[version]
-	if fullVer == "" {
-		fullVer = version
-	}
-
-	switch osName {
-	case "macos":
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
-	case "linux":
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
-	default:
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
-	}
-}
-
-func getApacheBinaryURL(osName, arch, version string) string {
-	// Map major versions to full versions
-	fullVersions := map[string]string{
-		"2.4": "2.4.62",
-	}
-	fullVer := fullVersions[version]
-	if fullVer == "" {
-		fullVer = version
-	}
-
-	switch osName {
-	case "macos":
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
-	case "linux":
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
-	default:
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
-	}
-}
-
-func getRedisBinaryURL(osName, arch, version string) string {
-	// Map major versions to full versions
-	fullVersions := map[string]string{
-		"7.0": "7.0.15",
-		"7.2": "7.2.6",
-		"7.4": "7.4.2",
-	}
-	fullVer := fullVersions[version]
-	if fullVer == "" {
-		fullVer = version + ".0"
-	}
-
-	// Redis doesn't provide pre-built binaries - use source (requires `make`)
-	// Redis compiles easily without external dependencies
-	return fmt.Sprintf("https://github.com/redis/redis/archive/refs/tags/%s.tar.gz", fullVer)
-}
+// Helper functions removed. URLs are now dynamically fetched from update.json via internal/config/remote.go
 
 func (pr *progressReader) Read(p []byte) (n int, err error) {
 	n, err = pr.Reader.Read(p)
@@ -901,16 +801,69 @@ func (sm *ServiceManager) StartService(name string) error {
 func (sm *ServiceManager) StopService(name string) error {
 	sm.mu.Lock()
 	svc, ok := sm.services[name]
-	sm.mu.Unlock()
-
 	if !ok {
+		sm.mu.Unlock()
 		return fmt.Errorf("service %s not found", name)
 	}
 
 	if svc.Status != "running" {
+		sm.mu.Unlock()
 		return fmt.Errorf("service %s is not running", name)
 	}
 
+	err := sm.stopServiceInternal(svc)
+	sm.mu.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	sm.saveServiceStatus(svc)
+	os.Remove(sm.getPIDFile(name))
+
+	fmt.Printf("⏹️ Service %s stopped\n", name)
+	return nil
+}
+
+func (sm *ServiceManager) stopServiceInternal(svc *Service) error {
+	pid := svc.PID
+	if pid == 0 {
+		pid = sm.loadPID(svc.Name)
+	}
+
+	if pid > 0 {
+		process, err := os.FindProcess(pid)
+		if err == nil {
+			// Try SIGTERM first
+			if err := process.Signal(syscall.SIGTERM); err == nil {
+				// Wait a bit for graceful shutdown
+				time.Sleep(500 * time.Millisecond)
+				// Check if still running
+				if err := process.Signal(syscall.Signal(0)); err == nil {
+					// Still running, force kill
+					process.Signal(syscall.SIGKILL)
+				}
+			} else {
+				process.Signal(syscall.SIGKILL)
+			}
+		}
+	}
+
+	svc.Status = "stopped"
+	svc.PID = 0
+	return nil
+}
+
+func (sm *ServiceManager) GetStatus(name string) string {
+	sm.mu.RLock()
+	svc, ok := sm.services[name]
+	sm.mu.RUnlock()
+
+	if !ok {
+		return "none"
+	}
+
+	// Check if process is running
 	pid := svc.PID
 	if pid == 0 {
 		pid = sm.loadPID(name)
@@ -918,27 +871,25 @@ func (sm *ServiceManager) StopService(name string) error {
 
 	if pid > 0 {
 		process, err := os.FindProcess(pid)
-		if err != nil {
-			return fmt.Errorf("process not found: %w", err)
+		if err == nil {
+			// Signal 0 checks if process exists
+			if err := process.Signal(syscall.Signal(0)); err == nil {
+				svc.Status = "running"
+				svc.PID = pid
+			} else {
+				svc.Status = "stopped"
+				svc.PID = 0
+			}
+		} else {
+			svc.Status = "stopped"
+			svc.PID = 0
 		}
-
-		if err := process.Signal(syscall.SIGTERM); err != nil {
-			process.Signal(syscall.SIGKILL)
-		}
-
-		time.Sleep(500 * time.Millisecond)
+	} else {
+		svc.Status = "stopped"
 	}
 
-	sm.mu.Lock()
-	svc.Status = "stopped"
-	svc.PID = 0
-	sm.mu.Unlock()
-
-	sm.saveServiceStatus(svc)
-	os.Remove(sm.getPIDFile(name))
-
-	fmt.Printf("⏹️ Service %s stopped\n", name)
-	return nil
+	svc.LastCheck = time.Now().Format(time.RFC3339)
+	return svc.Status
 }
 
 func (sm *ServiceManager) RestartService(name string) error {
@@ -1203,4 +1154,117 @@ save 300 10
 
 	configPath := filepath.Join(configDir, "redis.conf")
 	return os.WriteFile(configPath, []byte(redisConf), 0644)
+}
+
+func (sm *ServiceManager) installComposer(version, installDir string) error {
+	sm.updateInstallProgress("composer", version, 10)
+	fmt.Printf("📥 Downloading Composer %s...\n", version)
+
+	url := config.GetDownloadURL("composer", version)
+	if url == "" {
+		return fmt.Errorf("could not find download URL for Composer %s", version)
+	}
+
+	target := filepath.Join(installDir, "composer.phar")
+	if err := sm.downloadFile(url, target); err != nil {
+		return fmt.Errorf("failed to download Composer: %w", err)
+	}
+
+	sm.updateInstallProgress("composer", version, 100)
+	fmt.Printf("✅ Composer %s installed to %s\n", version, target)
+	return nil
+}
+
+func (sm *ServiceManager) installNodejs(version, installDir string) error {
+	sm.updateInstallProgress("nodejs", version, 10)
+	fmt.Printf("📥 Downloading Node.js %s...\n", version)
+
+	url := config.GetDownloadURL("nodejs", version)
+	if url == "" {
+		return fmt.Errorf("could not find download URL for Node.js %s", version)
+	}
+
+	tmpFile := filepath.Join(sm.baseDir, "tmp", fmt.Sprintf("nodejs-%s.tar.gz", version))
+	os.MkdirAll(filepath.Dir(tmpFile), 0755)
+
+	if err := sm.downloadFile(url, tmpFile); err != nil {
+		return fmt.Errorf("failed to download Node.js: %w", err)
+	}
+
+	sm.updateInstallProgress("nodejs", version, 50)
+	fmt.Println("📦 Extracting Node.js...")
+
+	if err := sm.extractTarGz(tmpFile, installDir); err != nil {
+		return fmt.Errorf("failed to extract Node.js: %w", err)
+	}
+
+	os.Remove(tmpFile)
+
+	sm.updateInstallProgress("nodejs", version, 100)
+	fmt.Printf("✅ Node.js %s installed to %s\n", version, installDir)
+	return nil
+}
+
+func (sm *ServiceManager) downloadFile(url, target string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	f, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, resp.Body)
+	return err
+}
+
+func (sm *ServiceManager) extractTarGz(src, dst string) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		target := filepath.Join(dst, header.Name)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			os.MkdirAll(target, 0755)
+		case tar.TypeReg:
+			os.MkdirAll(filepath.Dir(target), 0755)
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(f, tr); err != nil {
+				f.Close()
+				return err
+			}
+			f.Close()
+		}
+	}
+	return nil
 }
