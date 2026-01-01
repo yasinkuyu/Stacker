@@ -2947,10 +2947,10 @@
                 </div>
             `;
 
-            openDrawPanel('Install ' + svc.name, content, () => installService(serviceName));
+            openDrawPanel('Install ' + svc.name, content, () => installServiceLegacy(serviceName));
         }
 
-        async function installService(serviceName) {
+        async function installServiceLegacy(serviceName) {
             const port = document.getElementById('servicePort').value;
             showToast('Installing ' + serviceName + '...');
             closeDrawPanel();
