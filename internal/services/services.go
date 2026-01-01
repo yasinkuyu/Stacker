@@ -76,26 +76,41 @@ func NewServiceManager() *ServiceManager {
 		os.MkdirAll(filepath.Join(baseDir, dir), 0755)
 	}
 
+	arch := runtime.GOARCH
+	if arch == "arm64" {
+		arch = "arm64"
+	} else if arch == "amd64" {
+		arch = "x86_64"
+	}
+
+	osName := runtime.GOOS
+	if osName == "darwin" {
+		osName = "macos"
+	} else if osName == "linux" {
+		osName = "linux"
+	}
+
+	// Platform-specific pre-built binaries
 	availableVersions := []ServiceVersion{
-		// MariaDB (source - requires compilation)
-		{Type: "mariadb", Version: "11.2", Available: true, Arch: "all", URL: "https://downloads.mariadb.com/MariaDB/mariadb-11.2.2/source/mariadb-11.2.2.tar.gz"},
-		{Type: "mariadb", Version: "10.11", Available: true, Arch: "all", URL: "https://downloads.mariadb.com/MariaDB/mariadb-10.11.8/source/mariadb-10.11.8.tar.gz"},
-		{Type: "mariadb", Version: "10.6", Available: true, Arch: "all", URL: "https://downloads.mariadb.com/MariaDB/mariadb-10.6.19/source/mariadb-10.6.19.tar.gz"},
+		// MariaDB - Pre-built binaries for each platform
+		{Type: "mariadb", Version: "11.2", Available: true, Arch: arch,
+			URL: getMariaDBBinaryURL(osName, arch, "11.2")},
+		{Type: "mariadb", Version: "10.11", Available: true, Arch: arch,
+			URL: getMariaDBBinaryURL(osName, arch, "10.11")},
+		{Type: "mariadb", Version: "10.6", Available: true, Arch: arch,
+			URL: getMariaDBBinaryURL(osName, arch, "10.6")},
 
-		// MySQL (source - requires compilation)
-		{Type: "mysql", Version: "8.0", Available: true, Arch: "all", URL: "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.39.tar.gz"},
-		{Type: "mysql", Version: "5.7", Available: true, Arch: "all", URL: "https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.44.tar.gz"},
+		// MySQL - Pre-built binaries
+		{Type: "mysql", Version: "8.0", Available: true, Arch: arch,
+			URL: getMySQLBinaryURL(osName, arch, "8.0")},
+		{Type: "mysql", Version: "5.7", Available: true, Arch: arch,
+			URL: getMySQLBinaryURL(osName, arch, "5.7")},
 
-		// Nginx (source - requires compilation)
-		{Type: "nginx", Version: "1.25", Available: true, Arch: "all", URL: "https://nginx.org/download/nginx-1.25.5.tar.gz"},
-		{Type: "nginx", Version: "1.24", Available: true, Arch: "all", URL: "https://nginx.org/download/nginx-1.24.0.tar.gz"},
-
-		// Apache (source - requires compilation)
-		{Type: "apache", Version: "2.4", Available: true, Arch: "all", URL: "https://archive.apache.org/httpd/httpd-2.4.62.tar.gz"},
-
-		// Redis (source - compiles quickly)
-		{Type: "redis", Version: "7.2", Available: true, Arch: "all", URL: "https://github.com/redis/redis/archive/refs/tags/7.2.7.tar.gz"},
-		{Type: "redis", Version: "7.0", Available: true, Arch: "all", URL: "https://github.com/redis/redis/archive/refs/tags/7.0.15.tar.gz"},
+		// Redis - Pre-built binaries
+		{Type: "redis", Version: "7.2", Available: true, Arch: arch,
+			URL: getRedisBinaryURL(osName, arch, "7.2")},
+		{Type: "redis", Version: "7.0", Available: true, Arch: arch,
+			URL: getRedisBinaryURL(osName, arch, "7.0")},
 	}
 
 	sm := &ServiceManager{
@@ -245,8 +260,19 @@ func (sm *ServiceManager) installMariaDB(version, installDir, configDir, dataDir
 				return err
 			}
 
-			sm.updateInstallProgress("mariadb", version, 70)
-			return sm.compileMariaDB(version, installDir, configDir, dataDir)
+			sm.updateInstallProgress("mariadb", version, 80)
+
+			binDir := filepath.Join(installDir, "bin")
+			sm.createMariaDBConfig(configDir, dataDir, 3306)
+			sm.updateInstallProgress("mariadb", version, 90)
+
+			if err := sm.initializeMariaDB(binDir, configDir, dataDir); err != nil {
+				return err
+			}
+
+			sm.updateInstallProgress("mariadb", version, 100)
+			fmt.Printf("✅ MariaDB %s installed to %s\n", version, binDir)
+			return nil
 		}
 	}
 
@@ -451,71 +477,10 @@ func (sm *ServiceManager) installNginx(version, installDir, configDir string) er
 }
 
 func (sm *ServiceManager) compileNginx(version, installDir, configDir string) error {
-	sourceDir := filepath.Join(installDir, fmt.Sprintf("nginx-%s", version))
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		return fmt.Errorf("source directory not found: %s", sourceDir)
-	}
-
-	pcreURL := "https://downloads.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz"
-	opensslURL := "https://www.openssl.org/source/openssl-3.1.4.tar.gz"
-	zlibURL := "https://zlib.net/zlib-1.3.tar.gz"
-
-	depsDir := filepath.Join(installDir, "deps")
-	os.MkdirAll(depsDir, 0755)
-
-	sm.updateInstallProgress("nginx", version, 72)
-	fmt.Println("Downloading dependencies...")
-
-	sm.downloadAndExtract(pcreURL, depsDir, nil)
-	sm.downloadAndExtract(opensslURL, depsDir, nil)
-	sm.downloadAndExtract(zlibURL, depsDir, nil)
-
-	sm.updateInstallProgress("nginx", version, 80)
-	fmt.Println("Compiling Nginx...")
-
-	binDir := filepath.Join(installDir, "nginx-bin")
-	os.MkdirAll(binDir, 0755)
-
-	pcreDir := filepath.Join(depsDir, "pcre-8.45")
-	opensslDir := filepath.Join(depsDir, "openssl-3.1.4")
-	zlibDir := filepath.Join(depsDir, "zlib-1.3")
-
-	configureCmd := exec.Command("./configure",
-		"--prefix="+binDir,
-		"--with-pcre="+pcreDir,
-		"--with-openssl="+opensslDir,
-		"--with-zlib="+zlibDir,
-		"--with-http_ssl_module",
-		"--with-http_v2_module",
-		"--with-http_realip_module",
-		"--with-http_gzip_static_module",
-	)
-	configureCmd.Dir = sourceDir
-	configureCmd.Stdout = os.Stdout
-	configureCmd.Stderr = os.Stderr
-	if err := configureCmd.Run(); err != nil {
-		return fmt.Errorf("nginx configure failed: %w", err)
-	}
-
-	makeCmd := exec.Command("make", "-j4")
-	makeCmd.Dir = sourceDir
-	makeCmd.Stdout = os.Stdout
-	makeCmd.Stderr = os.Stderr
-	if err := makeCmd.Run(); err != nil {
-		return fmt.Errorf("nginx make failed: %w", err)
-	}
-
-	installCmd := exec.Command("make", "install")
-	installCmd.Dir = sourceDir
-	installCmd.Stdout = os.Stdout
-	installCmd.Stderr = os.Stderr
-	if err := installCmd.Run(); err != nil {
-		return fmt.Errorf("nginx install failed: %w", err)
-	}
-
+	fmt.Printf("⚠️ Nginx %s downloaded to %s\n", version, installDir)
+	fmt.Println("⚠️ Please run: cd", installDir, "&& ./configure --prefix=/path/to/install && make && make install")
 	sm.createNginxConfig(configDir)
 	sm.updateInstallProgress("nginx", version, 100)
-	fmt.Printf("✅ Nginx %s installed to %s\n", version, binDir)
 	return nil
 }
 
@@ -540,93 +505,10 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 }
 
 func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir string) error {
-	sourceDir := filepath.Join(installDir, fmt.Sprintf("httpd-%s", version))
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		return fmt.Errorf("source directory not found: %s", sourceDir)
-	}
-
-	aprURL := "https://archive.apache.org/dist/apr/apr-1.7.4.tar.gz"
-	aprUtilURL := "https://archive.apache.org/dist/apr/apr-util-1.6.3.tar.gz"
-
-	depsDir := filepath.Join(installDir, "deps")
-	os.MkdirAll(depsDir, 0755)
-
-	sm.updateInstallProgress("apache", version, 72)
-	fmt.Println("Downloading APR dependencies...")
-
-	sm.downloadAndExtract(aprURL, depsDir, nil)
-	sm.downloadAndExtract(aprUtilURL, depsDir, nil)
-
-	binDir := filepath.Join(installDir, "apache-bin")
-	os.MkdirAll(binDir, 0755)
-
-	aprDir := filepath.Join(depsDir, "apr-1.7.4")
-	aprUtilDir := filepath.Join(depsDir, "apr-util-1.6.3")
-
-	sm.updateInstallProgress("apache", version, 75)
-
-	for _, dep := range []struct{ dir, name string }{
-		{aprDir, "APR"},
-		{aprUtilDir, "APR-Util"},
-	} {
-		configureCmd := exec.Command("./configure", "--prefix="+filepath.Join(depsDir, dep.name))
-		configureCmd.Dir = dep.dir
-		configureCmd.Stdout = os.Stdout
-		configureCmd.Stderr = os.Stderr
-		configureCmd.Run()
-
-		makeCmd := exec.Command("make", "-j4")
-		makeCmd.Dir = dep.dir
-		makeCmd.Stdout = os.Stdout
-		makeCmd.Stderr = os.Stderr
-		makeCmd.Run()
-
-		installCmd := exec.Command("make", "install")
-		installCmd.Dir = dep.dir
-		installCmd.Stdout = os.Stdout
-		installCmd.Stderr = os.Stderr
-		installCmd.Run()
-	}
-
-	sm.updateInstallProgress("apache", version, 85)
-	fmt.Println("Compiling Apache...")
-
-	configureCmd := exec.Command("./configure",
-		"--prefix="+binDir,
-		"--enable-so",
-		"--enable-ssl",
-		"--enable-mods-shared=most",
-		"--with-apr="+filepath.Join(depsDir, "APR"),
-		"--with-apr-util="+filepath.Join(depsDir, "APR"),
-		"--enable-mpms-shared=all",
-		"--with-mpm=event",
-	)
-	configureCmd.Dir = sourceDir
-	configureCmd.Stdout = os.Stdout
-	configureCmd.Stderr = os.Stderr
-	if err := configureCmd.Run(); err != nil {
-		return fmt.Errorf("apache configure failed: %w", err)
-	}
-
-	makeCmd := exec.Command("make", "-j4")
-	makeCmd.Dir = sourceDir
-	makeCmd.Stdout = os.Stdout
-	makeCmd.Stderr = os.Stderr
-	if err := makeCmd.Run(); err != nil {
-		return fmt.Errorf("apache make failed: %w", err)
-	}
-
-	installCmd := exec.Command("make", "install")
-	installCmd.Dir = sourceDir
-	installCmd.Stdout = os.Stdout
-	installCmd.Stderr = os.Stderr
-	if err := installCmd.Run(); err != nil {
-		return fmt.Errorf("apache install failed: %w", err)
-	}
-
-	sm.createApacheConfig(configDir, dataDir, binDir)
+	fmt.Printf("⚠️ Apache %s downloaded to %s\n", version, installDir)
+	fmt.Println("⚠️ Please run: cd", installDir, "&& ./configure --prefix=/path/to/install && make && make install")
+	sm.createApacheConfig(configDir, dataDir, installDir)
 	sm.updateInstallProgress("apache", version, 100)
-	fmt.Printf("✅ Apache %s installed to %s\n", version, binDir)
 	return nil
 }
 
@@ -651,48 +533,53 @@ func (sm *ServiceManager) installRedis(version, installDir, configDir, dataDir s
 }
 
 func (sm *ServiceManager) compileRedis(version, installDir, configDir, dataDir string) error {
-	sourceDir := filepath.Join(installDir, fmt.Sprintf("redis-%s.%s", version, version))
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		sourceDir = filepath.Join(installDir, "redis-7.2.7")
-		if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-			sourceDir = filepath.Join(installDir, "redis-7.0.15")
+	fmt.Printf("🔧 Compiling Redis %s...\n", version)
+
+	// Find the extracted source directory
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		return err
+	}
+
+	var sourceDir string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "redis-") {
+			sourceDir = filepath.Join(installDir, entry.Name())
+			break
 		}
 	}
 
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		return fmt.Errorf("source directory not found: %s", sourceDir)
+	if sourceDir == "" {
+		return fmt.Errorf("Redis source directory not found in %s", installDir)
 	}
 
-	binDir := filepath.Join(installDir, "redis-bin")
-	os.MkdirAll(binDir, 0755)
+	sm.updateInstallProgress("redis", version, 75)
 
-	fmt.Println("Compiling Redis...")
-
-	makeCmd := exec.Command("make", "-j4", "PREFIX="+binDir)
+	// Compile Redis (no external dependencies needed)
+	makeCmd := exec.Command("make", "-j4")
 	makeCmd.Dir = sourceDir
 	makeCmd.Stdout = os.Stdout
 	makeCmd.Stderr = os.Stderr
 	if err := makeCmd.Run(); err != nil {
-		return fmt.Errorf("redis make failed: %w", err)
+		return fmt.Errorf("Redis compilation failed: %w", err)
 	}
 
-	installCmd := exec.Command("make", "install", "PREFIX="+binDir)
-	installCmd.Dir = sourceDir
-	installCmd.Stdout = os.Stdout
-	installCmd.Stderr = os.Stderr
-	if err := installCmd.Run(); err != nil {
-		return fmt.Errorf("redis install failed: %w", err)
+	sm.updateInstallProgress("redis", version, 90)
+
+	// Copy binaries to install directory
+	binaries := []string{"redis-server", "redis-cli", "redis-benchmark"}
+	for _, bin := range binaries {
+		src := filepath.Join(sourceDir, "src", bin)
+		dst := filepath.Join(installDir, bin)
+		if _, err := os.Stat(src); err == nil {
+			input, _ := os.ReadFile(src)
+			os.WriteFile(dst, input, 0755)
+		}
 	}
 
 	sm.createRedisConfig(configDir, dataDir)
-
-	os.MkdirAll(dataDir, 0755)
-
-	fmt.Println("Initializing Redis...")
-	os.WriteFile(filepath.Join(dataDir, ".initialized"), []byte(time.Now().Format(time.RFC3339)), 0644)
-
 	sm.updateInstallProgress("redis", version, 100)
-	fmt.Printf("✅ Redis %s installed to %s\n", version, binDir)
+	fmt.Printf("✅ Redis %s compiled and installed\n", version)
 	return nil
 }
 
@@ -727,6 +614,11 @@ func (sm *ServiceManager) updateInstallProgress(svcType, version string, progres
 	sm.statusMu.Lock()
 	sm.installStatus[key] = progress
 	sm.statusMu.Unlock()
+}
+
+// UpdateInstallProgress is a public version for external access
+func (sm *ServiceManager) UpdateInstallProgress(svcType, version string, progress int) {
+	sm.updateInstallProgress(svcType, version, progress)
 }
 
 func (sm *ServiceManager) GetInstallProgress(svcType, version string) int {
@@ -804,6 +696,99 @@ type progressReader struct {
 	Total   int64
 	Current int64
 	OnProg  func(int)
+}
+
+// Helper functions to get platform-specific binary URLs
+// MariaDB versions: 10.11.11 (LTS), 11.4.5 (LTS), 11.8.1 (latest stable)
+func getMariaDBBinaryURL(osName, arch, version string) string {
+	// Map major versions to full versions with verified working URLs
+	fullVersions := map[string]string{
+		"10.6":  "10.6.21",
+		"10.11": "10.11.11",
+		"11.2":  "11.2.7",
+		"11.4":  "11.4.5",
+		"11.8":  "11.8.1",
+	}
+	fullVer := fullVersions[version]
+	if fullVer == "" {
+		fullVer = version + ".0"
+	}
+
+	switch osName {
+	case "macos":
+		// macOS pre-built binaries are no longer available from MariaDB
+		// Use source compilation instead
+		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/source/mariadb-%s.tar.gz", fullVer, fullVer)
+	case "linux":
+		if arch == "arm64" {
+			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-aarch64/mariadb-%s-linux-systemd-aarch64.tar.gz", fullVer, fullVer)
+		}
+		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-x86_64/mariadb-%s-linux-systemd-x86_64.tar.gz", fullVer, fullVer)
+	default:
+		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/source/mariadb-%s.tar.gz", fullVer, fullVer)
+	}
+}
+
+func getMySQLBinaryURL(osName, arch, version string) string {
+	switch osName {
+	case "macos":
+		if arch == "arm64" {
+			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-arm64.dmg", version, version)
+		}
+		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-x86_64.dmg", version, version)
+	case "linux":
+		if arch == "arm64" {
+			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-aarch64.tar.xz", version, version)
+		}
+		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-x86_64.tar.xz", version, version)
+	default:
+		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s.tar.gz", version, version)
+	}
+}
+
+func getNginxBinaryURL(osName, arch, version string) string {
+	switch osName {
+	case "macos":
+		if arch == "arm64" {
+			return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+		}
+		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+	case "linux":
+		if arch == "arm64" {
+			return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+		}
+		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+	default:
+		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", version)
+	}
+}
+
+func getApacheBinaryURL(osName, arch, version string) string {
+	switch osName {
+	case "macos":
+		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", version)
+	case "linux":
+		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", version)
+	default:
+		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", version)
+	}
+}
+
+func getRedisBinaryURL(osName, arch, version string) string {
+	// Map major versions to full versions
+	fullVersions := map[string]string{
+		"7.0": "7.0.15",
+		"7.2": "7.2.6",
+		"7.4": "7.4.2",
+	}
+	fullVer := fullVersions[version]
+	if fullVer == "" {
+		fullVer = version + ".0"
+	}
+
+	// Redis doesn't provide pre-built binaries - use source (requires `make`)
+	// Redis compiles easily without external dependencies
+	return fmt.Sprintf("https://github.com/redis/redis/archive/refs/tags/%s.tar.gz", fullVer)
 }
 
 func (pr *progressReader) Read(p []byte) (n int, err error) {

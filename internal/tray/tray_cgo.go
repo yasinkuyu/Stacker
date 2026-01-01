@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-
+	"strings"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -37,13 +37,16 @@ type TrayManager struct {
 	svcManager       *services.ServiceManager
 	xdebugEnabled    bool
 	serviceMenuItems map[string]*systray.MenuItem
+	serviceTitles    map[string]string
 }
 
 func NewTrayManager() *TrayManager {
 	return &TrayManager{
-		quitChan:   make(chan bool),
-		phpManager: php.NewPHPManager(),
-		svcManager: services.NewServiceManager(),
+		quitChan:         make(chan bool),
+		phpManager:       php.NewPHPManager(),
+		svcManager:       services.NewServiceManager(),
+		serviceMenuItems: make(map[string]*systray.MenuItem),
+		serviceTitles:    make(map[string]string),
 	}
 }
 
@@ -99,7 +102,6 @@ func (tm *TrayManager) onReady() {
 
 	// Get installed services and create menu items
 	svcs := tm.svcManager.GetServices()
-	serviceMenuItems := make(map[string]*systray.MenuItem)
 
 	// Default services (not installed)
 	if len(svcs) == 0 {
@@ -107,7 +109,7 @@ func (tm *TrayManager) onReady() {
 		for _, svcType := range defaultServices {
 			item := mServices.AddSubMenuItem(fmt.Sprintf("○ %s (not installed)", strings.ToUpper(svcType)), fmt.Sprintf("%s not installed", svcType))
 			item.Disable()
-			serviceMenuItems[svcType] = item
+			tm.serviceMenuItems[svcType] = item
 		}
 	}
 
@@ -118,15 +120,11 @@ func (tm *TrayManager) onReady() {
 			statusIcon = "●"
 		}
 
-		item := mServices.AddSubMenuItem(
-			fmt.Sprintf("%s %s (%s)", statusIcon, strings.ToUpper(svc.Type), svc.Version),
-			fmt.Sprintf("%s %s - %s", svc.Status, svc.Type, svc.Version),
-		)
-		serviceMenuItems[svc.Name] = item
+		title := fmt.Sprintf("%s %s (%s)", statusIcon, strings.ToUpper(svc.Type), svc.Version)
+		item := mServices.AddSubMenuItem(title, fmt.Sprintf("%s %s - %s", svc.Status, svc.Type, svc.Version))
+		tm.serviceMenuItems[svc.Name] = item
+		tm.serviceTitles[svc.Name] = title
 	}
-
-	// Store for updates
-	tm.serviceMenuItems = serviceMenuItems
 
 	systray.AddSeparator()
 
@@ -134,7 +132,6 @@ func (tm *TrayManager) onReady() {
 	mDumps := systray.AddMenuItem("Dumps", "View dumps")
 	mMail := systray.AddMenuItem("Mail", "View captured emails")
 	mLogs := systray.AddMenuItem("Logs", "View logs")
-	mLogsDrawer := mLogs.AddSubMenuItem("View Log Drawer", "Open log drawer in web UI")
 
 	systray.AddSeparator()
 
@@ -182,18 +179,6 @@ func (tm *TrayManager) onReady() {
 			case <-mStopAll.ClickedCh:
 				tm.svcManager.StopAll()
 
-			case <-mMySQL.ClickedCh:
-				tm.toggleService("mysql", mMySQL)
-
-			case <-mRedis.ClickedCh:
-				tm.toggleService("redis", mRedis)
-
-			case <-mMeilisearch.ClickedCh:
-				tm.toggleService("meilisearch", mMeilisearch)
-
-			case <-mMinIO.ClickedCh:
-				tm.toggleService("minio", mMinIO)
-
 			case <-mDumps.ClickedCh:
 				tm.openBrowserPath("/#dumps")
 
@@ -202,9 +187,6 @@ func (tm *TrayManager) onReady() {
 
 			case <-mLogs.ClickedCh:
 				tm.openBrowserPath("/#logs")
-
-			case <-mLogsDrawer.ClickedCh:
-				tm.openBrowserPath("/?drawer=logs")
 
 			case <-mSettings.ClickedCh:
 				tm.openBrowserPath("/#settings")
@@ -238,6 +220,32 @@ func (tm *TrayManager) onReady() {
 		}
 	}()
 
+	// Handle service clicks
+	go func() {
+		for name, item := range tm.serviceMenuItems {
+			serviceName := name
+			menuItem := item
+			go func() {
+				for range menuItem.ClickedCh {
+					svc := tm.svcManager.GetService(serviceName)
+					if svc == nil {
+						continue
+					}
+
+					if svc.Status == "running" {
+						tm.svcManager.StopService(serviceName)
+						item.Uncheck()
+					} else {
+						tm.svcManager.StartService(serviceName)
+						item.Check()
+					}
+
+					tm.updateServiceStatus()
+				}
+			}()
+		}
+	}()
+
 	// Watcher for service status to update tray icon
 	go tm.watchStatus()
 }
@@ -249,9 +257,32 @@ func (tm *TrayManager) watchStatus() {
 	for {
 		select {
 		case <-ticker.C:
+			tm.updateServiceStatus()
 			tm.updateIconByStatus()
 		case <-tm.quitChan:
 			return
+		}
+	}
+}
+
+func (tm *TrayManager) updateServiceStatus() {
+	svcs := tm.svcManager.GetServices()
+
+	for name, item := range tm.serviceMenuItems {
+		statusIcon := "○"
+		for _, svc := range svcs {
+			if svc.Name == name && svc.Status == "running" {
+				statusIcon = "●"
+				break
+			}
+		}
+
+		currentTitle := tm.serviceTitles[name]
+		parts := strings.Fields(currentTitle)
+		if len(parts) >= 2 {
+			newTitle := fmt.Sprintf("%s %s", statusIcon, strings.Join(parts[1:], " "))
+			item.SetTitle(newTitle)
+			tm.serviceTitles[name] = newTitle
 		}
 	}
 }
@@ -262,7 +293,6 @@ func (tm *TrayManager) updateIconByStatus() {
 	total := len(svcs)
 
 	if total == 0 {
-		// If no services configured, show red or neutral
 		systray.SetIcon(iconRed)
 		return
 	}
@@ -313,7 +343,6 @@ func (tm *TrayManager) openSitesFolder() {
 	homeDir, _ := os.UserHomeDir()
 	sitesPath := filepath.Join(homeDir, "Sites")
 
-	// Create if doesn't exist
 	os.MkdirAll(sitesPath, 0755)
 
 	var cmd *exec.Cmd
@@ -326,57 +355,6 @@ func (tm *TrayManager) openSitesFolder() {
 		cmd = exec.Command("xdg-open", sitesPath)
 	}
 	cmd.Start()
-}
-
-func (tm *TrayManager) toggleService(name string, menuItem *systray.MenuItem) {
-	svc := tm.svcManager.GetService(name)
-	if svc == nil {
-		return
-	}
-
-	if svc.Status == "running" {
-		tm.svcManager.StopService(name)
-		menuItem.Uncheck()
-	} else {
-		tm.svcManager.StartService(name)
-		menuItem.Check()
-	}
-}
-
-func (tm *TrayManager) updateServiceStatus() {
-	svcs := tm.svcManager.GetServices()
-
-	for name, item := range tm.serviceMenuItems {
-		statusIcon := "○"
-		for _, svc := range svcs {
-			if svc.Name == name && svc.Status == "running" {
-				statusIcon = "●"
-				break
-			}
-		}
-
-		parts := strings.Fields(item.Title())
-		if len(parts) >= 2 {
-			newTitle := fmt.Sprintf("%s %s", statusIcon, strings.Join(parts[1:], " "))
-			item.SetTitle(newTitle)
-		}
-	}
-
-	tm.updateIconByStatus()
-}
-
-func (tm *TrayManager) watchStatus() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			tm.updateServiceStatus()
-		case <-tm.quitChan:
-			return
-		}
-	}
 }
 
 func (tm *TrayManager) showStatus() {

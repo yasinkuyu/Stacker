@@ -45,10 +45,11 @@ type Preferences struct {
 	AutoStart bool   `json:"autoStart"`
 	ShowTray  bool   `json:"showTray"`
 	Port      int    `json:"port"`
+	SlimMode  bool   `json:"slimMode"`
 }
 
 var (
-	prefs     = Preferences{Theme: "dark", AutoStart: false, ShowTray: true, Port: 8080}
+	prefs     = Preferences{Theme: "dark", AutoStart: false, ShowTray: true, Port: 8080, SlimMode: false}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
 	sitesMu   sync.RWMutex
@@ -113,18 +114,18 @@ func savePreferences(stackerDir string) {
 }
 
 func (ws *WebServer) Start() error {
-	// Serve static files
+	// API endpoints
 	http.HandleFunc("/", ws.handleIndex)
 	http.HandleFunc("/logo.png", ws.handleLogo)
 	http.HandleFunc("/static/logo.png", ws.handleLogo)
 
-	// API endpoints
 	http.HandleFunc("/api/status", ws.handleStatus)
 	http.HandleFunc("/api/sites", ws.handleSites)
 	http.HandleFunc("/api/sites/", ws.handleSiteByName)
 	http.HandleFunc("/api/services", ws.handleServices)
 	http.HandleFunc("/api/services/versions", ws.handleServiceVersions)
 	http.HandleFunc("/api/services/install", ws.handleServiceInstall)
+	http.HandleFunc("/api/services/install-status", ws.handleServiceInstallStatus)
 	http.HandleFunc("/api/services/uninstall", ws.handleServiceUninstall)
 	http.HandleFunc("/api/services/start/", ws.handleServiceStart)
 	http.HandleFunc("/api/services/stop/", ws.handleServiceStop)
@@ -409,116 +410,189 @@ func (pr *ProgressReader) Read(p []byte) (n int, err error) {
 
 func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 	arch := runtime.GOARCH
-	if arch == "arm64" {
-		arch = "arm64"
-	} else if arch == "amd64" {
-		arch = "x86_64"
-	}
-
 	osName := runtime.GOOS
-	if osName == "darwin" {
-		osName = "macos"
-	} else if osName == "linux" {
-		osName = "linux"
+
+	// Map PHP versions to full versions (verified available on static-php.dev)
+	fullVersions := map[string]string{
+		"8.0": "8.0.30",
+		"8.1": "8.1.34",
+		"8.2": "8.2.30",
+		"8.3": "8.3.29",
+		"8.4": "8.4.16",
+	}
+	fullVersion := fullVersions[version]
+	if fullVersion == "" {
+		fullVersion = version + ".0"
 	}
 
-	fullVersion := version + ".0"
-
-	// Use PHP official downloads or alternative
-	// GitHub: https://github.com/php/web-php/releases
-	var url string
-
-	switch version {
-	case "8.3":
-		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.3.15/php-%s-%s.tar.gz", fullVersion, osName, arch)
-	case "8.2":
-		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.2.26/php-%s-%s.tar.gz", fullVersion, osName, arch)
-	case "8.1":
-		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.1.29/php-%s-%s.tar.gz", fullVersion, osName, arch)
-	case "8.0":
-		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.0.30/php-%s-%s.tar.gz", fullVersion, osName, arch)
-	case "7.4":
-		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-7.4.33/php-%s-%s.tar.gz", fullVersion, osName, arch)
-	default:
-		url = fmt.Sprintf("https://github.com/php/web-php/releases/download/php-8.3.15/php-%s-%s.tar.gz", fullVersion, osName, arch)
-	}
-
-	fmt.Printf("⬇️ Downloading PHP %s from %s...\n", version, url)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download PHP: %s (status %d)", url, resp.StatusCode)
-	}
-
-	// Set progress to 0
-	ws.progressMu.Lock()
-	ws.installProgress[version] = 0
-	ws.progressMu.Unlock()
-
-	pr := &ProgressReader{
-		Reader: resp.Body,
-		Total:  resp.ContentLength,
-		OnProg: func(p int) {
-			ws.progressMu.Lock()
-			ws.installProgress[version] = p
-			ws.progressMu.Unlock()
-		},
-	}
-
-	gzr, err := gzip.NewReader(pr)
-	if err != nil {
-		return err
-	}
-	defer gzr.Close()
-
-	tr := tar.NewReader(gzr)
-
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
+	// Build platform-specific URL for static-php.dev
+	// URL format: https://dl.static-php.dev/static-php-cli/common/php-{version}-cli-{os}-{arch}.tar.gz
+	var urls []string
+	switch osName {
+	case "darwin":
+		if arch == "arm64" {
+			urls = []string{
+				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-macos-aarch64.tar.gz", fullVersion),
+			}
+		} else {
+			urls = []string{
+				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-macos-x86_64.tar.gz", fullVersion),
+			}
 		}
+	case "linux":
+		if arch == "arm64" {
+			urls = []string{
+				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-linux-aarch64.tar.gz", fullVersion),
+			}
+		} else {
+			urls = []string{
+				fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-linux-x86_64.tar.gz", fullVersion),
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported OS: %s", osName)
+	}
+
+	var lastErr error
+	for i, url := range urls {
+		fmt.Printf("⬇️ Downloading PHP %s from %s...\n", version, url)
+
+		resp, err := http.Get(url)
+		if err != nil {
+			lastErr = err
+			fmt.Printf("❌ Failed (attempt %d): %v\n", i+1, err)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("failed to download PHP: %s (status %d)", url, resp.StatusCode)
+			fmt.Printf("❌ Failed (attempt %d): HTTP %d\n", i+1, resp.StatusCode)
+			continue
+		}
+
+		// Successfully got response, proceed with extraction
+		defer resp.Body.Close()
+
+		// Set progress to 0
+		ws.progressMu.Lock()
+		ws.installProgress[version] = 0
+		ws.progressMu.Unlock()
+
+		pr := &ProgressReader{
+			Reader: resp.Body,
+			Total:  resp.ContentLength,
+			OnProg: func(p int) {
+				ws.progressMu.Lock()
+				ws.installProgress[version] = p
+				ws.progressMu.Unlock()
+			},
+		}
+
+		gzr, err := gzip.NewReader(pr)
 		if err != nil {
 			return err
 		}
+		defer gzr.Close()
 
-		target := filepath.Join(targetDir, header.Name)
+		tr := tar.NewReader(gzr)
 
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0755); err != nil {
-				return err
+		for {
+			header, err := tr.Next()
+			if err == io.EOF {
+				break
 			}
-		case tar.TypeReg:
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(f, tr); err != nil {
+
+			target := filepath.Join(targetDir, header.Name)
+
+			switch header.Typeflag {
+			case tar.TypeDir:
+				if err := os.MkdirAll(target, 0755); err != nil {
+					return err
+				}
+			case tar.TypeReg:
+				f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+				if err != nil {
+					return err
+				}
+				if _, err := io.Copy(f, tr); err != nil {
+					f.Close()
+					return err
+				}
 				f.Close()
-				return err
 			}
-			f.Close()
 		}
+
+		// Ensure binary is named 'php' and is executable
+		phpBinary := filepath.Join(targetDir, "php")
+		if _, err := os.Stat(phpBinary); os.IsNotExist(err) {
+			// Try to find php in subdirectories
+			entries, _ := os.ReadDir(targetDir)
+			for _, e := range entries {
+				if e.IsDir() {
+					subPhp := filepath.Join(targetDir, e.Name(), "php")
+					if _, err := os.Stat(subPhp); err == nil {
+						phpBinary = subPhp
+						break
+					}
+				}
+			}
+		}
+		os.Chmod(phpBinary, 0755)
+
+		// Set progress to 100
+		ws.progressMu.Lock()
+		ws.installProgress[version] = 100
+		ws.progressMu.Unlock()
+
+		fmt.Printf("✅ PHP %s installed to %s\n", version, phpBinary)
+		return nil
 	}
 
-	// Ensure the binary is named 'php' and is executable
-	// In static-php bundles, the binary is usually named 'php' in the root
-	phpBinary := filepath.Join(targetDir, "php")
-	os.Chmod(phpBinary, 0755)
-
-	// Set progress to 100
+	// All URLs failed - provide installation guide
 	ws.progressMu.Lock()
-	ws.installProgress[version] = 100
+	ws.installProgress[version] = -1
 	ws.progressMu.Unlock()
 
-	fmt.Printf("✅ PHP %s installed to %s\n", version, phpBinary)
-	return nil
+	// Print helpful installation commands
+	fmt.Printf("\n❌ Auto-download failed. Please install PHP manually:\n\n")
+	fmt.Printf("For macOS:\n")
+	fmt.Printf("  brew install php%s\n", version)
+	fmt.Printf("  brew install php@%s\n", version)
+	fmt.Printf("\nFor Ubuntu/Debian:\n")
+	fmt.Printf("  sudo apt install php%s\n", version)
+	fmt.Printf("\nFor Windows:\n")
+	fmt.Printf("  winget install PHP.php%s\n", version)
+	fmt.Printf("  Or download from: https://windows.php.net/download/\n")
+	fmt.Printf("\nAfter installation, Stacker will detect it automatically.\n")
+
+	return lastErr
+}
+
+// GetPlatformPHPInstallCommand returns platform-specific install commands
+func (ws *WebServer) GetPlatformPHPInstallCommands(version string) map[string]string {
+	commands := make(map[string]string)
+	osName := runtime.GOOS
+
+	switch osName {
+	case "darwin":
+		commands["brew"] = fmt.Sprintf("brew install php%s", version)
+		commands["brew_versioned"] = fmt.Sprintf("brew install php@%s", version)
+	case "linux":
+		commands["apt"] = fmt.Sprintf("sudo apt install php%s", version)
+		commands["yum"] = fmt.Sprintf("sudo yum install php%s", version)
+		commands["dnf"] = fmt.Sprintf("sudo dnf install php%s", version)
+	case "windows":
+		commands["winget"] = fmt.Sprintf("winget install PHP.php%s", version)
+		commands["url"] = "https://windows.php.net/download/"
+	default:
+		commands["generic"] = fmt.Sprintf("Install PHP %s from https://php.net/downloads.php", version)
+	}
+
+	return commands
 }
 
 func (ws *WebServer) getPHPPort(version string) int {
@@ -586,6 +660,8 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 
 	go func() {
 		if err := ws.serviceManager.InstallService(req.Type, req.Version); err != nil {
+			// Set progress to -1 on error
+			ws.serviceManager.UpdateInstallProgress(req.Type, req.Version, -1)
 			fmt.Printf("Error installing service: %v\n", err)
 		}
 	}()
@@ -600,6 +676,20 @@ func (ws *WebServer) handleServiceVersions(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"versions": versions})
+}
+
+func (ws *WebServer) handleServiceInstallStatus(w http.ResponseWriter, r *http.Request) {
+	svcType := r.URL.Query().Get("type")
+	version := r.URL.Query().Get("version")
+
+	if svcType == "" || version == "" {
+		http.Error(w, "Type and version required", http.StatusBadRequest)
+		return
+	}
+
+	progress := ws.serviceManager.GetInstallProgress(svcType, version)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"progress": progress})
 }
 
 func (ws *WebServer) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
@@ -882,6 +972,9 @@ func (ws *WebServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
 		}
 		if showTray, ok := updates["showTray"].(bool); ok {
 			prefs.ShowTray = showTray
+		}
+		if slimMode, ok := updates["slimMode"].(bool); ok {
+			prefs.SlimMode = slimMode
 		}
 		if port, ok := updates["port"].(float64); ok {
 			prefs.Port = int(port)
