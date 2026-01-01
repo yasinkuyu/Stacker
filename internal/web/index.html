@@ -3114,8 +3114,98 @@
             list.innerHTML = html;
         }
 
-        function openInstallService(type, version) {
-            installService(type, version);
+        async function openInstallService(type, version) {
+            const content = `
+                <div class="form-group">
+                    <label class="form-label">Installing ${type.toUpperCase()} ${version}</label>
+                    <div class="form-hint">This will download and compile the service</div>
+                </div>
+            `;
+
+            openDrawPanel('Install Service', content, () => {
+                startServiceInstallGlobal(type, version);
+            }, 'Install');
+        }
+
+        async function startServiceInstallGlobal(type, version) {
+            // Hide footer during install
+            document.getElementById('drawPanelFooter').style.display = 'none';
+
+            // Show progress in panel body
+            const body = document.getElementById('drawPanelBody');
+            body.innerHTML = `
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Installing ${type.toUpperCase()} ${version}</span>
+                        <span id="installPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="installProgressFill"></div>
+                    </div>
+                    <div class="install-log" id="installLog">
+                        Starting download...<br>
+                    </div>
+                </div>
+            `;
+
+            // Start installation
+            try {
+                await api('/services/install', 'POST', { type, version });
+
+                const log = document.getElementById('installLog');
+                const fill = document.getElementById('installProgressFill');
+                const perc = document.getElementById('installPercent');
+
+                // Poll progress
+                const interval = setInterval(async () => {
+                    const status = await api(`/services/install-status?type=${type}&version=${version}`);
+                    if (status && status.progress !== undefined) {
+                        const progress = status.progress;
+
+                        // Check for error
+                        if (progress === -1) {
+                            clearInterval(interval);
+                            log.innerHTML += `<span style="color:#ef4444;">❌ Error: Installation failed<br>`;
+                            log.innerHTML += `<span style="color:#fbbf24;">💡 Install Xcode Command Line Tools: xcode-select --install</span><br>`;
+                            perc.textContent = 'Error';
+                            fill.style.width = '100%';
+                            fill.style.background = '#ef4444';
+                            return;
+                        }
+
+                        fill.style.width = progress + '%';
+                        perc.textContent = progress + '%';
+
+                        if (progress >= 0 && progress < 10) {
+                            log.innerHTML = `Starting installation...<br>`;
+                        } else if (progress >= 10 && progress < 30) {
+                            log.innerHTML = `Downloading source code...<br>`;
+                        } else if (progress >= 30 && progress < 75) {
+                            log.innerHTML = `Compiling ${type.toUpperCase()}...<br>`;
+                            log.innerHTML += `<span style="color:#fbbf24;">⏱️ This may take several minutes...</span><br>`;
+                        } else if (progress >= 75 && progress < 95) {
+                            log.innerHTML = `Installing binaries...<br>`;
+                        } else if (progress >= 95 && progress < 100) {
+                            log.innerHTML = `Configuring service...<br>`;
+                        } else if (progress === 100) {
+                            clearInterval(interval);
+                            log.innerHTML = `✅ Installation complete!<br>`;
+                            fill.style.width = '100%';
+                            perc.textContent = '100%';
+
+                            setTimeout(() => {
+                                closeDrawPanel();
+                                loadServices();
+                                showToast(type.toUpperCase() + ' installed successfully');
+                            }, 1500);
+                        }
+                    }
+                }, 1000);
+
+            } catch (err) {
+                const log = document.getElementById('installLog');
+                log.innerHTML += `<span style="color:#ef4444;">❌ Error: ${err.message}<br>`;
+            }
         }
 
         // Initial Load
