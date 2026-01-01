@@ -53,9 +53,17 @@ var trayAppCmd = &cobra.Command{
 			}
 		}()
 
+		// Load prefs to get port
+		prefs := config.LoadPreferences()
+		port := 9999
+		if prefs != nil && prefs.Port > 0 {
+			port = prefs.Port
+		}
+		url := fmt.Sprintf("http://localhost:%d", port)
+
 		// Run tray manager (this blocks until quit)
 		tm := tray.NewTrayManager()
-		tm.SetWebURL("http://localhost:8080")
+		tm.SetWebURL(url)
 		tm.Run()
 	},
 }
@@ -75,12 +83,20 @@ var uiCmd = &cobra.Command{
 			}
 		}()
 
+		// Load prefs to get port
+		prefs := config.LoadPreferences()
+		port := 9999
+		if prefs != nil && prefs.Port > 0 {
+			port = prefs.Port
+		}
+		url := fmt.Sprintf("http://localhost:%d", port)
+
 		// Open browser
-		go tray.OpenBrowser("http://localhost:8080")
+		go tray.OpenBrowser(url)
 
 		// Run tray manager (blocks)
 		tm := tray.NewTrayManager()
-		tm.SetWebURL("http://localhost:8080")
+		tm.SetWebURL(url)
 		tm.Run()
 	},
 }

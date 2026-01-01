@@ -167,7 +167,10 @@ func buildDownloadURL(serviceType, osName, arch, shortVer, fullVer string, sourc
 
 	case "mariadb":
 		if osName == "macos" {
-			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/source/mariadb-%s.tar.gz", fullVer, fullVer)
+			if arch == "arm64" {
+				return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-mac-macos14-arm64/mariadb-%s-mac-macos14-arm64.tar.gz", fullVer, fullVer)
+			}
+			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-mac-macos14-x86_64/mariadb-%s-mac-macos14-x86_64.tar.gz", fullVer, fullVer)
 		}
 		if arch == "arm64" {
 			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-aarch64/mariadb-%s-linux-systemd-aarch64.tar.gz", fullVer, fullVer)

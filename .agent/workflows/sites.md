@@ -6,7 +6,7 @@ description: How to add and manage local development sites
 
 ## Add a New Site via Web UI
 
-1. Open http://localhost:8080
+1. Open http://localhost:9999
 2. Click "Sites" in sidebar
 3. Click "Add Site" button
 4. Fill in:
@@ -18,7 +18,7 @@ description: How to add and manage local development sites
 ## Add Site via API
 
 ```bash
-curl -X POST http://localhost:8080/api/sites \
+curl -X POST http://localhost:9999/api/sites \
   -H "Content-Type: application/json" \
   -d '{"name":"my-project","path":"/path/to/project","ssl":true}'
 ```
@@ -26,7 +26,7 @@ curl -X POST http://localhost:8080/api/sites \
 ## Update Site
 
 ```bash
-curl -X PUT http://localhost:8080/api/sites/my-project \
+curl -X PUT http://localhost:9999/api/sites/my-project \
   -H "Content-Type: application/json" \
   -d '{"name":"my-project","path":"/new/path","php":"8.2","ssl":true}'
 ```
@@ -34,7 +34,7 @@ curl -X PUT http://localhost:8080/api/sites/my-project \
 ## Delete Site
 
 ```bash
-curl -X DELETE http://localhost:8080/api/sites/my-project
+curl -X DELETE http://localhost:9999/api/sites/my-project
 ```
 
 ## Site Configuration Files

@@ -49,7 +49,7 @@ type Preferences struct {
 }
 
 var (
-	prefs     = Preferences{Theme: "dark", AutoStart: false, ShowTray: true, Port: 8080, SlimMode: false}
+	prefs     = Preferences{Theme: "dark", AutoStart: false, ShowTray: true, Port: 9999, SlimMode: false}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
 	sitesMu   sync.RWMutex
@@ -144,9 +144,13 @@ func (ws *WebServer) Start() error {
 
 	ws.mailManager.Start()
 
-	fmt.Println("🚀 Web UI starting on http://localhost:8080")
+	prefMutex.RLock()
+	port := prefs.Port
+	prefMutex.RUnlock()
+
+	fmt.Printf("🚀 Web UI starting on http://localhost:%d\n", port)
 	fmt.Printf("📁 Data directory: %s\n", ws.stackerDir)
-	return http.ListenAndServe(":8080", nil)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -616,10 +620,25 @@ func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 
 	response := map[string]interface{}{
 		"installed": svcs,
-		"available": available,
+		"available": filterAvailable(available, svcs),
 	}
 
 	json.NewEncoder(w).Encode(response)
+}
+
+func filterAvailable(available []services.ServiceVersion, installed []*services.Service) []services.ServiceVersion {
+	var filtered []services.ServiceVersion
+	installedMap := make(map[string]bool)
+	for _, svc := range installed {
+		installedMap[svc.Type+"-"+svc.Version] = true
+	}
+
+	for _, av := range available {
+		if !installedMap[av.Type+"-"+av.Version] {
+			filtered = append(filtered, av)
+		}
+	}
+	return filtered
 }
 
 func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request) {
@@ -643,6 +662,13 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 			// Set progress to -1 on error
 			ws.serviceManager.UpdateInstallProgress(req.Type, req.Version, -1)
 			fmt.Printf("Error installing service: %v\n", err)
+		} else {
+			// Auto-start after install
+			svcName := req.Type + "-" + req.Version
+			fmt.Printf("🚀 Auto-starting %s after install...\n", svcName)
+			if err := ws.serviceManager.StartService(svcName); err != nil {
+				fmt.Printf("⚠️ Failed to auto-start %s: %v\n", svcName, err)
+			}
 		}
 	}()
 

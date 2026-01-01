@@ -76,7 +76,7 @@ The build script creates:
 # Or start as tray app
 ./stacker tray
 
-# Open browser: http://localhost:8080
+# Open browser: http://localhost:9999
 ```
 
 ## Commands

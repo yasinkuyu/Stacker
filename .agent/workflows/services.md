@@ -6,7 +6,7 @@ description: How to install and manage services (MySQL, Redis, Nginx)
 
 ## Install Service via Web UI
 
-1. Open http://localhost:8080
+1. Open http://localhost:9999
 2. Click "Services" in sidebar
 3. Click "Open Server Configuration"
 4. Select tab (Nginx, MySQL, Redis)
@@ -17,17 +17,17 @@ description: How to install and manage services (MySQL, Redis, Nginx)
 
 ```bash
 # Install MySQL
-curl -X POST http://localhost:8080/api/services/install \
+curl -X POST http://localhost:9999/api/services/install \
   -H "Content-Type: application/json" \
   -d '{"name":"mysql","port":3306}'
 
 # Install Redis
-curl -X POST http://localhost:8080/api/services/install \
+curl -X POST http://localhost:9999/api/services/install \
   -H "Content-Type: application/json" \
   -d '{"name":"redis","port":6379}'
 
 # Install Nginx
-curl -X POST http://localhost:8080/api/services/install \
+curl -X POST http://localhost:9999/api/services/install \
   -H "Content-Type: application/json" \
   -d '{"name":"nginx","port":80}'
 ```

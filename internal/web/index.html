@@ -197,8 +197,7 @@
         }
 
         body[data-slim="true"] .main-content {
-            margin-left: 80px;
-            padding-top: 80px;
+            padding-bottom: 32px;
         }
 
         .page {
@@ -1436,7 +1435,7 @@
         }
 
         body[data-slim="true"] .sidebar {
-            width: 80px;
+            width: 200px;
         }
 
         body[data-slim="true"] .main-content {
@@ -1444,12 +1443,11 @@
         }
 
         body[data-slim="true"] .nav-item {
-            justify-content: center;
-            padding: 12px 10px;
+            padding: 12px 16px;
         }
 
         body[data-slim="true"] .nav-item span {
-            display: none;
+            display: inline;
         }
 
         body[data-slim="true"] .nav-section {
@@ -1458,7 +1456,7 @@
 
         body[data-slim="true"] .logo-text,
         body[data-slim="true"] .logo-version {
-            display: none;
+            display: block;
         }
 
         body[data-slim="true"] .logo {
@@ -1660,7 +1658,7 @@
         <div class="status-bar">
             <div class="status-bar-item">
                 <span class="server-status-dot"></span>
-                <span id="server-status-text">Server running on :8080</span>
+                <span id="server-status-text">Server running on :9999</span>
             </div>
         </div>
 
@@ -2090,7 +2088,7 @@
                                 <div class="settings-desc">Port used for this dashboard (requires reload)</div>
                             </div>
                             <div style="display:flex;gap:8px;">
-                                <input type="number" class="input" id="port-input" value="8080" style="width:100px;">
+                                <input type="number" class="input" id="port-input" value="9999" style="width:100px;">
                                 <button class="btn btn-primary" onclick="savePort()">Save</button>
                             </div>
                         </div>
@@ -2301,7 +2299,7 @@
                     const statusDot = document.querySelector('.server-status-dot');
                     const statusText = document.getElementById('server-status-text');
                     statusDot.style.background = '#10b981'; // green
-                    statusText.textContent = 'Server running on :8080';
+                    statusText.textContent = 'Server running on :9999';
 
                     // Load recent sites
                     const sites = await api('/sites');
@@ -2374,7 +2372,7 @@
                     });
                     document.getElementById('auto-start-toggle').classList.toggle('active', prefs.autoStart);
                     document.getElementById('tray-toggle').classList.toggle('active', prefs.showTray);
-                    document.getElementById('port-input').value = prefs.port || 8080;
+                    document.getElementById('port-input').value = prefs.port || 9999;
                     if (document.getElementById('slim-mode-toggle')) {
                         document.getElementById('slim-mode-toggle').classList.toggle('active', prefs.slimMode);
                         setSlimMode(prefs.slimMode);
@@ -3270,6 +3268,7 @@
         // ==========================================
 
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('server-status-text').textContent = 'Server running on :' + window.location.port;
             const hash = window.location.hash.slice(1) || 'dashboard';
             showPage(hash);
             loadStatus();

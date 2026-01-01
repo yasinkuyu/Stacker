@@ -6,7 +6,7 @@ description: How to install and manage PHP versions
 
 ## Install PHP via Web UI
 
-1. Open http://localhost:8080
+1. Open http://localhost:9999
 2. Click "PHP" in sidebar
 3. Click "Install PHP" button
 4. Select version (8.3, 8.2, 8.1, 8.0, 7.4)
@@ -16,7 +16,7 @@ description: How to install and manage PHP versions
 ## Install PHP via API
 
 ```bash
-curl -X POST http://localhost:8080/api/php/install \
+curl -X POST http://localhost:9999/api/php/install \
   -H "Content-Type: application/json" \
   -d '{"version":"8.3","xdebug":true}'
 ```
@@ -24,7 +24,7 @@ curl -X POST http://localhost:8080/api/php/install \
 ## Set Default PHP Version
 
 ```bash
-curl -X PUT http://localhost:8080/api/php/default \
+curl -X PUT http://localhost:9999/api/php/default \
   -H "Content-Type: application/json" \
   -d '{"version":"8.3"}'
 ```
