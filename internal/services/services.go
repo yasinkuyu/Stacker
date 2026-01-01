@@ -776,7 +776,17 @@ func (sm *ServiceManager) downloadAndExtract(url, targetDir string, progressCall
 			return err
 		}
 
-		target := filepath.Join(targetDir, header.Name)
+		// Strip the first path component (e.g., "mariadb-10.11.11/" -> "")
+		// This prevents nested extraction like bin/10.11/mariadb-10.11.11/
+		name := header.Name
+		parts := strings.SplitN(name, "/", 2)
+		if len(parts) < 2 || parts[1] == "" {
+			// Skip the root directory itself
+			continue
+		}
+		strippedName := parts[1]
+
+		target := filepath.Join(targetDir, strippedName)
 
 		switch header.Typeflag {
 		case tar.TypeDir:

@@ -618,9 +618,16 @@ func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 
 	available := ws.serviceManager.GetAvailableVersions("")
 
+	// Build list of installed version keys
+	installedVersions := make([]string, 0)
+	for _, svc := range svcs {
+		installedVersions = append(installedVersions, svc.Type+"-"+svc.Version)
+	}
+
 	response := map[string]interface{}{
-		"installed": svcs,
-		"available": filterAvailable(available, svcs),
+		"installed":         svcs,
+		"available":         available,
+		"installedVersions": installedVersions,
 	}
 
 	json.NewEncoder(w).Encode(response)

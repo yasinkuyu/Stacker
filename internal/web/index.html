@@ -60,6 +60,10 @@
             --gradient-end: #a78bfa;
         }
 
+        body[data-slim="true"] {
+            --sidebar-width: 200px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -2286,6 +2290,50 @@
             }
         }
 
+        async function loadPHP() {
+            const list = document.getElementById('php-list');
+            try {
+                const data = await api('/php');
+                if (!data || !data.versions || data.versions.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state" style="padding: 40px; text-align: center;">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom: 16px;">
+                                <ellipse cx="12" cy="12" rx="10" ry="6"/>
+                                <path d="M5.5 8.5l2.5 7h2l1-3h2l1 3h2l2.5-7"/>
+                            </svg>
+                            <h3 style="color: var(--text-muted); margin-bottom: 8px;">No PHP Versions Installed</h3>
+                            <p style="color: var(--text-muted); font-size: 13px;">Click "Install PHP" to add a version.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = data.versions.map(v => `
+                    <div class="list-item" style="padding: 16px 24px;">
+                        <div class="service-info">
+                            <div class="service-icon php" style="background: linear-gradient(135deg, #8892bf 0%, #4f5b93 100%); width: 36px; height: 36px;">
+                                <span style="font-weight: 700; font-size: 12px; color: white;">PHP</span>
+                            </div>
+                            <div>
+                                <div class="service-name">PHP ${v.version}</div>
+                                <div class="service-port" style="font-size: 12px; color: var(--text-muted);">${v.path}</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            ${v.has_xdebug ? '<span class="status-badge" style="background: var(--success-bg); color: var(--success);">XDebug</span>' : ''}
+                            ${v.default ? '<span class="status-badge" style="background: var(--accent-light); color: var(--accent);">Default</span>' : ''}
+                            <button class="btn" onclick="setPHPVersion('${v.version}')" ${v.default ? 'disabled' : ''}>
+                                ${v.default ? 'Active' : 'Set Default'}
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Error loading PHP versions:', err);
+                list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading PHP versions</div>';
+            }
+        }
+
         async function loadStatus() {
             try {
                 const data = await api('/status');
@@ -3043,12 +3091,14 @@
 
                 const installed = data.installed || [];
                 const available = data.available || [];
+                const installedVersions = data.installedVersions || [];
 
                 // Group available by type
                 const availableByType = {};
                 available.forEach(v => {
                     if (!availableByType[v.type]) availableByType[v.type] = [];
-                    availableByType[v.type].push(v.version);
+                    const isInstalled = installedVersions.includes(v.type + '-' + v.version);
+                    availableByType[v.type].push({ version: v.version, installed: isInstalled });
                 });
 
                 let html = `
@@ -3102,7 +3152,7 @@
                                         </div>
                                         <div style="display: flex; gap: 12px; align-items: center;">
                                             <select class="form-select" id="version-${type}" style="padding: 6px 12px; font-size: 13px; width: 140px;">
-                                                ${availableByType[type].map(v => `<option value="${v}">${v}</option>`).join('')}
+                                                ${availableByType[type].map(v => `<option value="${v.version}" ${v.installed ? 'disabled' : ''}>${v.version}${v.installed ? ' (installed)' : ''}</option>`).join('')}
                                             </select>
                                             <button class="btn btn-primary" onclick="installService('${type}')" style="padding: 8px 20px;">
                                                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
