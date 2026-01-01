@@ -3090,11 +3090,12 @@
 
             const interval = setInterval(async () => {
                 const status = await api(`/services/install-status?type=${type}&version=${version}`);
-                if (status && status.progress !== undefined) {
+                if (status) {
                     const progress = status.progress;
+                    const error = status.error;
                     if (progress === -1) {
                         clearInterval(interval);
-                        document.getElementById('action-log').innerHTML = '<span style="color: var(--danger);">Operation failed.</span>';
+                        document.getElementById('action-log').innerHTML = `<span style="color: var(--danger);">Operation failed: ${error || 'Unknown error'}</span>`;
                         return;
                     }
                     document.getElementById('action-fill').style.width = progress + '%';
@@ -3239,7 +3240,8 @@
 
                         if (progress === -1) {
                             clearInterval(interval);
-                            if (logEl) logEl.innerHTML = '<span style="color: var(--danger);">Installation failed.</span>';
+                            const errorMsg = status.error || 'Unknown error';
+                            if (logEl) logEl.innerHTML = `<span style="color: var(--danger);">Installation failed: ${errorMsg}</span>`;
                             return;
                         }
                         if (fillEl) fillEl.style.width = progress + '%';

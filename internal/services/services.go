@@ -59,6 +59,7 @@ type ServiceManager struct {
 	mu            sync.RWMutex
 	baseDir       string
 	installStatus map[string]int
+	installErrors map[string]string // Key: svcType-version
 	statusMu      sync.RWMutex
 	processes     map[string]*exec.Cmd
 	wg            sync.WaitGroup
@@ -126,6 +127,7 @@ func NewServiceManager() *ServiceManager {
 		available:     availableVersions,
 		baseDir:       baseDir,
 		installStatus: make(map[string]int),
+		installErrors: make(map[string]string),
 		processes:     make(map[string]*exec.Cmd),
 		shutdown:      make(chan struct{}),
 	}
@@ -228,7 +230,8 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 	}
 
 	if err != nil {
-		return err
+		utils.LogService(svcType, "install", "failed: "+err.Error())
+		return fmt.Errorf("failed to install %s: %w", svcType, err)
 	}
 
 	sm.statusMu.Lock()
@@ -644,7 +647,16 @@ func (sm *ServiceManager) installNginx(version, installDir, configDir string) er
 			}
 
 			sm.updateInstallProgress("nginx", version, 70)
-			return sm.compileNginx(version, installDir, configDir)
+
+			// Check if we need to compile (source build) or if it's already a binary build
+			if _, err := os.Stat(filepath.Join(installDir, "configure")); err == nil {
+				return sm.compileNginx(version, installDir, configDir)
+			}
+
+			// If no configure script, assume binary build and finalize
+			sm.updateInstallProgress("nginx", version, 100)
+			fmt.Printf("✅ Nginx %s binary installed to %s\n", version, installDir)
+			return nil
 		}
 	}
 
@@ -742,7 +754,17 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 			}
 
 			sm.updateInstallProgress("apache", version, 70)
-			return sm.compileApache(version, installDir, configDir, dataDir)
+
+			// Check if we need to compile (source build) or if it's already a binary build
+			if _, err := os.Stat(filepath.Join(installDir, "configure")); err == nil {
+				return sm.compileApache(version, installDir, configDir, dataDir)
+			}
+
+			// If no configure script, assume binary build and finalize
+			sm.createApacheConfig(configDir, dataDir, installDir)
+			sm.updateInstallProgress("apache", version, 100)
+			fmt.Printf("✅ Apache %s binary installed to %s\n", version, installDir)
+			return nil
 		}
 	}
 
@@ -876,7 +898,17 @@ func (sm *ServiceManager) installRedis(version, installDir, configDir, dataDir s
 			}
 
 			sm.updateInstallProgress("redis", version, 70)
-			return sm.compileRedis(version, installDir, configDir, dataDir)
+
+			// Check if we need to compile (source build) or if it's already a binary build
+			// Redis uses Makefile as there's usually no ./configure
+			if _, err := os.Stat(filepath.Join(installDir, "Makefile")); err == nil {
+				return sm.compileRedis(version, installDir, configDir, dataDir)
+			}
+
+			// If no Makefile but we have binaries (e.g. from Homebrew bottle), assume binary build
+			sm.updateInstallProgress("redis", version, 100)
+			fmt.Printf("✅ Redis %s binary installed to %s\n", version, installDir)
+			return nil
 		}
 	}
 
@@ -1029,7 +1061,31 @@ func (sm *ServiceManager) updateInstallProgress(svcType, version string, progres
 	}
 	sm.statusMu.Lock()
 	sm.installStatus[key] = progress
+	if progress == 100 {
+		delete(sm.installErrors, key)
+	}
 	sm.statusMu.Unlock()
+}
+
+func (sm *ServiceManager) SetInstallError(svcType, version, errMsg string) {
+	key := svcType
+	if version != "" {
+		key = svcType + "-" + version
+	}
+	sm.statusMu.Lock()
+	sm.installErrors[key] = errMsg
+	sm.installStatus[key] = -1
+	sm.statusMu.Unlock()
+}
+
+func (sm *ServiceManager) GetInstallStatus(svcType, version string) (int, string) {
+	key := svcType
+	if version != "" {
+		key = svcType + "-" + version
+	}
+	sm.statusMu.RLock()
+	defer sm.statusMu.RUnlock()
+	return sm.installStatus[key], sm.installErrors[key]
 }
 
 // UpdateInstallProgress is a public version for external access
@@ -1087,20 +1143,33 @@ func (sm *ServiceManager) downloadAndExtract(url, targetDir string, progressCall
 			break
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("tar read failed: %w", err)
 		}
 
-		// Strip the first path component (e.g., "mariadb-10.11.11/" -> "")
-		// This prevents nested extraction like bin/10.11/mariadb-10.11.11/
+		// Some archives have a top-level directory, others don't.
+		// We try to be smart about it.
 		name := header.Name
-		parts := strings.SplitN(name, "/", 2)
-		if len(parts) < 2 || parts[1] == "" {
-			// Skip the root directory itself
+
+		// Skip macos metadata
+		if strings.Contains(name, "__MACOSX") || strings.Contains(name, ".DS_Store") {
 			continue
 		}
-		strippedName := parts[1]
 
-		target := filepath.Join(targetDir, strippedName)
+		parts := strings.SplitN(name, "/", 2)
+		var targetName string
+		if len(parts) == 2 && parts[1] != "" {
+			// Strip the first component if it looks like a wrapper directory
+			targetName = parts[1]
+		} else {
+			// Use the name as is (file at root or just a directory)
+			targetName = name
+		}
+
+		if targetName == "" || targetName == "." {
+			continue
+		}
+
+		target := filepath.Join(targetDir, targetName)
 
 		switch header.Typeflag {
 		case tar.TypeDir:

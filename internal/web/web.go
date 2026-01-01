@@ -671,8 +671,8 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 
 	go func() {
 		if err := ws.serviceManager.InstallService(req.Type, req.Version); err != nil {
-			// Set progress to -1 on error
-			ws.serviceManager.UpdateInstallProgress(req.Type, req.Version, -1)
+			// Set progress to -1 on error and store error message
+			ws.serviceManager.SetInstallError(req.Type, req.Version, err.Error())
 			fmt.Printf("Error installing service: %v\n", err)
 		} else {
 			// Auto-start after install
@@ -705,9 +705,12 @@ func (ws *WebServer) handleServiceInstallStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	progress := ws.serviceManager.GetInstallProgress(svcType, version)
+	progress, errMsg := ws.serviceManager.GetInstallStatus(svcType, version)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int{"progress": progress})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"progress": progress,
+		"error":    errMsg,
+	})
 }
 
 func (ws *WebServer) handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
