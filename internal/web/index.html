@@ -2308,8 +2308,24 @@
             showToast('Port saved! Restart to apply.');
         }
 
-        function checkUpdates() {
-            showToast('You are running the latest version');
+        async function checkUpdates() {
+            try {
+                showToast('Checking for updates...');
+                const res = await fetch('https://raw.githubusercontent.com/yasinkuyu/Stacker/main/update.json');
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                const currentVersion = '1.0.0'; // This should match app version
+                if (data.version !== currentVersion) {
+                    showToast(`New version ${data.version} available!`, 'info');
+                    if (confirm(`New version ${data.version} is available!\n\n${data.changelog}\n\nWould you like to download it?`)) {
+                        window.open(data.downloadUrl, '_blank');
+                    }
+                } else {
+                    showToast('You are running the latest version');
+                }
+            } catch (err) {
+                showToast('Could not check for updates', 'error');
+            }
         }
 
         // Actions
