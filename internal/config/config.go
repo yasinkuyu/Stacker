@@ -21,7 +21,7 @@ type Site struct {
 }
 
 var loadedConfig *Config
-var configMutex sync.Mutex
+var configMutex sync.RWMutex
 
 func Load(cfgFile string) *Config {
 	configMutex.Lock()

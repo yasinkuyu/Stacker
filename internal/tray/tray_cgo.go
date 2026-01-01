@@ -38,6 +38,7 @@ type TrayManager struct {
 	xdebugEnabled    bool
 	serviceMenuItems map[string]*systray.MenuItem
 	serviceTitles    map[string]string
+	shutdownTimeout  time.Duration
 }
 
 func NewTrayManager() *TrayManager {
@@ -47,6 +48,7 @@ func NewTrayManager() *TrayManager {
 		svcManager:       services.NewServiceManager(),
 		serviceMenuItems: make(map[string]*systray.MenuItem),
 		serviceTitles:    make(map[string]string),
+		shutdownTimeout:  10 * time.Second,
 	}
 }
 
@@ -234,10 +236,10 @@ func (tm *TrayManager) onReady() {
 
 					if svc.Status == "running" {
 						tm.svcManager.StopService(serviceName)
-						item.Uncheck()
+						menuItem.Uncheck()
 					} else {
 						tm.svcManager.StartService(serviceName)
-						item.Check()
+						menuItem.Check()
 					}
 
 					tm.updateServiceStatus()
@@ -313,9 +315,32 @@ func (tm *TrayManager) updateIconByStatus() {
 }
 
 func (tm *TrayManager) onExit() {
-	fmt.Println("🛑 Stacker is shutting down, stopping all services...")
-	tm.svcManager.StopAll()
+	fmt.Println("🛑 Stacker is shutting down...")
+
+	// Request all services to stop
+	tm.svcManager.Stop()
+
+	timeout := time.After(tm.shutdownTimeout)
+	done := make(chan struct{})
+
+	go func() {
+		if err := tm.svcManager.GracefulStopAll(); err != nil {
+			fmt.Printf("⚠️ Graceful stop had errors: %v\n", err)
+		}
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("✅ All services stopped gracefully")
+	case <-timeout:
+		fmt.Println("⚠️ Timeout, force stopping remaining services...")
+		tm.svcManager.ForceStopAll()
+	}
+
+	tm.svcManager.Wait()
 	close(tm.quitChan)
+	fmt.Println("👋 Goodbye!")
 }
 
 func (tm *TrayManager) openBrowser() {

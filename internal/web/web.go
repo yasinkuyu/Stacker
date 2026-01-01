@@ -126,6 +126,8 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/services/versions", ws.handleServiceVersions)
 	http.HandleFunc("/api/services/install", ws.handleServiceInstall)
 	http.HandleFunc("/api/services/install-status", ws.handleServiceInstallStatus)
+	http.HandleFunc("/api/services/progress/stream", ws.handleInstallProgressSSE)
+	http.HandleFunc("/api/services/health/stream", ws.handleServiceHealthSSE)
 	http.HandleFunc("/api/services/uninstall", ws.handleServiceUninstall)
 	http.HandleFunc("/api/services/start/", ws.handleServiceStart)
 	http.HandleFunc("/api/services/stop/", ws.handleServiceStop)
@@ -422,7 +424,7 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 	fullVersion := config.GetFullVersion("php", version)
 
 	// Get available PHP versions to find the correct URL
-	phpVers := config.GetAvailableVersions("php")
+	phpVers := config.GetAvailableVersions("php", "")
 	var urls []string
 	for _, v := range phpVers {
 		if v.Version == version {
@@ -1104,3 +1106,71 @@ func OpenFolder(path string) error {
 
 // Unused but reserved for future
 var _ = io.EOF
+
+func (ws *WebServer) handleInstallProgressSSE(w http.ResponseWriter, r *http.Request) {
+	svcType := r.URL.Query().Get("type")
+	version := r.URL.Query().Get("version")
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, _ := w.(http.Flusher)
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			progress := ws.serviceManager.GetInstallProgress(svcType, version)
+			if progress >= 100 || progress < 0 {
+				fmt.Fprintf(w, "data: %s\n\n", toJSON(map[string]interface{}{
+					"progress": progress,
+					"phase":    "complete",
+				}))
+				flusher.Flush()
+				return
+			}
+
+			fmt.Fprintf(w, "data: %s\n\n", toJSON(map[string]interface{}{
+				"progress": progress,
+				"phase":    "downloading",
+			}))
+			flusher.Flush()
+		}
+	}
+}
+
+func (ws *WebServer) handleServiceHealthSSE(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.URL.Query().Get("name")
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, _ := w.(http.Flusher)
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			health := ws.serviceManager.GetDetailedStatus(serviceName)
+			fmt.Fprintf(w, "data: %s\n\n", toJSON(health))
+			flusher.Flush()
+		}
+	}
+}
+
+func toJSON(v interface{}) string {
+	data, _ := json.Marshal(v)
+	return string(data)
+}

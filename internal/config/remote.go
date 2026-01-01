@@ -6,15 +6,53 @@ import (
 	"io"
 	"net/http"
 	"runtime"
+	"sort"
+	"strings"
+	"sync"
 	"time"
 )
 
 const UpdateJSONURL = "https://raw.githubusercontent.com/yasinkuyu/Stacker/main/update.json"
 
-// RemoteConfig represents the structure of update.json
+var (
+	cachedConfig *RemoteConfig
+	cacheMutex   sync.RWMutex
+	lastFetch    time.Time
+	etag         string
+)
+
 type RemoteConfig struct {
+	Meta     MetaInfo              `json:"meta"`
 	Stacker  StackerInfo           `json:"stacker"`
 	Services map[string]ServiceDef `json:"services"`
+}
+
+type MetaInfo struct {
+	Version     string `json:"version"`
+	LastUpdated string `json:"lastUpdated"`
+	TTL         int    `json:"ttl"`
+}
+
+type ServiceDef struct {
+	Description  string                `json:"description"`
+	URLTemplate  string                `json:"urlTemplate,omitempty"`
+	ChecksumType string                `json:"checksumType,omitempty"`
+	Versions     map[string]VersionDef `json:"versions"`
+	Sources      []string              `json:"sources"`
+}
+
+type VersionDef struct {
+	FullVersion string                 `json:"fullVersion"`
+	ReleaseDate string                 `json:"releaseDate"`
+	Artifacts   map[string]ArtifactDef `json:"artifacts"`
+}
+
+type ArtifactDef struct {
+	URL       string   `json:"url"`
+	Checksum  string   `json:"checksum"`
+	Size      int64    `json:"size"`
+	Mirrors   []string `json:"mirrors,omitempty"`
+	Preferred bool     `json:"preferred,omitempty"`
 }
 
 type StackerInfo struct {
@@ -24,11 +62,6 @@ type StackerInfo struct {
 	Changelog   string `json:"changelog"`
 }
 
-type ServiceDef struct {
-	Versions map[string]string `json:"versions"`
-	Sources  []string          `json:"sources"`
-}
-
 // ServiceVersion represents an available service version for installation
 type ServiceVersion struct {
 	Type      string
@@ -36,46 +69,85 @@ type ServiceVersion struct {
 	FullVer   string
 	Available bool
 	Arch      string
+	Platform  string
 	URL       string
+	Checksum  string
+	Size      int64
+	Mirrors   []string
+	Preferred bool
 }
 
-var cachedConfig *RemoteConfig
-
-// FetchRemoteConfig fetches update.json from GitHub
+// FetchRemoteConfig fetches update.json from GitHub with caching and ETag support
 func FetchRemoteConfig() (*RemoteConfig, error) {
-	if cachedConfig != nil {
+	cacheMutex.RLock()
+	if cachedConfig != nil && time.Since(lastFetch) < 10*time.Minute {
+		defer cacheMutex.RUnlock()
 		return cachedConfig, nil
 	}
+	currentEtag := etag
+	cacheMutex.RUnlock()
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(UpdateJSONURL)
+	req, _ := http.NewRequest("GET", UpdateJSONURL, nil)
+
+	if currentEtag != "" {
+		req.Header.Set("If-None-Match", currentEtag)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
+		cacheMutex.RLock()
+		defer cacheMutex.RUnlock()
+		if cachedConfig != nil {
+			return cachedConfig, nil
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotModified {
+		cacheMutex.RLock()
+		defer cacheMutex.RUnlock()
+		if cachedConfig != nil {
+			return cachedConfig, nil
+		}
+		// If 304 but no cache, force a fresh fetch
+		req.Header.Del("If-None-Match")
+		resp, err = client.Do(req)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to fetch update.json (304 with no cache)")
+		}
+		defer resp.Body.Close()
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch update.json: status %d", resp.StatusCode)
 	}
 
+	newEtag := resp.Header.Get("ETag")
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	var config RemoteConfig
-	if err := json.Unmarshal(body, &config); err != nil {
+	var newConfig RemoteConfig
+	if err := json.Unmarshal(body, &newConfig); err != nil {
 		return nil, err
 	}
 
-	cachedConfig = &config
-	return &config, nil
+	cacheMutex.Lock()
+	cachedConfig = &newConfig
+	lastFetch = time.Now()
+	etag = newEtag
+	cacheMutex.Unlock()
+
+	return &newConfig, nil
 }
 
 // GetFullVersion returns the full version for a short version of a service
 func GetFullVersion(serviceType, shortVersion string) string {
-	config, err := FetchRemoteConfig()
-	if err != nil {
+	remoteCfg, err := FetchRemoteConfig()
+	if err != nil || remoteCfg == nil {
 		// Fallback to embedded defaults
 		for _, v := range GetDefaultVersions(serviceType) {
 			if v.Version == shortVersion {
@@ -85,22 +157,22 @@ func GetFullVersion(serviceType, shortVersion string) string {
 		return shortVersion
 	}
 
-	service, ok := config.Services[serviceType]
+	service, ok := remoteCfg.Services[serviceType]
 	if !ok {
 		return shortVersion
 	}
 
-	fullVer, ok := service.Versions[shortVersion]
+	versionDef, ok := service.Versions[shortVersion]
 	if !ok {
 		return shortVersion
 	}
 
-	return fullVer
+	return versionDef.FullVersion
 }
 
 // GetDownloadURL returns the download URL for a specific version of a service
 func GetDownloadURL(serviceType, shortVersion string) string {
-	versions := GetAvailableVersions(serviceType)
+	versions := GetAvailableVersions(serviceType, "")
 	for _, v := range versions {
 		if v.Version == shortVersion {
 			return v.URL
@@ -110,16 +182,38 @@ func GetDownloadURL(serviceType, shortVersion string) string {
 }
 
 // GetAvailableVersions returns all available versions for a service type
-func GetAvailableVersions(serviceType string) []ServiceVersion {
-	config, err := FetchRemoteConfig()
-	if err != nil {
+func GetAvailableVersions(serviceType string, platform string) []ServiceVersion {
+	if platform == "" {
+		arch := runtime.GOARCH
+		if arch == "arm64" {
+			arch = "arm64"
+		} else if arch == "amd64" {
+			arch = "x86_64"
+		}
+
+		osName := runtime.GOOS
+		if osName == "darwin" {
+			// Keep darwin for consistency with artifacts keys
+		} else if osName == "linux" {
+			osName = "linux"
+		}
+
+		platform = fmt.Sprintf("%s-%s", osName, arch)
+	}
+	remoteCfg, err := FetchRemoteConfig()
+	if err != nil || remoteCfg == nil {
 		// Fallback to embedded defaults
 		return GetDefaultVersions(serviceType)
 	}
 
-	service, ok := config.Services[serviceType]
-	if !ok {
-		return nil
+	// If serviceType is empty, return versions for all services
+	var serviceTypes []string
+	if serviceType == "" {
+		for k := range remoteCfg.Services {
+			serviceTypes = append(serviceTypes, k)
+		}
+	} else {
+		serviceTypes = []string{serviceType}
 	}
 
 	arch := runtime.GOARCH
@@ -131,91 +225,57 @@ func GetAvailableVersions(serviceType string) []ServiceVersion {
 
 	osName := runtime.GOOS
 	if osName == "darwin" {
-		osName = "macos"
+		// Keep darwin
+	} else if osName == "linux" {
+		osName = "linux"
+	}
+
+	if platform == "" {
+		platform = fmt.Sprintf("%s-%s", osName, arch)
 	}
 
 	var versions []ServiceVersion
-	for shortVer, fullVer := range service.Versions {
-		url := buildDownloadURL(serviceType, osName, arch, shortVer, fullVer, service.Sources)
-		versions = append(versions, ServiceVersion{
-			Type:      serviceType,
-			Version:   shortVer,
-			FullVer:   fullVer,
-			Available: true,
-			Arch:      arch,
-			URL:       url,
-		})
+	for _, st := range serviceTypes {
+		service, ok := remoteCfg.Services[st]
+		if !ok {
+			continue
+		}
+
+		for shortVer, versionDef := range service.Versions {
+			for artifactKey, artifact := range versionDef.Artifacts {
+				if artifactKey == "all" || artifactKey == platform || strings.HasPrefix(artifactKey, osName) {
+					versions = append(versions, ServiceVersion{
+						Type:      st,
+						Version:   shortVer,
+						FullVer:   versionDef.FullVersion,
+						Available: true,
+						Arch:      artifactKey,
+						Platform:  platform,
+						URL:       artifact.URL,
+						Checksum:  artifact.Checksum,
+						Size:      artifact.Size,
+						Mirrors:   artifact.Mirrors,
+						Preferred: artifact.Preferred,
+					})
+				}
+			}
+		}
 	}
+
+	// Sort by preferred flag first
+	sort.Slice(versions, func(i, j int) bool {
+		if versions[i].Preferred != versions[j].Preferred {
+			return versions[i].Preferred
+		}
+		// Then by type
+		if versions[i].Type != versions[j].Type {
+			return versions[i].Type < versions[j].Type
+		}
+		// Then by version descending
+		return versions[i].Version > versions[j].Version
+	})
 
 	return versions
-}
-
-// buildDownloadURL constructs the download URL based on service type
-func buildDownloadURL(serviceType, osName, arch, shortVer, fullVer string, sources []string) string {
-	source := ""
-	if len(sources) > 0 {
-		source = sources[0]
-	}
-
-	switch serviceType {
-	case "php":
-		archName := arch
-		if arch == "arm64" {
-			archName = "aarch64"
-		}
-		return fmt.Sprintf("https://dl.static-php.dev/static-php-cli/common/php-%s-cli-%s-%s.tar.gz", fullVer, osName, archName)
-
-	case "mariadb":
-		if osName == "macos" {
-			if arch == "arm64" {
-				return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-mac-macos14-arm64/mariadb-%s-mac-macos14-arm64.tar.gz", fullVer, fullVer)
-			}
-			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-mac-macos14-x86_64/mariadb-%s-mac-macos14-x86_64.tar.gz", fullVer, fullVer)
-		}
-		if arch == "arm64" {
-			return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-aarch64/mariadb-%s-linux-systemd-aarch64.tar.gz", fullVer, fullVer)
-		}
-		return fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/bintar-linux-systemd-x86_64/mariadb-%s-linux-systemd-x86_64.tar.gz", fullVer, fullVer)
-
-	case "mysql":
-		if osName == "macos" {
-			if arch == "arm64" {
-				return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-arm64.tar.gz", shortVer, fullVer)
-			}
-			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-macos14-x86_64.tar.gz", shortVer, fullVer)
-		}
-		if arch == "arm64" {
-			return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-aarch64.tar.xz", shortVer, fullVer)
-		}
-		return fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/mysql-%s-linux-glibc2.28-x86_64.tar.xz", shortVer, fullVer)
-
-	case "redis":
-		return fmt.Sprintf("https://github.com/redis/redis/archive/refs/tags/%s.tar.gz", fullVer)
-
-	case "nginx":
-		return fmt.Sprintf("https://nginx.org/download/nginx-%s.tar.gz", fullVer)
-
-	case "apache":
-		return fmt.Sprintf("https://archive.apache.org/dist/httpd/httpd-%s.tar.gz", fullVer)
-
-	case "nodejs":
-		if osName == "macos" {
-			if arch == "arm64" {
-				return fmt.Sprintf("https://nodejs.org/dist/v%s/node-v%s-darwin-arm64.tar.gz", fullVer, fullVer)
-			}
-			return fmt.Sprintf("https://nodejs.org/dist/v%s/node-v%s-darwin-x64.tar.gz", fullVer, fullVer)
-		}
-		if arch == "arm64" {
-			return fmt.Sprintf("https://nodejs.org/dist/v%s/node-v%s-linux-arm64.tar.xz", fullVer, fullVer)
-		}
-		return fmt.Sprintf("https://nodejs.org/dist/v%s/node-v%s-linux-x64.tar.xz", fullVer, fullVer)
-
-	case "composer":
-		return fmt.Sprintf("https://getcomposer.org/download/%s/composer.phar", fullVer)
-
-	default:
-		return fmt.Sprintf("%s/%s", source, fullVer)
-	}
 }
 
 func GetDefaultVersions(serviceType string) []ServiceVersion {
@@ -228,8 +288,12 @@ func GetDefaultVersions(serviceType string) []ServiceVersion {
 
 	osName := runtime.GOOS
 	if osName == "darwin" {
-		osName = "macos"
+		// Keep darwin
+	} else if osName == "linux" {
+		osName = "linux"
 	}
+
+	platform := fmt.Sprintf("%s-%s", osName, arch)
 
 	defaults := map[string]map[string]string{
 		"php":      {"8.4": "8.4.16", "8.3": "8.3.29", "8.2": "8.2.30", "8.1": "8.1.34", "8.0": "8.0.30"},
@@ -242,18 +306,29 @@ func GetDefaultVersions(serviceType string) []ServiceVersion {
 		"composer": {"2": "2.8.4"},
 	}
 
+	var serviceTypes []string
+	if serviceType == "" {
+		for k := range defaults {
+			serviceTypes = append(serviceTypes, k)
+		}
+	} else {
+		serviceTypes = []string{serviceType}
+	}
+
 	var versions []ServiceVersion
-	if svc, ok := defaults[serviceType]; ok {
-		for shortVer, fullVer := range svc {
-			url := buildDownloadURL(serviceType, osName, arch, shortVer, fullVer, nil)
-			versions = append(versions, ServiceVersion{
-				Type:      serviceType,
-				Version:   shortVer,
-				FullVer:   fullVer,
-				Available: true,
-				Arch:      arch,
-				URL:       url,
-			})
+	for _, st := range serviceTypes {
+		if svc, ok := defaults[st]; ok {
+			for shortVer, fullVer := range svc {
+				versions = append(versions, ServiceVersion{
+					Type:      st,
+					Version:   shortVer,
+					FullVer:   fullVer,
+					Available: true,
+					Arch:      platform,
+					Platform:  platform,
+					URL:       "",
+				})
+			}
 		}
 	}
 

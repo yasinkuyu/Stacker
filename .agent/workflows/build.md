@@ -4,6 +4,9 @@ description: How to build and run Stacker application
 
 # Build and Run Stacker
 
+> [!IMPORTANT]
+> **Cross-Platform Compatibility Priority**: Tüm geliştirmelerde macOS (Intel/M1), Linux ve Windows uyumluluğu birincil önceliktir. Platforma özel (os-specific) işlemler mutlaka build tag'leri veya runtime kontrolleri ile ayrıştırılmalıdır.
+
 ## Development Mode (Quick Test)
 
 // turbo
