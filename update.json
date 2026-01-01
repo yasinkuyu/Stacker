@@ -1,5 +1,4 @@
 {
-  "$schema": "https://stacker.dev/schema/v1",
   "meta": {
     "version": "1.0.0",
     "lastUpdated": "2025-01-01T00:00:00Z",
@@ -78,7 +77,10 @@
           }
         }
       },
-      "sources": ["https://dl.static-php.dev", "https://dl.static-php.dev/mirror"]
+      "sources": [
+        "https://dl.static-php.dev",
+        "https://dl.static-php.dev/mirror"
+      ]
     },
     "mariadb": {
       "description": "MariaDB database server",
@@ -93,13 +95,17 @@
               "url": "https://archive.mariadb.org/mariadb-11.4.5/bintar-mac-macos14-arm64/mariadb-11.4.5-mac-macos14-arm64.tar.gz",
               "checksum": "",
               "size": 98765432,
-              "mirrors": ["https://mirror.mariadb.org/mariadb-11.4.5/bintar-mac-macos14-arm64/mariadb-11.4.5-mac-macos14-arm64.tar.gz"]
+              "mirrors": [
+                "https://mirror.mariadb.org/mariadb-11.4.5/bintar-mac-macos14-arm64/mariadb-11.4.5-mac-macos14-arm64.tar.gz"
+              ]
             },
             "darwin-x86_64": {
               "url": "https://archive.mariadb.org/mariadb-11.4.5/bintar-mac-macos14-x86_64/mariadb-11.4.5-mac-macos14-x86_64.tar.gz",
               "checksum": "",
               "size": 102345678,
-              "mirrors": ["https://mirror.mariadb.org/mariadb-11.4.5/bintar-mac-macos14-x86_64/mariadb-11.4.5-mac-macos14-x86_64.tar.gz"]
+              "mirrors": [
+                "https://mirror.mariadb.org/mariadb-11.4.5/bintar-mac-macos14-x86_64/mariadb-11.4.5-mac-macos14-x86_64.tar.gz"
+              ]
             },
             "linux-arm64": {
               "url": "https://archive.mariadb.org/mariadb-11.4.5/bintar-linux-systemd-arm64/mariadb-11.4.5-linux-systemd-arm64.tar.gz",
@@ -146,7 +152,10 @@
           }
         }
       },
-      "sources": ["https://archive.mariadb.org", "https://mirror.mariadb.org"]
+      "sources": [
+        "https://archive.mariadb.org",
+        "https://mirror.mariadb.org"
+      ]
     },
     "mysql": {
       "description": "MySQL database server",
@@ -160,13 +169,17 @@
               "url": "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.40-macos14-arm64.tar.gz",
               "checksum": "",
               "size": 105000000,
-              "mirrors": ["https://cdn.mysql.com/Downloads/MySQL-8.0/mysql-8.0.40-macos14-arm64.tar.gz"]
+              "mirrors": [
+                "https://cdn.mysql.com/Downloads/MySQL-8.0/mysql-8.0.40-macos14-arm64.tar.gz"
+              ]
             },
             "darwin-x86_64": {
               "url": "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.40-macos14-x86_64.tar.gz",
               "checksum": "",
               "size": 108000000,
-              "mirrors": ["https://cdn.mysql.com/Downloads/MySQL-8.0/mysql-8.0.40-macos14-x86_64.tar.gz"]
+              "mirrors": [
+                "https://cdn.mysql.com/Downloads/MySQL-8.0/mysql-8.0.40-macos14-x86_64.tar.gz"
+              ]
             },
             "linux-x86_64": {
               "url": "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.40-linux-glibc2.28-x86_64.tar.gz",
@@ -201,7 +214,10 @@
           }
         }
       },
-      "sources": ["https://dev.mysql.com", "https://cdn.mysql.com"]
+      "sources": [
+        "https://dev.mysql.com",
+        "https://cdn.mysql.com"
+      ]
     },
     "redis": {
       "description": "Redis in-memory data store",
@@ -216,7 +232,9 @@
               "url": "https://download.redis.io/releases/redis-7.4.2.tar.gz",
               "checksum": "",
               "size": 3500000,
-              "mirrors": ["https://github.com/redis/redis/archive/refs/tags/7.4.2.tar.gz"]
+              "mirrors": [
+                "https://github.com/redis/redis/archive/refs/tags/7.4.2.tar.gz"
+              ]
             }
           }
         },
@@ -245,7 +263,10 @@
           }
         }
       },
-      "sources": ["https://download.redis.io", "https://github.com/redis/redis"]
+      "sources": [
+        "https://download.redis.io",
+        "https://github.com/redis/redis"
+      ]
     },
     "nginx": {
       "description": "High-performance web server",
@@ -256,40 +277,31 @@
           "fullVersion": "1.27.3",
           "releaseDate": "2024-12-10",
           "artifacts": {
-            "all": {
-              "url": "https://nginx.org/download/nginx-1.27.3.tar.gz",
-              "checksum": "",
-              "size": 1200000,
-              "mirrors": ["https://github.com/nginx/nginx/archive/refs/tags/release-1.27.3.tar.gz"]
-            }
-          }
-        },
-        "1.26": {
-          "fullVersion": "1.26.2",
-          "releaseDate": "2024-10-08",
-          "artifacts": {
-            "all": {
-              "url": "https://nginx.org/download/nginx-1.26.2.tar.gz",
-              "checksum": "",
-              "size": 1150000,
+            "darwin-arm64": {
+              "url": "https://ghcr.io/v2/homebrew/core/nginx/blobs/sha256:4f8f479a3a736b9bc5b096afafde3acd14b50d56b85817d7a832f1f24861788a",
+              "checksum": "4f8f479a3a736b9bc5b096afafde3acd14b50d56b85817d7a832f1f24861788a",
+              "size": 524288,
               "mirrors": []
-            }
-          }
-        },
-        "1.24": {
-          "fullVersion": "1.24.0",
-          "releaseDate": "2023-04-11",
-          "artifacts": {
-            "all": {
-              "url": "https://nginx.org/download/nginx-1.24.0.tar.gz",
-              "checksum": "",
-              "size": 1100000,
+            },
+            "darwin-x86_64": {
+              "url": "https://ghcr.io/v2/homebrew/core/nginx/blobs/sha256:fec92e8e58f3d027a84b0f57d2647857ee9c7ce4a40dd3a1ed29a2c47c171f12",
+              "checksum": "fec92e8e58f3d027a84b0f57d2647857ee9c7ce4a40dd3a1ed29a2c47c171f12",
+              "size": 524288,
+              "mirrors": []
+            },
+            "linux-x86_64": {
+              "url": "https://ghcr.io/v2/homebrew/core/nginx/blobs/sha256:28c926405aeaf9b9c00123f2453632170208178be147f2ada618bda3bf40f68e",
+              "checksum": "28c926405aeaf9b9c00123f2453632170208178be147f2ada618bda3bf40f68e",
+              "size": 600000,
               "mirrors": []
             }
           }
         }
       },
-      "sources": ["https://nginx.org", "https://github.com/nginx/nginx"]
+      "sources": [
+        "https://nginx.org",
+        "https://github.com/nginx/nginx"
+      ]
     },
     "apache": {
       "description": "Apache HTTP Server",
@@ -300,16 +312,31 @@
           "fullVersion": "2.4.62",
           "releaseDate": "2024-06-14",
           "artifacts": {
-            "all": {
-              "url": "https://archive.apache.org/dist/httpd/httpd-2.4.62.tar.gz",
-              "checksum": "",
-              "size": 10000000,
-              "mirrors": ["https://dlcdn.apache.org/httpd/httpd-2.4.62.tar.gz"]
+            "darwin-arm64": {
+              "url": "https://ghcr.io/v2/homebrew/core/httpd/blobs/sha256:c84d2ea249911b6f1efade686c4f2c3aa168634e7b9097100c899fde93bae540",
+              "checksum": "c84d2ea249911b6f1efade686c4f2c3aa168634e7b9097100c899fde93bae540",
+              "size": 5800000,
+              "mirrors": []
+            },
+            "darwin-x86_64": {
+              "url": "https://ghcr.io/v2/homebrew/core/httpd/blobs/sha256:55d9d504e4a02ab4915520d1ee7099bca5e2cb149d2cf03550377b451f7ca8a3",
+              "checksum": "55d9d504e4a02ab4915520d1ee7099bca5e2cb149d2cf03550377b451f7ca8a3",
+              "size": 6000000,
+              "mirrors": []
+            },
+            "linux-x86_64": {
+              "url": "https://ghcr.io/v2/homebrew/core/httpd/blobs/sha256:93bc9ce8c8f2996105f3b3d85fe8d562f12266066a17cb1ead995fdcbdbad905",
+              "checksum": "93bc9ce8c8f2996105f3b3d85fe8d562f12266066a17cb1ead995fdcbdbad905",
+              "size": 7000000,
+              "mirrors": []
             }
           }
         }
       },
-      "sources": ["https://archive.apache.org", "https://dlcdn.apache.org"]
+      "sources": [
+        "https://archive.apache.org",
+        "https://dlcdn.apache.org"
+      ]
     },
     "composer": {
       "description": "PHP dependency manager",
@@ -323,12 +350,17 @@
               "url": "https://getcomposer.org/download/2.8.4/composer.phar",
               "checksum": "",
               "size": 3000000,
-              "mirrors": ["https://github.com/composer/composer/releases/download/2.8.4/composer.phar"]
+              "mirrors": [
+                "https://github.com/composer/composer/releases/download/2.8.4/composer.phar"
+              ]
             }
           }
         }
       },
-      "sources": ["https://getcomposer.org", "https://github.com/composer/composer"]
+      "sources": [
+        "https://getcomposer.org",
+        "https://github.com/composer/composer"
+      ]
     },
     "nodejs": {
       "description": "JavaScript runtime",
@@ -425,7 +457,11 @@
           }
         }
       },
-      "sources": ["https://nodejs.org", "https://unofficial-builds.nodejs.org", "https://github.com/nodejs/node"]
+      "sources": [
+        "https://nodejs.org",
+        "https://unofficial-builds.nodejs.org",
+        "https://github.com/nodejs/node"
+      ]
     }
   }
 }

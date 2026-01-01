@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -64,21 +65,32 @@ type StackerInfo struct {
 
 // ServiceVersion represents an available service version for installation
 type ServiceVersion struct {
-	Type      string
-	Version   string
-	FullVer   string
-	Available bool
-	Arch      string
-	Platform  string
-	URL       string
-	Checksum  string
-	Size      int64
-	Mirrors   []string
-	Preferred bool
+	Type      string   `json:"type"`
+	Version   string   `json:"version"`
+	FullVer   string   `json:"fullVer"`
+	Available bool     `json:"available"`
+	Arch      string   `json:"arch"`
+	Platform  string   `json:"platform"`
+	URL       string   `json:"url"`
+	Checksum  string   `json:"checksum"`
+	Size      int64    `json:"size"`
+	Mirrors   []string `json:"mirrors,omitempty"`
+	Preferred bool     `json:"preferred"`
 }
 
 // FetchRemoteConfig fetches update.json from GitHub with caching and ETag support
 func FetchRemoteConfig() (*RemoteConfig, error) {
+	// Check for local update.json for development
+	if _, err := os.Stat("update.json"); err == nil {
+		data, err := os.ReadFile("update.json")
+		if err == nil {
+			var config RemoteConfig
+			if err := json.Unmarshal(data, &config); err == nil {
+				return &config, nil
+			}
+		}
+	}
+
 	cacheMutex.RLock()
 	if cachedConfig != nil && time.Since(lastFetch) < 10*time.Minute {
 		defer cacheMutex.RUnlock()
@@ -300,7 +312,7 @@ func GetDefaultVersions(serviceType string) []ServiceVersion {
 		"mariadb":  {"11.4": "11.4.5", "10.11": "10.11.11", "10.6": "10.6.21"},
 		"mysql":    {"8.0": "8.0.40", "5.7": "5.7.44"},
 		"redis":    {"7.4": "7.4.2", "7.2": "7.2.6", "7.0": "7.0.15"},
-		"nginx":    {"1.27": "1.27.3", "1.26": "1.26.2", "1.24": "1.24.0"},
+		"nginx":    {"1.27": "1.27.3"},
 		"apache":   {"2.4": "2.4.62"},
 		"nodejs":   {"22": "22.12.0", "20": "20.18.1", "18": "18.20.5"},
 		"composer": {"2": "2.8.4"},
