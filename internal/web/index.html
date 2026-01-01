@@ -1857,6 +1857,8 @@
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
             document.querySelector('[data-page="' + pageId + '"]').classList.add('active');
+            // Persist page in URL hash for refresh
+            window.location.hash = pageId;
             loadPage(pageId);
         }
 
@@ -3213,6 +3215,13 @@
         loadStatus();
         loadSettings();
         setInterval(loadStatus, 5000);
+
+        // Restore page from URL hash on load
+        const initialPage = window.location.hash.slice(1) || 'dashboard';
+        const validPages = ['dashboard', 'sites', 'services', 'php', 'dumps', 'mail', 'logs', 'settings'];
+        if (validPages.includes(initialPage)) {
+            showPage(initialPage);
+        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
