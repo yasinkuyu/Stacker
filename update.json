@@ -1,24 +1,71 @@
 {
-  "version": "1.0.0",
-  "releaseDate": "2025-01-01",
-  "downloadUrl": "https://github.com/yasinkuyu/Stacker/releases/latest",
-  "changelog": "Initial release with standalone binary management",
-  "binaries": {
-    "php": {
-      "8.4": "8.4.16",
-      "8.3": "8.3.29",
-      "8.2": "8.2.30",
-      "8.1": "8.1.34",
-      "8.0": "8.0.30"
+    "stacker": {
+        "version": "1.0.0",
+        "releaseDate": "2025-01-01",
+        "downloadUrl": "https://github.com/yasinkuyu/Stacker/releases/latest",
+        "changelog": "Initial release with standalone binary management"
     },
-    "mariadb": {
-      "11.4": "11.4.5",
-      "10.11": "10.11.11",
-      "10.6": "10.6.21"
-    },
-    "redis": {
-      "7.2": "7.2.6",
-      "7.0": "7.0.15"
+    "services": {
+        "php": {
+            "versions": {
+                "8.4": "8.4.16",
+                "8.3": "8.3.29",
+                "8.2": "8.2.30",
+                "8.1": "8.1.34",
+                "8.0": "8.0.30"
+            },
+            "source": "https://static-php.dev"
+        },
+        "mariadb": {
+            "versions": {
+                "11.4": "11.4.5",
+                "10.11": "10.11.11",
+                "10.6": "10.6.21"
+            },
+            "source": "https://archive.mariadb.org"
+        },
+        "mysql": {
+            "versions": {
+                "8.0": "8.0.40",
+                "5.7": "5.7.44"
+            },
+            "source": "https://dev.mysql.com"
+        },
+        "redis": {
+            "versions": {
+                "7.4": "7.4.2",
+                "7.2": "7.2.6",
+                "7.0": "7.0.15"
+            },
+            "source": "https://github.com/redis/redis"
+        },
+        "nginx": {
+            "versions": {
+                "1.27": "1.27.3",
+                "1.26": "1.26.2",
+                "1.24": "1.24.0"
+            },
+            "source": "https://nginx.org"
+        },
+        "apache": {
+            "versions": {
+                "2.4": "2.4.62"
+            },
+            "source": "https://httpd.apache.org"
+        },
+        "composer": {
+            "versions": {
+                "2": "2.8.4"
+            },
+            "source": "https://getcomposer.org"
+        },
+        "nodejs": {
+            "versions": {
+                "22": "22.12.0",
+                "20": "20.18.1",
+                "18": "18.20.5"
+            },
+            "source": "https://nodejs.org"
+        }
     }
-  }
 }

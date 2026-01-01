@@ -2315,10 +2315,11 @@
                 if (!res.ok) throw new Error('Failed to fetch');
                 const data = await res.json();
                 const currentVersion = '1.0.0'; // This should match app version
-                if (data.version !== currentVersion) {
-                    showToast(`New version ${data.version} available!`, 'info');
-                    if (confirm(`New version ${data.version} is available!\n\n${data.changelog}\n\nWould you like to download it?`)) {
-                        window.open(data.downloadUrl, '_blank');
+                const remoteVersion = data.stacker.version;
+                if (remoteVersion !== currentVersion) {
+                    showToast(`New version ${remoteVersion} available!`, 'info');
+                    if (confirm(`New version ${remoteVersion} is available!\n\n${data.stacker.changelog}\n\nWould you like to download it?`)) {
+                        window.open(data.stacker.downloadUrl, '_blank');
                     }
                 } else {
                     showToast('You are running the latest version');
