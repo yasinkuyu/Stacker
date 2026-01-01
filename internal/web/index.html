@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stacker - PHP Development Environment</title>
+    <title>Stacker - Development Environment</title>
     <link rel="icon" type="image/png" href="/logo.png">
     <style>
         :root {
@@ -31,6 +31,7 @@
             --shadow-lg: rgba(0, 0, 0, 0.15);
             --gradient-start: #6366f1;
             --gradient-end: #8b5cf6;
+            --sidebar-width: 240px;
         }
 
         [data-theme="dark"] {
@@ -80,9 +81,8 @@
             min-height: 100vh;
         }
 
-        /* Sidebar */
         .sidebar {
-            width: 240px;
+            width: var(--sidebar-width);
             background: var(--bg-secondary);
             border-right: 1px solid var(--border);
             padding: 20px 16px;
@@ -94,6 +94,7 @@
             height: calc(100vh - 32px);
             overflow-y: auto;
             z-index: 1000;
+            transition: width 0.3s ease;
         }
 
         .logo {
@@ -183,14 +184,21 @@
         /* Main Content */
         .main-content {
             flex: 1;
-            padding: 24px 40px;
-            margin-left: 240px;
+            padding: 80px 40px 40px;
+            /* Increased top padding to avoid overlap with any window headers */
+            margin-left: var(--sidebar-width);
             min-height: calc(100vh - 32px);
             margin-bottom: 32px;
             background: var(--bg-primary);
             position: relative;
             z-index: 1;
             overflow-x: hidden;
+            transition: margin-left 0.3s ease, padding 0.3s ease;
+        }
+
+        body[data-slim="true"] .main-content {
+            margin-left: 80px;
+            padding-top: 80px;
         }
 
         .page {
@@ -481,6 +489,10 @@
         /* Settings */
         .settings-section {
             margin-bottom: 24px;
+        }
+
+        .settings-section:first-child {
+            padding-top: 24px;
         }
 
         .settings-section-title {
@@ -798,8 +810,94 @@
             display: block;
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--text-secondary);
             margin-bottom: 8px;
+        }
+
+        /* Custom Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 440px;
+            max-width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: scale(0.9);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            overflow: hidden;
+        }
+
+        .modal-overlay.open .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-tertiary);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 24px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            background: var(--bg-tertiary);
         }
 
         .form-input {
@@ -906,9 +1004,9 @@
         }
 
         .service-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -917,8 +1015,8 @@
         }
 
         .service-icon svg {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
         }
 
         .service-icon.mysql {
@@ -1110,11 +1208,10 @@
         }
 
         body[data-slim="true"] {
-            --sidebar-width: 190px;
+            --sidebar-width: 64px;
         }
 
         body[data-slim="true"] .sidebar {
-            width: var(--sidebar-width);
             overflow-x: hidden;
         }
 
@@ -1338,14 +1435,35 @@
             left: 15.5px;
         }
 
-        body[data-slim="true"] aside {
-            width: 64px;
-            bottom: 32px;
+        body[data-slim="true"] .sidebar {
+            width: 80px;
         }
 
         body[data-slim="true"] .main-content {
-            margin-left: 64px;
             padding-bottom: 32px;
+        }
+
+        body[data-slim="true"] .nav-item {
+            justify-content: center;
+            padding: 12px 10px;
+        }
+
+        body[data-slim="true"] .nav-item span {
+            display: none;
+        }
+
+        body[data-slim="true"] .nav-section {
+            display: none;
+        }
+
+        body[data-slim="true"] .logo-text,
+        body[data-slim="true"] .logo-version {
+            display: none;
+        }
+
+        body[data-slim="true"] .logo {
+            justify-content: center;
+            padding: 12px 0;
         }
 
         body[data-slim="true"] .draw-panel {
@@ -1526,6 +1644,15 @@
                         <line x1="12" y1="8" x2="12.01" y2="8" />
                     </svg>
                     <span>About</span>
+                </button>
+                <div class="nav-section">System</div>
+                <button class="nav-item" data-page="settings">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>Settings</span>
                 </button>
             </nav>
         </aside>
@@ -1789,26 +1916,150 @@
                 </div>
             </div>
 
+            <!-- Change Log -->
+            <div id="changelog" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Change Log</h1>
+                    <p class="page-subtitle">Stacker update history</p>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="padding: 32px;">
+                        <div
+                            style="border-left: 3px solid var(--accent); padding-left: 24px; margin-bottom: 40px; position: relative;">
+                            <div
+                                style="position: absolute; left: -8px; top: 0; width: 13px; height: 13px; background: var(--accent); border-radius: 50%; border: 3px solid var(--bg-secondary);">
+                            </div>
+                            <h3 style="margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                                v1.0.1
+                                <span class="status-badge"
+                                    style="background: var(--accent-light); color: var(--accent); border: none;">Latest</span>
+                            </h3>
+                            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">January 1, 2026
+                            </p>
+                            <ul style="padding-left: 18px; line-height: 2; color: var(--text-secondary);">
+                                <li><strong>Composer Integration</strong>: Download and manage `composer.phar` directly.
+                                </li>
+                                <li><strong>Node.js Support</strong>: Install multiple Node.js versions with npm
+                                    inclusion.</li>
+                                <li><strong>Real-time Health Checks</strong>: Automatic service monitoring via PID and
+                                    Port scanning.</li>
+                                <li><strong>Custom Dialogs</strong>: Replaced browser alerts with modern, consistent UI
+                                    modals.</li>
+                                <li><strong>Aesthetic Refinements</strong>: Perfected toggle switches and layout
+                                    spacing.</li>
+                                <li><strong>New Info Hub</strong>: Added dedicated About and Change Log views.</li>
+                            </ul>
+                        </div>
+                        <div style="border-left: 3px solid var(--border); padding-left: 24px; position: relative;">
+                            <div
+                                style="position: absolute; left: -8px; top: 0; width: 13px; height: 13px; background: var(--border); border-radius: 50%; border: 3px solid var(--bg-secondary);">
+                            </div>
+                            <h3 style="margin-bottom: 8px; color: var(--text-primary);">v1.0.0</h3>
+                            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">December 20, 2025
+                            </p>
+                            <ul style="padding-left: 18px; line-height: 2; color: var(--text-muted);">
+                                <li>Initial standalone release with dynamic configuration.</li>
+                                <li>Support for PHP, Nginx, Apache, MySQL, MariaDB, and Redis.</li>
+                                <li>Basic site management and log viewing.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About -->
+            <div id="about" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">About</h1>
+                    <p class="page-subtitle">System information and credits</p>
+                </div>
+                <div class="card" style="padding: 60px 40px; text-align: center;">
+                    <div
+                        style="background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end)); width: 88px; height: 88px; border-radius: 22px; margin: 0 auto 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 24px var(--shadow-lg);">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                    </div>
+                    <h2 style="font-size: 28px; margin-bottom: 12px; letter-spacing: -0.5px;">Stacker</h2>
+                    <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 32px;">Version 1.0.1 Stable
+                        (macOS Edition)</p>
+
+                    <p
+                        style="max-width: 520px; margin: 0 auto 48px; line-height: 1.8; color: var(--text-secondary); font-size: 16px;">
+                        Stacker is a modern, standalone development environment crafted for high-performance web
+                        development.
+                        It empowers developers to manage multiple PHP versions, databases, and servers without local
+                        system dependencies.
+                    </p>
+
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; text-align: left; max-width: 440px; margin: 0 auto;">
+                        <div
+                            style="padding: 20px; background: var(--bg-tertiary); border-radius: 16px; border: 1px solid var(--border);">
+                            <div
+                                style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 1px;">
+                                Developer</div>
+                            <div style="font-weight: 600; font-size: 15px;">Yasin Kuyu</div>
+                        </div>
+                        <div
+                            style="padding: 20px; background: var(--bg-tertiary); border-radius: 16px; border: 1px solid var(--border);">
+                            <div
+                                style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 1px;">
+                                License</div>
+                            <div style="font-weight: 600; font-size: 15px;">MIT Open Source</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 48px;">
+                        <a href="https://github.com/yasinkuyu/Stacker" target="_blank" class="btn"
+                            style="padding: 12px 32px; border-radius: 12px; font-weight: 600;">View on GitHub</a>
+                    </div>
+                </div>
+            </div>
             <!-- Settings -->
             <div id="settings" class="page">
                 <div class="page-header">
                     <h1 class="page-title">Settings</h1>
-                    <p class="page-subtitle">Configure your Stacker preferences</p>
+                    <p class="page-subtitle">Configure Stacker to your preferences</p>
                 </div>
 
-                <div class="settings-section">
-                    <div class="settings-section-title">Appearance</div>
-                    <div class="card">
+                <div class="card">
+                    <div class="settings-section">
+                        <div class="settings-section-title">General</div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Automated Start</div>
+                                <div class="settings-desc">Start services automatically when Stacker opens</div>
+                            </div>
+                            <button class="toggle-switch" id="auto-start-toggle" onclick="toggleAutoStart()"></button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">System Tray</div>
+                                <div class="settings-desc">Minimize to system tray instead of closing</div>
+                            </div>
+                            <button class="toggle-switch" id="tray-toggle" onclick="toggleTray()"></button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Slim Mode</div>
+                                <div class="settings-desc">Compact sidebar for more screen space</div>
+                            </div>
+                            <button class="toggle-switch" id="slim-mode-toggle" onclick="toggleSlimMode()"></button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-title">Appearance</div>
                         <div class="settings-row">
                             <div class="settings-info">
                                 <div class="settings-label">Theme</div>
-                                <div class="settings-desc">Choose between light and dark mode</div>
+                                <div class="settings-desc">Choose your preferred interface style</div>
                             </div>
                             <div class="theme-toggle">
-                                <button class="theme-btn" data-theme="light" onclick="setTheme('light')"
-                                    title="Light Mode">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        width="18" height="18">
+                                <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Light">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
                                         <circle cx="12" cy="12" r="5" />
                                         <line x1="12" y1="1" x2="12" y2="3" />
                                         <line x1="12" y1="21" x2="12" y2="23" />
@@ -1821,70 +2072,48 @@
                                     </svg>
                                 </button>
                                 <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')"
-                                    title="Dark Mode">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        width="18" height="18">
+                                    title="Dark">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
                                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                                     </svg>
                                 </button>
                             </div>
                         </div>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <div class="settings-label">Slim Mode</div>
-                                <div class="settings-desc">Compact layout with reduced spacing</div>
-                            </div>
-                            <button class="toggle-switch" id="slim-mode-toggle" onclick="toggleSlimMode()"></button>
-                        </div>
                     </div>
-                </div>
 
-                <div class="settings-section">
-                    <div class="settings-section-title">Startup</div>
-                    <div class="card">
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <div class="settings-label">Auto-start on login</div>
-                                <div class="settings-desc">Start Stacker automatically when you log in to your Mac</div>
-                            </div>
-                            <button class="toggle-switch" id="auto-start-toggle" onclick="toggleAutoStart()"></button>
-                        </div>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <div class="settings-label">Show in System Tray</div>
-                                <div class="settings-desc">Keep Stacker icon visible in the menu bar</div>
-                            </div>
-                            <button class="toggle-switch active" id="tray-toggle" onclick="toggleTray()"></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <div class="settings-section-title">Server</div>
-                    <div class="card">
+                    <div class="settings-section">
+                        <div class="settings-section-title">Network</div>
                         <div class="settings-row">
                             <div class="settings-info">
                                 <div class="settings-label">Web UI Port</div>
-                                <div class="settings-desc">Port for the web dashboard (requires restart)</div>
+                                <div class="settings-desc">Port used for this dashboard (requires reload)</div>
                             </div>
-                            <div style="display: flex; gap: 12px; align-items: center;">
-                                <input type="number" id="port-input" class="input" value="8080" min="1024" max="65535"
-                                    style="width: 100px;">
+                            <div style="display:flex;gap:8px;">
+                                <input type="number" class="input" id="port-input" value="8080" style="width:100px;">
                                 <button class="btn btn-primary" onclick="savePort()">Save</button>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="settings-section">
-                    <div class="settings-section-title">About</div>
-                    <div class="card">
+                    <div class="settings-section">
+                        <div class="settings-section-title">Support</div>
                         <div class="settings-row">
                             <div class="settings-info">
-                                <div class="settings-label">Stacker</div>
-                                <div class="settings-desc">Version 1.0.0 • PHP Development Environment</div>
+                                <div class="settings-label">Check for Updates</div>
+                                <div class="settings-desc">Currently running version 1.0.1</div>
                             </div>
-                            <button class="btn" onclick="checkUpdates()">Check for Updates</button>
+                            <button class="btn" onclick="checkUpdates()">Check Now</button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Maintenance</div>
+                                <div class="settings-desc">Clean up temporary files and logs</div>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn" onclick="clearDumps()">Clear Dumps</button>
+                                <button class="btn" onclick="clearMail()">Clear Mail</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1900,19 +2129,18 @@
     <!-- Draw Panel Overlay -->
     <div class="draw-panel-overlay" id="drawPanelOverlay" onclick="closeDrawPanel()"></div>
 
-    <!-- Draw Panel -->
     <div class="draw-panel" id="drawPanel">
         <div class="draw-panel-header">
-            <span class="draw-panel-title" id="drawPanelTitle">Panel</span>
+            <h2 class="draw-panel-title" id="drawPanelTitle">Title</h2>
             <button class="draw-panel-close" onclick="closeDrawPanel()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
             </button>
         </div>
         <div class="draw-panel-body" id="drawPanelBody">
-            <!-- Dynamic content -->
+            <!-- Content dynamicly loaded -->
         </div>
         <div class="draw-panel-footer" id="drawPanelFooter">
             <button class="btn" onclick="closeDrawPanel()">Cancel</button>
@@ -1920,23 +2148,102 @@
         </div>
     </div>
 
+    <!-- Custom Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">Confirm</span>
+                <button class="modal-close" id="modalClose">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="modalMessage">
+                Are you sure you want to proceed?
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="modalCancel">Cancel</button>
+                <button class="btn btn-primary" id="modalConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Navigation
+        // ==========================================
+        // UI & Navigation
+        // ==========================================
+
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => showPage(item.dataset.page));
         });
 
+        // Custom Modal UI
+        const customModal = {
+            overlay: document.getElementById('modalOverlay'),
+            title: document.getElementById('modalTitle'),
+            message: document.getElementById('modalMessage'),
+            confirmBtn: document.getElementById('modalConfirm'),
+            cancelBtn: document.getElementById('modalCancel'),
+            closeBtn: document.getElementById('modalClose'),
+
+            show(options) {
+                this.title.textContent = options.title || 'Confirm';
+                this.message.innerHTML = options.message || '';
+                this.confirmBtn.textContent = options.confirmText || 'Confirm';
+                this.confirmBtn.className = 'btn ' + (options.type === 'danger' ? 'btn-danger' : 'btn-primary');
+
+                if (options.hideCancel) {
+                    this.cancelBtn.style.display = 'none';
+                } else {
+                    this.cancelBtn.style.display = 'block';
+                    this.cancelBtn.textContent = options.cancelText || 'Cancel';
+                }
+
+                this.overlay.classList.add('open');
+
+                return new Promise((resolve) => {
+                    const onConfirm = () => {
+                        this.overlay.classList.remove('open');
+                        window.removeEventListener('keydown', onEsc);
+                        resolve(true);
+                    };
+                    const onCancel = () => {
+                        this.overlay.classList.remove('open');
+                        window.removeEventListener('keydown', onEsc);
+                        resolve(false);
+                    };
+                    const onEsc = (e) => { if (e.key === 'Escape') onCancel(); };
+
+                    this.confirmBtn.onclick = onConfirm;
+                    this.cancelBtn.onclick = onCancel;
+                    this.closeBtn.onclick = onCancel;
+                    this.overlay.onclick = (e) => { if (e.target === this.overlay) onCancel(); };
+                    window.addEventListener('keydown', onEsc);
+                });
+            }
+        };
+
+        const ui = {
+            confirm: (message, options = {}) => customModal.show({ message, ...options }),
+            alert: (message, options = {}) => customModal.show({ message, hideCancel: true, confirmText: 'OK', ...options })
+        };
+
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            document.querySelector('[data-page="' + pageId + '"]').classList.add('active');
-            // Persist page in URL hash for refresh
+
+            const page = document.getElementById(pageId);
+            if (page) page.classList.add('active');
+
+            const nav = document.querySelector('[data-page="' + pageId + '"]');
+            if (nav) nav.classList.add('active');
+
             window.location.hash = pageId;
             loadPage(pageId);
         }
 
-        // API Helper
         async function api(endpoint, method = 'GET', data = null) {
             try {
                 const options = { method };
@@ -1945,14 +2252,17 @@
                     options.body = JSON.stringify(data);
                 }
                 const res = await fetch('/api' + endpoint, options);
+                if (!res.ok) {
+                    const error = await res.json().catch(() => ({}));
+                    throw new Error(error.message || `API error: ${res.status}`);
+                }
                 return res.json();
             } catch (err) {
                 console.error('API Error:', err);
-                return null;
+                throw err;
             }
         }
 
-        // Toast Notification
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toast-message');
@@ -1961,7 +2271,10 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // Page Loaders
+        // ==========================================
+        // Data Loading
+        // ==========================================
+
         async function loadPage(pageId) {
             switch (pageId) {
                 case 'dashboard': await loadStatus(); break;
@@ -1976,395 +2289,145 @@
         }
 
         async function loadStatus() {
-            const data = await api('/status');
-            if (data) {
-                document.getElementById('stat-sites').textContent = data.sites || 0;
-                document.getElementById('stat-services').textContent = data.services || 0;
-                document.getElementById('stat-dumps').textContent = data.dumps || 0;
-                document.getElementById('stat-php').textContent = data.php || '-';
+            try {
+                const data = await api('/status');
+                if (data) {
+                    document.getElementById('stat-sites').textContent = data.sites || 0;
+                    document.getElementById('stat-services').textContent = data.services || 0;
+                    document.getElementById('stat-dumps').textContent = data.dumps || 0;
+                    document.getElementById('stat-php').textContent = data.php || '-';
 
-                // Load recent sites
-                const sites = await api('/sites');
-                const recentSitesEl = document.getElementById('recent-sites');
-                if (sites && sites.length) {
-                    recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
-                        <div class="list-item" style="padding: 12px 16px;">
-                            <div class="item-info">
-                                <div class="item-primary" style="display: flex; align-items: center; gap: 8px;">
-                                    ${s.name}.test
-                                    ${s.php ? `<span class="site-badge php" style="font-size: 9px; padding: 2px 6px;">PHP ${s.php}</span>` : ''}
-                                </div>
-                                <div class="item-secondary" style="font-size: 12px;">${s.path}</div>
-                            </div>
-                            <button class="icon-btn" onclick="openSiteInBrowser('${s.name}')" title="Open in browser">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                    <polyline points="15 3 21 3 21 9"/>
-                                    <line x1="10" y1="14" x2="21" y2="3"/>
-                                </svg>
-                            </button>
-                        </div>
-                    `).join('');
-                } else {
-                    recentSitesEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No sites configured</div>';
-                }
+                    // Update server status text
+                    const statusDot = document.querySelector('.server-status-dot');
+                    const statusText = document.getElementById('server-status-text');
+                    statusDot.style.background = '#10b981'; // green
+                    statusText.textContent = 'Server running on :8080';
 
-                // Load quick services
-                const servicesData = await api('/services');
-                const quickServicesEl = document.getElementById('quick-services');
-                if (servicesData && ((servicesData.installed && servicesData.installed.length) || (servicesData.available && servicesData.available.length))) {
-                    const installedServices = servicesData.installed || [];
-                    if (installedServices.length) {
-                        quickServicesEl.innerHTML = installedServices.slice(0, 5).map(s => `
-                            <div class="list-item" style="padding: 10px 0; border-bottom: none;">
+                    // Load recent sites
+                    const sites = await api('/sites');
+                    const recentSitesEl = document.getElementById('recent-sites');
+                    if (sites && sites.length) {
+                        recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
+                            <div class="list-item" style="padding: 12px 16px;">
                                 <div class="item-info">
-                                    <div class="item-primary" style="font-size: 13px;">${s.type.toUpperCase()} ${s.version}</div>
+                                    <div class="item-primary" style="display: flex; align-items: center; gap: 8px;">
+                                        ${s.name}.test
+                                        ${s.php ? `<span class="site-badge php" style="font-size: 9px; padding: 2px 6px;">PHP ${s.php}</span>` : ''}
+                                    </div>
+                                    <div class="item-secondary" style="font-size: 12px;">${s.path}</div>
                                 </div>
-                                <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 11px;">
-                                    <span class="status-dot"></span>${s.status}
-                                </span>
-                                <button class="icon-btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" style="width: 28px; height: 28px;" title="${s.status === 'running' ? 'Stop' : 'Start'}">
+                                <button class="icon-btn" onclick="openSiteInBrowser('${s.name}')" title="Open in browser">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        ${s.status === 'running'
-                                ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
-                                : '<polygon points="5 3 19 12 5 21 5 3"/>'}
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="10" y1="14" x2="21" y2="3"/>
                                     </svg>
                                 </button>
                             </div>
                         `).join('');
                     } else {
-                        quickServicesEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No services installed yet. Go to Services to install.</div>';
+                        recentSitesEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No sites configured</div>';
                     }
-                } else {
-                    quickServicesEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No services available</div>';
-                }
-            }
-        }
 
-        async function loadSites() {
-            const list = document.getElementById('sites-list');
-            const sites = await api('/sites');
-            if (!sites || !sites.length) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg><p>No sites configured</p><p style="font-size:12px;margin-top:8px;">Add a site to get started</p></div>';
-                return;
-            }
-            list.innerHTML = sites.map(s => `
-                <div class="list-item">
-                    <div class="item-info">
-                        <div class="item-primary">${s.name}.test</div>
-                        <div class="item-secondary">${s.path}</div>
-                    </div>
-                    <span class="status-badge status-running"><span class="status-dot"></span>Running</span>
-                </div>
-            `).join('');
-        }
-
-        async function loadServices() {
-            const list = document.getElementById('services-list');
-            const data = await api('/services');
-
-            if (!data) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><p>Error loading services</p></div>';
-                return;
-            }
-
-            const { installed, available } = data;
-
-            let html = '';
-
-            // Installed services
-            if (installed && installed.length > 0) {
-                html += '<h3 style="margin: 20px 24px 10px;">Installed Services</h3>';
-                html += installed.map(s => `
-                    <div class="list-item">
-                        <div class="item-info">
-                            <div class="item-primary">${s.name || s.type + '-' + s.version}</div>
-                            <div class="item-secondary">${s.type} ${s.version} • Port ${s.port}</div>
-                        </div>
-                        <span class="status-badge status-${s.status}">
-                            <span class="status-dot"></span>${s.status}
-                        </span>
-                        <div style="display:flex;gap:8px;">
-                            <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name || (s.type + '-' + s.version)}')` : `startService('${s.name || (s.type + '-' + s.version)}')`}">
-                                ${s.status === 'running' ? 'Stop' : 'Start'}
-                            </button>
-                            <button class="btn btn-danger" onclick="uninstallService('${s.name || (s.type + '-' + s.version)}')">
-                                Uninstall
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            // Available versions
-            if (available && available.length > 0) {
-                const byType = available.reduce((acc, v) => {
-                    if (!acc[v.type]) acc[v.type] = [];
-                    acc[v.type].push(v);
-                    return acc;
-                }, {});
-
-                html += '<h3 style="margin: 20px 24px 10px;">Install Service</h3>';
-
-                Object.keys(byType).sort().forEach(type => {
-                    html += `
-                        <div style="margin: 0 24px 16px;">
-                            <div style="font-weight:600;margin-bottom:8px;">${type.toUpperCase()}</div>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                ${byType[type].map(v => `
-                                    <button class="btn" onclick="installService('${v.type}', '${v.version}')">
-                                        Install ${v.version}
+                    // Load quick services
+                    const servicesData = await api('/services');
+                    const quickServicesEl = document.getElementById('quick-services');
+                    if (servicesData && servicesData.installed) {
+                        const installed = servicesData.installed;
+                        if (installed.length) {
+                            quickServicesEl.innerHTML = installed.slice(0, 5).map(s => `
+                                <div class="list-item" style="padding: 10px 0; border-bottom: none;">
+                                    <div class="item-info">
+                                        <div class="item-primary" style="font-size: 13px;">${s.type.toUpperCase()} ${s.version}</div>
+                                    </div>
+                                    <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 11px;">
+                                        <span class="status-dot"></span>${s.status}
+                                    </span>
+                                    <button class="icon-btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" style="width: 28px; height: 28px;" title="${s.status === 'running' ? 'Stop' : 'Start'}">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            ${s.status === 'running'
+                                    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+                                    : '<polygon points="5 3 19 12 5 21 5 3"/>'}
+                                        </svg>
                                     </button>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            if (!installed || installed.length === 0) {
-                if (!available || available.length === 0) {
-                    html = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><p>No services available</p></div>';
+                                </div>
+                            `).join('');
+                        } else {
+                            quickServicesEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No services installed yet.</div>';
+                        }
+                    }
                 }
-            }
-
-            list.innerHTML = html;
+            } catch (err) { console.error(err); }
         }
 
-        async function loadDumps() {
-            const list = document.getElementById('dumps-list');
-            const data = await api('/dumps');
-            if (!data || !data.dumps || !data.dumps.length) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No dumps recorded</p></div>';
-                return;
-            }
-            list.innerHTML = data.dumps.map(d => `
-                <div class="list-item" onclick="viewDump('${d.id}')" style="cursor: pointer;">
-                    <div class="item-info">
-                        <div class="item-primary">
-                            <span class="status-badge" style="background: var(--accent-bg); color: var(--accent); padding: 2px 8px; font-size: 10px; margin-right: 8px;">${d.type}</span>
-                            ${d.file}:${d.line}
-                        </div>
-                        <div class="item-secondary">${d.site || 'Unknown'}</div>
-                    </div>
-                    <span class="item-secondary">${new Date(d.timestamp).toLocaleString()}</span>
-                </div>
-            `).join('');
-        }
-
-        async function viewDump(id) {
-            const data = await api('/dumps');
-            if (data && data.dumps) {
-                const dump = data.dumps.find(d => d.id === id);
-                if (dump) {
-                    const content = `
-                        <div style="padding: 16px;">
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Type</div>
-                                <div style="font-weight: 600;">${dump.type}</div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Location</div>
-                                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">${dump.file}:${dump.line}</div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Timestamp</div>
-                                <div>${new Date(dump.timestamp).toLocaleString()}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Data</div>
-                                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; max-height: 300px; overflow-y: auto; white-space: pre-wrap;">${JSON.stringify(dump.data, null, 2)}</div>
-                            </div>
-                        </div>
-                    `;
-                    openDrawPanel('Dump Details', content, null, 'Close');
-                }
-            }
-        }
-
-        async function loadMail() {
-            const list = document.getElementById('mail-list');
-            const emails = await api('/mail');
-            if (!emails || !emails.length) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><p>No emails received</p></div>';
-                return;
-            }
-            list.innerHTML = emails.map(e => `
-                <div class="list-item" onclick="viewEmail('${e.id}')" style="cursor: pointer;">
-                    <div class="item-info">
-                        <div class="item-primary">${e.subject}</div>
-                        <div class="item-secondary">${e.from}</div>
-                    </div>
-                    <span class="item-secondary">${new Date(e.timestamp).toLocaleString()}</span>
-                </div>
-            `).join('');
-        }
-
-        async function viewEmail(id) {
-            const emails = await api('/mail');
-            if (emails && emails.length) {
-                const email = emails.find(e => e.id === id);
-                if (email) {
-                    const content = `
-                        <div style="padding: 16px;">
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">From</div>
-                                <div style="font-weight: 600;">${email.from}</div>
-                                <div style="font-size: 12px; color: var(--text-muted);">${email.to.join(', ')}</div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Subject</div>
-                                <div style="font-weight: 600;">${email.subject}</div>
-                            </div>
-                            <div style="margin-bottom: 16px;">
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Timestamp</div>
-                                <div>${new Date(email.timestamp).toLocaleString()}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Body</div>
-                                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-size: 13px;">${email.body || '(No body)'}</div>
-                            </div>
-                        </div>
-                    `;
-                    openDrawPanel('Email Details', content, null, 'Close');
-                }
-            }
-        }
-
-        async function loadLogs() {
-            const list = document.getElementById('logs-list');
-            const logs = await api('/logs');
-            if (!logs || !logs.length) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><p>No log files found</p></div>';
-                return;
-            }
-            list.innerHTML = logs.map(l => `
-                <div class="list-item" onclick="viewLog('${l.path || l.name}')" style="cursor: pointer;">
-                    <div class="item-info">
-                        <div class="item-primary">${l.name}</div>
-                        <div class="item-secondary">${l.site || 'System'}</div>
-                    </div>
-                    <span class="item-secondary">${new Date(l.modified || Date.now()).toLocaleString()}</span>
-                </div>
-            `).join('');
-        }
-
-        async function viewLog(path) {
-            const content = `
-                <div style="padding: 16px;">
-                    <div style="margin-bottom: 16px;">
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Log File</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all;">${path}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Content</div>
-                        <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; max-height: 500px; overflow-y: auto; white-space: pre; font-family: 'JetBrains Mono', monospace; font-size: 11px;">Loading log content...</div>
-                    </div>
-                </div>
-            `;
-            openDrawPanel('Log File', content, null, 'Close');
-
-            // Load log content (simulated - in real app this would fetch from API)
-            setTimeout(() => {
-                const logContentEl = document.querySelector('#drawPanelBody > div > div:last-child > div:last-child');
-                if (logContentEl) {
-                    logContentEl.innerHTML = 'Log content preview...<br><br><span style="color: var(--text-muted);">(Full log viewing requires server-side implementation)</span>';
-                }
-            }, 500);
-        }
-
-        async function loadPHP() {
-            const list = document.getElementById('php-list');
-            const data = await api('/php');
-            if (!data || !data.versions || !data.versions.length) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="12" rx="10" ry="6"/></svg><p>No PHP versions detected</p><p style="font-size:12px;margin-top:8px;">Click <strong>Install PHP</strong> to download a standalone PHP version</p></div>';
-                return;
-            }
-            list.innerHTML = data.versions.map(v => `
-                <div class="list-item">
-                    <div class="item-info" style="flex:1; min-width:0;">
-                        <div class="item-primary">PHP ${v.version}</div>
-                        <div class="item-secondary" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.path || 'System PHP'}</div>
-                    </div>
-                    <div class="item-actions" style="display:flex; gap:8px; flex-shrink:0;">
-                        ${v.default
-                    ? '<span class="status-badge status-running" style="padding:4px 10px; font-size:11px;"><span class="status-dot"></span>Default</span>'
-                    : '<button class="btn" onclick="setPHPVersion(\'' + v.version + '\')" style="padding:6px 12px; font-size:12px;">Set Default</button>'
-                }
-                        ${v.path ? '<button class="btn btn-danger" onclick="deletePHP(\'' + v.version + '\')" style="padding:6px 12px; font-size:12px;" title="Remove from list">×</button>' : ''}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function deletePHP(version) {
-            if (confirm('Remove PHP ' + version + ' from the list?')) {
-                showToast('PHP ' + version + ' removed from list');
-                loadPHP();
-            }
-        }
+        // ==========================================
+        // Settings & Actions
+        // ==========================================
 
         async function loadSettings() {
-            const prefs = await api('/preferences');
-            if (prefs) {
-                document.documentElement.setAttribute('data-theme', prefs.theme);
-                document.querySelectorAll('.theme-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
-                });
-                document.getElementById('auto-start-toggle').classList.toggle('active', prefs.autoStart);
-                document.getElementById('tray-toggle').classList.toggle('active', prefs.showTray);
-                document.getElementById('port-input').value = prefs.port || 8080;
-                if (document.getElementById('slim-mode-toggle')) {
-                    document.getElementById('slim-mode-toggle').classList.toggle('active', prefs.slimMode);
-                    setSlimMode(prefs.slimMode);
+            try {
+                const prefs = await api('/preferences');
+                if (prefs) {
+                    document.documentElement.setAttribute('data-theme', prefs.theme);
+                    document.querySelectorAll('.theme-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
+                    });
+                    document.getElementById('auto-start-toggle').classList.toggle('active', prefs.autoStart);
+                    document.getElementById('tray-toggle').classList.toggle('active', prefs.showTray);
+                    document.getElementById('port-input').value = prefs.port || 8080;
+                    if (document.getElementById('slim-mode-toggle')) {
+                        document.getElementById('slim-mode-toggle').classList.toggle('active', prefs.slimMode);
+                        setSlimMode(prefs.slimMode);
+                    }
                 }
-            }
+            } catch (err) { }
         }
 
-        // Theme
         async function setTheme(theme) {
-            await api('/preferences', 'PUT', { theme });
-            document.documentElement.setAttribute('data-theme', theme);
-            document.querySelectorAll('.theme-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.theme === theme);
-            });
-            showToast('Theme changed to ' + theme);
+            try {
+                await api('/preferences', 'PUT', { theme });
+                document.documentElement.setAttribute('data-theme', theme);
+                document.querySelectorAll('.theme-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === theme);
+                });
+                showToast('Theme changed to ' + theme);
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
-        // Settings Actions
         async function toggleAutoStart() {
             const toggle = document.getElementById('auto-start-toggle');
             const newState = !toggle.classList.contains('active');
-            await api('/preferences', 'PUT', { autoStart: newState });
-            toggle.classList.toggle('active', newState);
-            showToast(newState ? 'Auto-start enabled' : 'Auto-start disabled');
+            try {
+                await api('/preferences', 'PUT', { autoStart: newState });
+                toggle.classList.toggle('active', newState);
+                showToast(newState ? 'Auto-start enabled' : 'Auto-start disabled');
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         async function toggleTray() {
             const toggle = document.getElementById('tray-toggle');
             const newState = !toggle.classList.contains('active');
-            await api('/preferences', 'PUT', { showTray: newState });
-            toggle.classList.toggle('active', newState);
-            showToast(newState ? 'Tray icon enabled' : 'Tray icon disabled');
+            try {
+                await api('/preferences', 'PUT', { showTray: newState });
+                toggle.classList.toggle('active', newState);
+                showToast(newState ? 'Tray icon enabled' : 'Tray icon disabled');
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         async function toggleSlimMode() {
             const toggle = document.getElementById('slim-mode-toggle');
             const newState = !toggle.classList.contains('active');
-            await api('/preferences', 'PUT', { slimMode: newState });
-            toggle.classList.toggle('active', newState);
-            setSlimMode(newState);
-            showToast(newState ? 'Slim mode enabled' : 'Slim mode disabled');
+            try {
+                await api('/preferences', 'PUT', { slimMode: newState });
+                toggle.classList.toggle('active', newState);
+                setSlimMode(newState);
+                showToast(newState ? 'Slim mode enabled' : 'Slim mode disabled');
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         function setSlimMode(enabled) {
-            if (enabled) {
-                document.body.setAttribute('data-slim', 'true');
-                localStorage.setItem('stacker_slimMode', 'true');
-            } else {
-                document.body.removeAttribute('data-slim');
-                localStorage.setItem('stacker_slimMode', 'false');
-            }
+            document.body.setAttribute('data-slim', enabled ? 'true' : 'false');
+            localStorage.setItem('stacker_slimMode', enabled);
         }
 
         // Load slim mode on startup
@@ -2381,8 +2444,10 @@
                 showToast('Port must be between 1024 and 65535', 'error');
                 return;
             }
-            await api('/preferences', 'PUT', { port });
-            showToast('Port saved! Restart to apply.');
+            try {
+                await api('/preferences', 'PUT', { port });
+                showToast('Port saved! Restart to apply.');
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         async function checkUpdates() {
@@ -2391,11 +2456,11 @@
                 const res = await fetch('https://raw.githubusercontent.com/yasinkuyu/Stacker/main/update.json');
                 if (!res.ok) throw new Error('Failed to fetch');
                 const data = await res.json();
-                const currentVersion = '1.0.0'; // This should match app version
+                const currentVersion = '1.0.1'; // This should match app version
                 const remoteVersion = data.stacker.version;
                 if (remoteVersion !== currentVersion) {
                     showToast(`New version ${remoteVersion} available!`, 'info');
-                    if (confirm(`New version ${remoteVersion} is available!\n\n${data.stacker.changelog}\n\nWould you like to download it?`)) {
+                    if (await ui.confirm(`New version ${remoteVersion} is available!\n\n${data.stacker.changelog}\n\nWould you like to download it?`)) {
                         window.open(data.stacker.downloadUrl, '_blank');
                     }
                 } else {
@@ -2408,18 +2473,22 @@
 
         // Actions
         async function clearDumps() {
-            if (confirm('Clear all dumps?')) {
-                await api('/dumps', 'DELETE');
-                loadDumps();
-                showToast('Dumps cleared');
+            if (await ui.confirm('Clear all dumps?', { type: 'danger' })) {
+                try {
+                    await api('/dumps', 'DELETE');
+                    loadDumps();
+                    showToast('Dumps cleared');
+                } catch (err) { showToast(err.message, 'error'); }
             }
         }
 
         async function clearMail() {
-            if (confirm('Clear all emails?')) {
-                await api('/mail', 'DELETE');
-                loadMail();
-                showToast('Emails cleared');
+            if (await ui.confirm('Clear all emails?', { type: 'danger' })) {
+                try {
+                    await api('/mail', 'DELETE');
+                    loadMail();
+                    showToast('Emails cleared');
+                } catch (err) { showToast(err.message, 'error'); }
             }
         }
 
@@ -2447,8 +2516,11 @@
             document.getElementById('drawPanel').classList.add('open');
 
             const saveBtn = document.getElementById('drawPanelSave');
-            saveBtn.textContent = saveText;
-            saveBtn.onclick = onSave;
+            saveBtn.style.display = onSave ? 'block' : 'none';
+            if (onSave) {
+                saveBtn.textContent = saveText;
+                saveBtn.onclick = onSave;
+            }
             document.getElementById('drawPanelFooter').style.display = 'flex';
             currentPanel = { title, onSave };
         }
@@ -2464,8 +2536,36 @@
         // Site Management
         // ==========================================
 
+        async function loadSites() {
+            const list = document.getElementById('sites-list');
+            try {
+                const sites = await api('/sites');
+                if (!sites || !sites.length) {
+                    list.innerHTML = '<div class="empty-state"><p>No sites configured</p></div>';
+                    return;
+                }
+                list.innerHTML = sites.map(s => `
+                    <div class="site-row">
+                        <div class="site-info" onclick='editSite(${JSON.stringify(s)})'>
+                            <div class="site-name">${s.name}.test</div>
+                            <div class="site-path">${s.path}</div>
+                        </div>
+                        <div class="site-badges">
+                            ${s.php ? `<span class="site-badge php">PHP ${s.php}</span>` : ''}
+                            ${s.ssl ? '<span class="site-badge ssl">SSL</span>' : ''}
+                        </div>
+                        <div class="site-actions">
+                            <button class="icon-btn" onclick="openSiteInBrowser('${s.name}')" title="Open"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+                            <button class="icon-btn" onclick="openSiteFolder('${s.path}')" title="Folder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>
+                            <button class="icon-btn danger" onclick="deleteSite('${s.name}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) { }
+        }
+
         async function addSite() {
-            const data = await api('/php');
+            const data = await api('/php').catch(() => ({ versions: [] }));
             const phpVersions = data && data.versions ? data.versions : [];
             const phpOptions = phpVersions.map(v =>
                 `<option value="${v.version}">PHP ${v.version}${v.default ? ' (Default)' : ''}</option>`
@@ -2508,7 +2608,7 @@
 
         async function editSite(site) {
             currentSite = site;
-            const data = await api('/php');
+            const data = await api('/php').catch(() => ({ versions: [] }));
             const phpVersions = data && data.versions ? data.versions : [];
             const phpOptions = phpVersions.map(v =>
                 `<option value="${v.version}" ${site.php === v.version ? 'selected' : ''}>PHP ${v.version}${v.default ? ' (Default)' : ''}</option>`
@@ -2564,10 +2664,12 @@
                 return;
             }
 
-            await api('/sites', 'POST', { name, path, php, ssl });
-            closeDrawPanel();
-            showToast('Site added successfully');
-            loadSites();
+            try {
+                await api('/sites', 'POST', { name, path, php, ssl });
+                closeDrawPanel();
+                showToast('Site added successfully');
+                loadSites();
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         async function updateSite() {
@@ -2576,18 +2678,22 @@
             const php = document.getElementById('sitePhp').value;
             const ssl = document.getElementById('siteSsl').classList.contains('active');
 
-            await api('/sites/' + currentSite.name, 'PUT', { name, path, php, ssl });
-            closeDrawPanel();
-            showToast('Site updated successfully');
-            loadSites();
+            try {
+                await api('/sites/' + currentSite.name, 'PUT', { name, path, php, ssl });
+                closeDrawPanel();
+                showToast('Site updated successfully');
+                loadSites();
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
         async function deleteSite(name) {
-            if (confirm('Are you sure you want to delete this site?')) {
-                await api('/sites/' + name, 'DELETE');
-                closeDrawPanel();
-                showToast('Site deleted');
-                loadSites();
+            if (await ui.confirm('Are you sure you want to delete this site?', { type: 'danger' })) {
+                try {
+                    await api('/sites/' + name, 'DELETE');
+                    closeDrawPanel();
+                    showToast('Site deleted');
+                    loadSites();
+                } catch (err) { showToast(err.message, 'error'); }
             }
         }
 
@@ -2840,495 +2946,338 @@
                             loadPHP();
                         }, 1000);
                     }
-
-                    // Service Management
-                    // =========================================
-
-                    async function installService(type, version) {
-                        const content = `
-                <div class="form-group">
-                    <label class="form-label">Installing ${type.toUpperCase()} ${version}</label>
-                    <div class="form-hint">This will download and compile the service</div>
-                </div>
-            `;
-
-                        openDrawPanel('Install Service', content, () => {
-                            startServiceInstall(type, version);
-                        }, 'Install');
-                    }
-
-                    async function startServiceInstall(type, version) {
-                        // Hide footer during install
-                        document.getElementById('drawPanelFooter').style.display = 'none';
-
-                        // Show progress in panel body
-                        const body = document.getElementById('drawPanelBody');
-                        body.innerHTML = `
-                <div class="progress-container">
-                    <div class="progress-label">
-                        <span>Installing ${type.toUpperCase()} ${version}</span>
-                        <span id="installPercent">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" id="installProgressFill"></div>
-                    </div>
-                    <div class="install-log" id="installLog">
-                        Starting download...<br>
-                    </div>
-                </div>
-            `;
-
-                        // Start installation
-                        try {
-                            await api('/services/install', 'POST', { type, version });
-
-                            const log = document.getElementById('installLog');
-                            const fill = document.getElementById('installProgressFill');
-                            const perc = document.getElementById('installPercent');
-
-                            // Poll progress
-                            const interval = setInterval(async () => {
-                                const status = await api(`/services/install-status?type=${type}&version=${version}`);
-                                if (status && status.progress !== undefined) {
-                                    const progress = status.progress;
-
-                                    // Check for error
-                                    if (progress === -1) {
-                                        clearInterval(interval);
-                                        log.innerHTML += `<span style="color:#ef4444;">❌ Error: Installation failed<br>`;
-                                        log.innerHTML += `<span style="color:#fbbf24;">💡 Compilation failed. This usually means missing build tools.<br>`;
-                                        log.innerHTML += `<span style="color:#fbbf24;">💡 Install Xcode Command Line Tools: xcode-select --install</span><br>`;
-                                        perc.textContent = 'Error';
-                                        fill.style.width = '100%';
-                                        fill.style.background = '#ef4444';
-                                        return;
-                                    }
-
-                                    fill.style.width = progress + '%';
-                                    perc.textContent = progress + '%';
-
-                                    if (progress >= 0 && progress < 10) {
-                                        log.innerHTML = `Starting installation...<br>`;
-                                    } else if (progress >= 10 && progress < 30) {
-                                        log.innerHTML = `Downloading source code...<br>`;
-                                    } else if (progress >= 30 && progress < 75) {
-                                        log.innerHTML = `Compiling ${type.toUpperCase()}...<br>`;
-                                        log.innerHTML += `<span style="color:#fbbf24;">⏱️ This may take several minutes...<br>`;
-                                    } else if (progress >= 75 && progress < 95) {
-                                        log.innerHTML = `Installing binaries...<br>`;
-                                    } else if (progress >= 95 && progress < 100) {
-                                        log.innerHTML = `Configuring service...<br>`;
-                                    } else if (progress === 100) {
-                                        clearInterval(interval);
-                                        log.innerHTML = `✅ Installation complete!<br>`;
-                                        fill.style.width = '100%';
-                                        perc.textContent = '100%';
-
-                                        setTimeout(() => {
-                                            showToast(`${type.toUpperCase()} ${version} installed successfully`);
-                                            closeDrawPanel();
-                                            loadServices();
-                                        }, 1000);
-                                    }
-                                }
-                            }, 1000);
-                        } catch (error) {
-                            const log = document.getElementById('installLog');
-                            log.innerHTML += `<span style="color:#ef4444;">Error: ${error.message}<br>`;
-                        }
-                    }
-
-                    async function startService(name) {
-                        try {
-                            const result = await api(`/services/start/${name}`, 'POST');
-                            showToast(`Service ${name} started`);
-                            loadServices();
-                        } catch (error) {
-                            showToast(`Error starting service: ${error.message}`);
-                        }
-                    }
-
-                    async function stopService(name) {
-                        try {
-                            const result = await api(`/services/stop/${name}`, 'POST');
-                            showToast(`Service ${name} stopped`);
-                            loadServices();
-                        } catch (error) {
-                            showToast(`Error stopping service: ${error.message}`);
-                        }
-                    }
-
-                    async function uninstallService(name) {
-                        if (!confirm(`Are you sure you want to uninstall ${name}? This will delete all binaries, configurations, and data related to this service.`)) {
-                            return;
-                        }
-
-                        try {
-                            await api('/services/uninstall', 'POST', { name });
-                            showToast(`Service ${name} uninstalled successfully`);
-                            loadServices();
-                        } catch (error) {
-                            showToast(`Error uninstalling service: ${error.message}`);
-                        }
-                    }
                 }
             }, 1000);
         }
 
+
         // ==========================================
-        // Service Installation
+        // Service Management
         // ==========================================
 
-        function openInstallService(serviceName) {
-            const services = {
-                mysql: { name: 'MySQL', port: 3306, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>' },
-                nginx: { name: 'Nginx', port: 80, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' },
-                redis: { name: 'Redis', port: 6379, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' },
-                meilisearch: { name: 'Meilisearch', port: 7700, icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' }
-            };
+        async function startService(name) {
+            try {
+                // Get svc info for progress key
+                const data = await api('/services');
+                const svc = data.installed.find(s => s.name === name);
 
-            const svc = services[serviceName];
-            if (!svc) return;
+                await api(`/services/start/${name}`, 'POST');
+                showToast(`${name} starting...`);
 
-            const content = `
-                <div class="service-card" style="margin-bottom:24px;">
-                    <div class="service-info">
-                        <div class="service-icon ${serviceName}">${svc.icon}</div>
-                        <div>
-                            <div class="service-name">${svc.name}</div>
-                            <div class="service-port">Default Port: ${svc.port}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Port</label>
-                    <input type="number" class="form-input" id="servicePort" value="${svc.port}">
-                </div>
-                
-                ${serviceName === 'mysql' ? `
-                <div class="form-group">
-                    <label class="form-label">Root Password</label>
-                    <input type="password" class="form-input" id="mysqlRootPass" placeholder="Enter password">
-                </div>
-                ` : ''}
-                
-                <div class="form-group">
-                    <label class="form-label">Options</label>
-                    <div class="settings-row" style="padding:12px 0;border:none;">
-                        <div class="settings-info">
-                            <div class="settings-label">Start on boot</div>
-                        </div>
-                        <button class="toggle-switch active" id="serviceAutoStart" onclick="this.classList.toggle('active')"></button>
-                    </div>
-                </div>
-            `;
-
-            openDrawPanel('Install ' + svc.name, content, () => installServiceLegacy(serviceName));
+                if (svc) {
+                    showActionProgress(`Starting ${name}`, svc.type, svc.version);
+                } else {
+                    loadServices();
+                }
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
-        async function installServiceLegacy(serviceName) {
-            const port = document.getElementById('servicePort').value;
-            showToast('Installing ' + serviceName + '...');
-            closeDrawPanel();
-
-            await api('/services/install', 'POST', { name: serviceName, port: parseInt(port) });
-            showToast(serviceName + ' installed successfully');
-            loadServices();
+        async function stopService(name) {
+            try {
+                await api(`/services/stop/${name}`, 'POST');
+                showToast(`${name} stopping...`);
+                loadServices();
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
-        // Update loadSites to use new format
-        async function loadSites() {
-            const list = document.getElementById('sites-list');
-            const sites = await api('/sites');
-            if (!sites || !sites.length) {
-                list.innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg><p>No sites configured</p><p style="font-size:12px;margin-top:8px;">Click "Add Site" to get started</p></div>';
-                return;
+        async function uninstallService(name) {
+            if (await ui.confirm(`Uninstall ${name}? All data will be lost.`, { type: 'danger' })) {
+                try {
+                    const data = await api('/services');
+                    const svc = data.installed.find(s => s.name === name);
+
+                    await api('/services/uninstall', 'POST', { name });
+                    showToast(`${name} uninstallation started...`);
+
+                    if (svc) {
+                        showActionProgress(`Uninstalling ${name}`, svc.type, svc.version, true);
+                    } else {
+                        loadServices();
+                        loadStatus();
+                    }
+                } catch (err) { showToast(err.message, 'error'); }
             }
-            list.innerHTML = sites.map(s => `
-                <div class="site-row">
-                    <div class="site-info" onclick="editSite(${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                        <div class="site-name">
-                            ${s.name}.test
-                        </div>
-                        <div class="site-path">${s.path}</div>
-                    </div>
-                    <div class="site-badges">
-                        ${s.php ? '<span class="site-badge php">PHP ' + s.php + '</span>' : ''}
-                        ${s.ssl ? '<span class="site-badge ssl">SSL</span>' : ''}
-                    </div>
-                    <div class="site-actions">
-                        <button class="icon-btn" onclick="openSiteInBrowser('${s.name}')" title="Open in browser">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                <polyline points="15 3 21 3 21 9"/>
-                                <line x1="10" y1="14" x2="21" y2="3"/>
-                            </svg>
-                        </button>
-                        <button class="icon-btn" onclick="openSiteFolder('${s.path}')" title="Open folder">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                            </svg>
-                        </button>
-                        <button class="icon-btn danger" onclick="deleteSite('${s.name}')" title="Delete">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
         }
 
-        // Update loadServices with real API data
+        function showActionProgress(title, type, version, reloadStatus = false) {
+            openDrawPanel(title, `
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>${title}</span>
+                        <span id="action-percent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="action-fill"></div>
+                    </div>
+                    <div class="install-log" id="action-log">Processing...</div>
+                </div>
+            `, null, 'Close');
+
+            const interval = setInterval(async () => {
+                const status = await api(`/services/install-status?type=${type}&version=${version}`);
+                if (status && status.progress !== undefined) {
+                    const progress = status.progress;
+                    if (progress === -1) {
+                        clearInterval(interval);
+                        document.getElementById('action-log').innerHTML = '<span style="color: var(--danger);">Operation failed.</span>';
+                        return;
+                    }
+                    document.getElementById('action-fill').style.width = progress + '%';
+                    document.getElementById('action-percent').textContent = progress + '%';
+                    if (progress === 100) {
+                        clearInterval(interval);
+                        document.getElementById('action-log').textContent = 'Completed!';
+                        setTimeout(() => {
+                            closeDrawPanel();
+                            loadServices();
+                            if (reloadStatus) loadStatus();
+                        }, 1000);
+                    }
+                }
+            }, 800);
+        }
+
         async function loadServices() {
             const list = document.getElementById('services-list');
-            const data = await api('/services');
+            try {
+                const data = await api('/services');
+                if (!data) return;
 
-            if (!data) return;
+                const installed = data.installed || [];
+                const available = data.available || [];
 
-            const installed = data.installed || [];
-            const available = data.available || [];
+                // Group available by type
+                const availableByType = {};
+                available.forEach(v => {
+                    if (!availableByType[v.type]) availableByType[v.type] = [];
+                    availableByType[v.type].push(v.version);
+                });
 
-            // Group available services by type
-            const availableByType = {};
-            available.forEach(v => {
-                if (!availableByType[v.type]) {
-                    availableByType[v.type] = [];
-                }
-                availableByType[v.type].push(v.version);
-            });
-
-            // Service icons and names
-            const serviceInfo = {
-                nginx: {
-                    name: 'Nginx',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
-                    port: '80, 443',
-                    colorClass: 'nginx'
-                },
-                apache: {
-                    name: 'Apache',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
-                    port: '8080',
-                    colorClass: 'apache'
-                },
-                mysql: {
-                    name: 'MySQL',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>',
-                    port: '3306',
-                    colorClass: 'mysql'
-                },
-                mariadb: {
-                    name: 'MariaDB',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>',
-                    port: '3306',
-                    colorClass: 'mariadb'
-                },
-                redis: {
-                    name: 'Redis',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-                    port: '6379',
-                    colorClass: 'redis'
-                },
-                composer: {
-                    name: 'Composer',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
-                    port: 'phar',
-                    colorClass: 'php'
-                },
-                nodejs: {
-                    name: 'Node.js',
-                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
-                    port: 'bin',
-                    colorClass: 'nodejs'
-                }
-            };
-
-            // Get all service types
-            const allTypes = ['nginx', 'apache', 'mysql', 'mariadb', 'redis', 'composer', 'nodejs'];
-
-            let html = '';
-            allTypes.forEach(type => {
-                const info = serviceInfo[type];
-                if (!info) return;
-
-                const installedService = installed.find(s => s.type === type);
-                const availableVersions = availableByType[type] || [];
-
-                let actions = '';
-                let versionInfo = '';
-
-                if (installedService) {
-                    versionInfo = `<span class="site-badge" style="margin-right: 8px;">${installedService.version}</span>`;
-                    if (installedService.status === 'running') {
-                        actions = `
-                            <button class="btn" onclick="stopService('${installedService.name}')" style="padding: 6px 12px; font-size: 12px;">Stop</button>
-                        `;
-                    } else {
-                        actions = `
-                            <button class="btn btn-success" onclick="startService('${installedService.name}')" style="padding: 6px 12px; font-size: 12px;">Start</button>
-                            <button class="btn btn-danger" onclick="uninstallService('${installedService.name}')" style="padding: 6px 12px; font-size: 12px;">Uninstall</button>
-                        `;
+                let html = `
+                    <div style="padding: 24px;">
+                        <div style="margin-bottom: 32px;">
+                            <h3 style="margin-bottom: 16px; font-size: 14px; text-transform: uppercase; color: var(--text-muted);">Installed Services</h3>
+                            ${installed.length === 0 ? '<div class="empty-state" style="padding: 20px;"><p>No services installed</p></div>' : installed.map(s => `
+                                <div class="service-card">
+                                    <div class="service-info">
+                                        <div class="service-icon ${s.type}">
+                                            ${s.type === 'mysql' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8.5c0 0.83 0.67 1.5 1.5 1.5h1c0.83 0 1.5 0.67 1.5 1.5v1c0 0.83-0.67 1.5-1.5 1.5H9v2h1.5C12.44 19 14 17.44 14 15.5v-1c0-0.83-0.67-1.5-1.5-1.5h-1c-0.83 0-1.5-0.67-1.5-1.5v-1c0-0.83 0.67-1.5 1.5-1.5h1.5V7H11.5C9.56 7 8 8.56 8 10.5v1z" fill="#00758F" stroke="none"/></svg>' :
+                        s.type === 'nginx' ? '<svg viewBox="0 0 24 24" fill="none" class="nginx-icon" stroke="none"><path d="M12 0L24 12L12 24L0 12L12 0Z" fill="#009639"/><path d="M11.603 6.009V11.23L6.963 6.046C6.671 5.925 6.353 6.014 6.16 6.262C5.967 6.51 5.95 6.852 6.118 7.118L10.749 12.339V17.561C10.749 18.256 11.758 18.604 12.249 18.113L17.47 12.892C17.762 12.6 17.762 12.128 17.47 11.836L12.249 6.615C12.067 6.433 11.815 6.331 11.558 6.331C11.399 6.331 11.242 6.37 11.101 6.446L11.603 6.009Z" fill="#FFFFFF"/></svg>' :
+                            s.type === 'redis' ? '<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4V4z" fill="#D82C20"/><path d="M4 20h16l2-4H2l2 4z" fill="#A51E14"/><path d="M20 4l2 4H2l2-4h16z" fill="#A51E14"/><path d="M4 4l-2 4v12l4 2h12l4-2V8l-2-4H4z" stroke="currentColor" stroke-width="0"/></svg>' :
+                                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/></svg>'
                     }
-                } else if (availableVersions.length > 0) {
-                    const versionOptions = availableVersions.map(v => `<option value="${v}">${v}</option>`).join('');
-                    versionInfo = `
-                        <select class="service-version-select" id="install-version-${type}">
-                            ${versionOptions}
-                        </select>
-                    `;
-                    actions = `
-                        <button class="btn btn-primary" onclick="prepareInstallService('${type}')" style="padding: 6px 12px; font-size: 12px;">Install</button>
-                    `;
-                } else {
-                    actions = '<span style="color: var(--text-muted); font-size: 12px;">Not available</span>';
-                }
-
-                const status = installedService
-                    ? (installedService.status === 'running' ? 'running' : 'stopped')
-                    : 'none';
-
-                html += `
-                    <div class="service-card" style="margin: 0 24px 12px;">
-                        <div class="service-info">
-                            <div class="service-icon ${info.colorClass}">
-                                ${info.icon}
-                            </div>
-                            <div>
-                                <div class="service-name">${info.name}</div>
-                                <div class="service-port">:${info.port}</div>
-                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="service-name">${s.name} ${s.version}</div>
+                                            <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
+                                        </div>
+                                    </div>
+                                    <div class="service-actions">
+                                        <span class="status-badge status-${s.status}"><span class="status-dot"></span>${s.status}</span>
+                                        <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" title="${s.status === 'running' ? 'Stop' : 'Start'}">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                ${s.status === 'running' ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}
+                                            </svg>
+                                            ${s.status === 'running' ? 'Stop' : 'Start'}
+                                        </button>
+                                        <button class="btn btn-danger" onclick="uninstallService('${s.name}')" title="Uninstall">Uninstall</button>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
-                        <div style="display: flex; align-items: center;">
-                            ${versionInfo}
-                            ${installedService ? `<span class="status-badge status-${status}"><span class="status-dot"></span>${status}</span>` : ''}
-                        </div>
-                        <div class="service-actions">
-                            ${actions}
+
+                        <div>
+                            <h3 style="margin-bottom: 16px; font-size: 14px; text-transform: uppercase; color: var(--text-muted);">Available Services</h3>
+                            <div class="card">
+                                ${Object.keys(availableByType).map(type => `
+                                    <div class="list-item" style="padding: 16px 24px;">
+                                        <div class="service-info">
+                                            <div class="service-icon ${type}" style="width: 36px; height: 36px; font-size: 14px;">
+                                                ${type === 'mysql' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8.5c0 0.83 0.67 1.5 1.5 1.5h1c0.83 0 1.5 0.67 1.5 1.5v1c0 0.83-0.67 1.5-1.5 1.5H9v2h1.5C12.44 19 14 17.44 14 15.5v-1c0-0.83-0.67-1.5-1.5-1.5h-1c-0.83 0-1.5-0.67-1.5-1.5v-1c0-0.83 0.67-1.5 1.5-1.5h1.5V7H11.5C9.56 7 8 8.56 8 10.5v1z" fill="#00758F" stroke="none"/></svg>' :
+                            type === 'nginx' ? '<svg viewBox="0 0 24 24" fill="none" class="nginx-icon" stroke="none"><path d="M12 0L24 12L12 24L0 12L12 0Z" fill="#009639"/><path d="M11.603 6.009V11.23L6.963 6.046C6.671 5.925 6.353 6.014 6.16 6.262C5.967 6.51 5.95 6.852 6.118 7.118L10.749 12.339V17.561C10.749 18.256 11.758 18.604 12.249 18.113L17.47 12.892C17.762 12.6 17.762 12.128 17.47 11.836L12.249 6.615C12.067 6.433 11.815 6.331 11.558 6.331C11.399 6.331 11.242 6.37 11.101 6.446L11.603 6.009Z" fill="#FFFFFF"/></svg>' :
+                                type === 'redis' ? '<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4V4z" fill="#D82C20"/><path d="M4 20h16l2-4H2l2 4z" fill="#A51E14"/><path d="M20 4l2 4H2l2-4h16z" fill="#A51E14"/><path d="M4 4l-2 4v12l4 2h12l4-2V8l-2-4H4z" stroke="currentColor" stroke-width="0"/></svg>' : 'KV'}
+                                            </div>
+                                            <div>
+                                                <div class="service-name" style="text-transform: capitalize;">${type} Server</div>
+                                                <div class="service-port">Available versions: ${availableByType[type].length}</div>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 12px; align-items: center;">
+                                            <select class="form-select" id="version-${type}" style="padding: 6px 12px; font-size: 13px; width: 140px;">
+                                                ${availableByType[type].map(v => `<option value="${v}">${v}</option>`).join('')}
+                                            </select>
+                                            <button class="btn btn-primary" onclick="installService('${type}')" style="padding: 8px 20px;">
+                                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                                </svg>
+                                                Install
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
-            });
-
-            list.innerHTML = html;
+                list.innerHTML = html;
+            } catch (err) { }
         }
 
-        async function prepareInstallService(type) {
-            const versionSelect = document.getElementById(`install-version-${type}`);
-            const version = versionSelect.value;
-            openInstallService(type, version);
-        }
-
-        async function openInstallService(type, version) {
-            const content = `
-                <div class="form-group">
-                    <label class="form-label">Installing ${type.toUpperCase()} ${version}</label>
-                    <div class="form-hint">This will download and compile the service</div>
-                </div>
-            `;
-
-            openDrawPanel('Install Service', content, () => {
-                startServiceInstallGlobal(type, version);
-            }, 'Install');
-        }
-
-        async function startServiceInstallGlobal(type, version) {
-            // Hide footer during install
-            document.getElementById('drawPanelFooter').style.display = 'none';
-
-            // Show progress in panel body
-            const body = document.getElementById('drawPanelBody');
-            body.innerHTML = `
-                <div class="progress-container">
-                    <div class="progress-label">
-                        <span>Installing ${type.toUpperCase()} ${version}</span>
-                        <span id="installPercent">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" id="installProgressFill"></div>
-                    </div>
-                    <div class="install-log" id="installLog">
-                        Starting download...<br>
-                    </div>
-                </div>
-            `;
-
-            // Start installation
+        async function installService(type) {
+            const version = document.getElementById(`version-${type}`).value;
             try {
                 await api('/services/install', 'POST', { type, version });
+                showToast(`Starting installation of ${type} ${version}...`);
 
-                const log = document.getElementById('installLog');
-                const fill = document.getElementById('installProgressFill');
-                const perc = document.getElementById('installPercent');
+                // Show progress in a panel
+                openDrawPanel(`Installing ${type}`, `
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>Installing ${type} ${version}</span>
+                            <span id="svc-install-percent">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="svc-install-fill"></div>
+                        </div>
+                        <div class="install-log" id="svc-install-log">Starting installation...</div>
+                    </div>
+                `, null, 'Close');
 
-                // Poll progress
                 const interval = setInterval(async () => {
                     const status = await api(`/services/install-status?type=${type}&version=${version}`);
                     if (status && status.progress !== undefined) {
                         const progress = status.progress;
-
-                        // Check for error
                         if (progress === -1) {
                             clearInterval(interval);
-                            log.innerHTML += `<span style="color:#ef4444;">❌ Error: Installation failed<br>`;
-                            log.innerHTML += `<span style="color:#fbbf24;">💡 Install Xcode Command Line Tools: xcode-select --install</span><br>`;
-                            perc.textContent = 'Error';
-                            fill.style.width = '100%';
-                            fill.style.background = '#ef4444';
+                            document.getElementById('svc-install-log').innerHTML = '<span style="color: var(--danger);">Installation failed.</span>';
                             return;
                         }
-
-                        fill.style.width = progress + '%';
-                        perc.textContent = progress + '%';
-
-                        if (progress >= 0 && progress < 10) {
-                            log.innerHTML = `Starting installation...<br>`;
-                        } else if (progress >= 10 && progress < 30) {
-                            log.innerHTML = `Downloading source code...<br>`;
-                        } else if (progress >= 30 && progress < 75) {
-                            log.innerHTML = `Compiling ${type.toUpperCase()}...<br>`;
-                            log.innerHTML += `<span style="color:#fbbf24;">⏱️ This may take several minutes...</span><br>`;
-                        } else if (progress >= 75 && progress < 95) {
-                            log.innerHTML = `Installing binaries...<br>`;
-                        } else if (progress >= 95 && progress < 100) {
-                            log.innerHTML = `Configuring service...<br>`;
-                        } else if (progress === 100) {
+                        document.getElementById('svc-install-fill').style.width = progress + '%';
+                        document.getElementById('svc-install-percent').textContent = progress + '%';
+                        if (progress === 100) {
                             clearInterval(interval);
-                            log.innerHTML = `✅ Installation complete!<br>`;
-                            fill.style.width = '100%';
-                            perc.textContent = '100%';
-
+                            document.getElementById('svc-install-log').textContent = 'Installation complete!';
                             setTimeout(() => {
                                 closeDrawPanel();
                                 loadServices();
-                                showToast(type.toUpperCase() + ' installed successfully');
                             }, 1500);
                         }
                     }
                 }, 1000);
 
-            } catch (err) {
-                const log = document.getElementById('installLog');
-                log.innerHTML += `<span style="color:#ef4444;">❌ Error: ${err.message}<br>`;
-            }
+            } catch (err) { showToast(err.message, 'error'); }
         }
 
-        // Initial Load
-        loadStatus();
-        loadSettings();
-        setInterval(loadStatus, 5000);
+        // ==========================================
+        // Data Viewing
+        // ==========================================
 
-        // Restore page from URL hash on load
-        const initialPage = window.location.hash.slice(1) || 'dashboard';
-        const validPages = ['dashboard', 'sites', 'services', 'php', 'dumps', 'mail', 'logs', 'settings'];
-        if (validPages.includes(initialPage)) {
-            showPage(initialPage);
+        async function loadDumps() {
+            const list = document.getElementById('dumps-list');
+            try {
+                const data = await api('/dumps');
+                if (!data || !data.dumps || !data.dumps.length) {
+                    list.innerHTML = '<div class="empty-state"><p>No dumps recorded</p></div>';
+                    return;
+                }
+                list.innerHTML = data.dumps.map(d => `
+                    <div class="list-item" onclick="viewDump('${d.id}')" style="cursor: pointer;">
+                        <div class="item-info">
+                            <div class="item-primary">${d.file}:${d.line}</div>
+                            <div class="item-secondary">${d.site || 'Unknown'}</div>
+                        </div>
+                        <span class="item-secondary">${new Date(d.timestamp).toLocaleString()}</span>
+                    </div>
+                `).join('');
+            } catch (err) { }
         }
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
+        async function viewDump(id) {
+            try {
+                const data = await api('/dumps');
+                const dump = data.dumps.find(d => d.id === id);
+                if (dump) {
+                    openDrawPanel('Dump Details', `<pre style="padding:16px;background:#1e1e1e;color:#fff;overflow:auto;">${JSON.stringify(dump.data, null, 2)}</pre>`, null, 'Close');
+                }
+            } catch (err) { }
+        }
+
+        async function loadMail() {
+            const list = document.getElementById('mail-list');
+            try {
+                const emails = await api('/mail');
+                if (!emails || !emails.length) {
+                    list.innerHTML = '<div class="empty-state"><p>No emails received</p></div>';
+                    return;
+                }
+                list.innerHTML = emails.map(e => `
+                    <div class="list-item" onclick="viewEmail('${e.id}')" style="cursor: pointer;">
+                        <div class="item-info">
+                            <div class="item-primary">${e.subject}</div>
+                            <div class="item-secondary">From: ${e.from}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) { }
+        }
+
+        async function loadLogs() {
+            const list = document.getElementById('logs-list');
+            try {
+                const logs = await api('/logs');
+                if (!logs || !logs.length) {
+                    list.innerHTML = '<div class="empty-state"><p>No log files found</p></div>';
+                    return;
+                }
+                list.innerHTML = logs.map(l => `
+                    <div class="list-item" onclick="viewLog('${l.path || l.name}')" style="cursor: pointer;">
+                        <div class="item-info">
+                            <div class="item-primary">${l.name}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) { }
+        }
+
+        async function viewEmail(id) {
+            try {
+                const emails = await api('/mail');
+                const email = emails.find(e => e.id === id);
+                if (email) {
+                    openDrawPanel('Email: ' + email.subject, `<div style="padding:16px;">
+                        <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+                            <div><strong>From:</strong> ${email.from}</div>
+                            <div><strong>To:</strong> ${email.to}</div>
+                            <div><strong>Date:</strong> ${new Date(email.timestamp).toLocaleString()}</div>
+                        </div>
+                        <div style="white-space:pre-wrap;">${email.body || email.html}</div>
+                    </div>`, null, 'Close');
+                }
+            } catch (err) { showToast('Could not load email', 'error'); }
+        }
+
+        async function viewLog(path) {
+            try {
+                const logs = await api('/logs/view?path=' + encodeURIComponent(path));
+                if (logs && logs.content) {
+                    openDrawPanel('Log: ' + path.split('/').pop(), `<pre style="padding:16px;background:#1e1e1e;color:#fff;overflow:auto;font-size:12px;line-height:1.5;">${logs.content}</pre>`, null, 'Close');
+                }
+            } catch (err) { showToast('Could not load log file', 'error'); }
+        }
+
+        // ==========================================
+        // Initialization
+        // ==========================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash.slice(1) || 'dashboard';
+            showPage(hash);
+            loadStatus();
+            loadSettings();
+            setInterval(loadStatus, 10000);
+        });
+
+        window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeDrawPanel();
         });
     </script>

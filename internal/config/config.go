@@ -114,3 +114,12 @@ func (c *Config) GetSite(name string) *Site {
 	}
 	return nil
 }
+
+func (c *Config) GetSites() []Site {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	sitesCopy := make([]Site, len(c.Sites))
+	copy(sitesCopy, c.Sites)
+	return sitesCopy
+}

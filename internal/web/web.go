@@ -140,6 +140,9 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/open-folder", ws.handleOpenFolder)
 	http.HandleFunc("/api/open-terminal", ws.handleOpenTerminal)
 	http.HandleFunc("/api/browse-folder", ws.handleBrowseFolder)
+	http.HandleFunc("/api/dumps/ingest", ws.handleDumpIngest)
+
+	ws.mailManager.Start()
 
 	fmt.Println("🚀 Web UI starting on http://localhost:8080")
 	fmt.Printf("📁 Data directory: %s\n", ws.stackerDir)
@@ -749,6 +752,34 @@ func (ws *WebServer) handleDumps(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"dumps": allDumps})
 }
 
+func (ws *WebServer) handleDumpIngest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read body", http.StatusBadRequest)
+		return
+	}
+
+	// Try to determine site from Referer or Host or Custom Header
+	siteName := "Unknown"
+	if referer := r.Header.Get("Referer"); referer != "" {
+		siteName = referer
+	} else if origin := r.Header.Get("Origin"); origin != "" {
+		siteName = origin
+	}
+
+	if err := ws.dumpManager.HandleLaravelDumpRequest(body, siteName); err != nil {
+		// Fallback to simple dump if structure doesn't match
+		ws.dumpManager.ParseLaravelDump(string(body), siteName)
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (ws *WebServer) handleMail(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "DELETE" {
 		ws.mailManager.ClearEmails()
@@ -768,6 +799,20 @@ func (ws *WebServer) handleMail(w http.ResponseWriter, r *http.Request) {
 
 func (ws *WebServer) handleLogs(w http.ResponseWriter, r *http.Request) {
 	lm := logs.NewLogManager()
+
+	// Add global logs
+	baseDir := utils.GetStackerDir()
+	lm.AddLogDir("Global", filepath.Join(baseDir, "logs"))
+
+	// Add site logs (Laravel support)
+	sites := ws.config.GetSites()
+	for _, site := range sites {
+		laravelLog := filepath.Join(site.Path, "storage", "logs")
+		if _, err := os.Stat(laravelLog); err == nil {
+			lm.AddLogDir(site.Name, laravelLog)
+		}
+	}
+
 	logFiles := lm.GetLogFiles()
 
 	w.Header().Set("Content-Type", "application/json")

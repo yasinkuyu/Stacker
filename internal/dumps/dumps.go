@@ -3,11 +3,13 @@ package dumps
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/yasinkuyu/Stacker/internal/config"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/yasinkuyu/Stacker/internal/config"
 )
 
 type Dump struct {
@@ -34,11 +36,13 @@ func NewDumpManager(cfg *config.Config) *DumpManager {
 	dumpDir := filepath.Join(home, ".stacker-app", "dumps")
 	os.MkdirAll(dumpDir, 0755)
 
-	return &DumpManager{
+	dm := &DumpManager{
 		cfg:       cfg,
 		dumpDir:   dumpDir,
 		wsClients: make(map[chan Dump]bool),
 	}
+	dm.loadDumps()
+	return dm
 }
 
 func (dm *DumpManager) AddDump(dump Dump) {
@@ -164,4 +168,23 @@ func (dm *DumpManager) HandleLaravelDumpRequest(body []byte, siteName string) er
 	})
 
 	return nil
+}
+
+func (dm *DumpManager) loadDumps() {
+	files, err := os.ReadDir(dm.dumpDir)
+	if err != nil {
+		return
+	}
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".json") {
+			data, err := os.ReadFile(filepath.Join(dm.dumpDir, file.Name()))
+			if err == nil {
+				var dump Dump
+				if err := json.Unmarshal(data, &dump); err == nil {
+					dm.dumps = append(dm.dumps, dump)
+				}
+			}
+		}
+	}
 }

@@ -616,19 +616,26 @@ func (sm *ServiceManager) UninstallService(name string) error {
 	sm.stopServiceInternal(svc)
 	sm.mu.Unlock()
 
+	sm.updateInstallProgress(svc.Type, svc.Version, 10)
+
 	installDir := svc.BinaryDir
 	configDir := svc.ConfigDir
 	dataDir := svc.DataDir
 
 	if installDir != "" {
+		sm.updateInstallProgress(svc.Type, svc.Version, 20)
 		os.RemoveAll(installDir)
 	}
 	if configDir != "" {
+		sm.updateInstallProgress(svc.Type, svc.Version, 50)
 		os.RemoveAll(configDir)
 	}
 	if dataDir != "" {
+		sm.updateInstallProgress(svc.Type, svc.Version, 80)
 		os.RemoveAll(dataDir)
 	}
+
+	sm.updateInstallProgress(svc.Type, svc.Version, 100)
 
 	sm.mu.Lock()
 	delete(sm.services, name)
@@ -752,23 +759,29 @@ func (sm *ServiceManager) StartService(name string) error {
 		return fmt.Errorf("service %s is already running", name)
 	}
 
+	sm.updateInstallProgress(svc.Type, svc.Version, 10)
+
 	var cmd *exec.Cmd
 	var binaryPath string
 
 	switch svc.Type {
 	case "mariadb":
+		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 		binaryPath = sm.findMariaDBBinary(svc.BinaryDir)
 		if binaryPath == "" {
 			return fmt.Errorf("MariaDB binary not found")
 		}
 		cmd = sm.startMariaDB(svc, binaryPath)
 	case "nginx":
+		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 		binaryPath = filepath.Join(svc.BinaryDir, "nginx-bin", "sbin", "nginx")
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
+		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 		binaryPath = filepath.Join(svc.BinaryDir, "apache-bin", "bin", "httpd")
 		cmd = sm.startApache(svc, binaryPath)
 	case "redis":
+		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 		binaryPath = filepath.Join(svc.BinaryDir, "redis-server")
 		if _, err := os.Stat(binaryPath); err != nil {
 			binaryPath = filepath.Join(svc.BinaryDir, "src", "redis-server")
@@ -782,9 +795,14 @@ func (sm *ServiceManager) StartService(name string) error {
 		return fmt.Errorf("failed to create command for %s", name)
 	}
 
+	sm.updateInstallProgress(svc.Type, svc.Version, 60)
+
 	if err := cmd.Start(); err != nil {
+		sm.updateInstallProgress(svc.Type, svc.Version, -1)
 		return fmt.Errorf("failed to start %s: %w", name, err)
 	}
+
+	sm.updateInstallProgress(svc.Type, svc.Version, 90)
 
 	sm.mu.Lock()
 	svc.Status = "running"
@@ -793,6 +811,8 @@ func (sm *ServiceManager) StartService(name string) error {
 
 	sm.saveServiceStatus(svc)
 	sm.savePID(name, cmd.Process.Pid)
+
+	sm.updateInstallProgress(svc.Type, svc.Version, 100)
 
 	fmt.Printf("✅ Service %s started (PID: %d)\n", name, cmd.Process.Pid)
 	return nil
