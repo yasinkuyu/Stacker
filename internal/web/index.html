@@ -4125,6 +4125,7 @@
                             <div class="site-path">${s.path}</div>
                         </div>
                         <div class="site-badges">
+                            ${s.server === 'nginx' ? '<span class="site-badge" style="background:#009639;">Nginx</span>' : '<span class="site-badge" style="background:#c73838;">Apache</span>'}
                             ${s.php ? `<span class="site-badge php">PHP ${s.php}</span>` : ''}
                             ${s.ssl ? '<span class="site-badge ssl">SSL</span>' : ''}
                         </div>
@@ -4222,6 +4223,13 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Web Server</label>
+                    <select class="form-select" id="siteServer">
+                        <option value="apache" ${(site.server || 'apache') === 'apache' ? 'selected' : ''}>Apache</option>
+                        <option value="nginx" ${site.server === 'nginx' ? 'selected' : ''}>Nginx</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Options</label>
                     <div class="settings-row" style="padding:12px 0;border:none;">
                         <div class="settings-info">
@@ -4248,6 +4256,7 @@
             const name = document.getElementById('siteName').value.trim();
             const path = document.getElementById('sitePath').value.trim();
             const php = document.getElementById('sitePhp').value;
+            const server = document.getElementById('siteServer').value;
             const ssl = document.getElementById('siteSsl').classList.contains('active');
 
             if (!name) {
@@ -4256,13 +4265,15 @@
             }
 
             const btn = document.getElementById('drawPanelSave');
-            const originalText = btn.innerHTML;
+            const originalText = btn.textContent;
+            const originalWidth = btn.offsetWidth;
 
             try {
                 btn.disabled = true;
-                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Saving...</span>`;
+                btn.style.minWidth = originalWidth + 'px';
+                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div>`;
 
-                await api('/sites', 'POST', { name, path, php, ssl });
+                await api('/sites', 'POST', { name, path, php, server, ssl });
                 closeDrawPanel();
                 showToast('Site added successfully');
                 loadSites();
@@ -4270,6 +4281,7 @@
                 showToast(err.message, 'error');
             } finally {
                 btn.disabled = false;
+                btn.style.minWidth = '';
                 btn.innerHTML = originalText;
             }
         }
@@ -4278,16 +4290,19 @@
             const name = document.getElementById('siteName').value.trim();
             const path = document.getElementById('sitePath').value.trim();
             const php = document.getElementById('sitePhp').value;
+            const server = document.getElementById('siteServer').value;
             const ssl = document.getElementById('siteSsl').classList.contains('active');
 
             const btn = document.getElementById('drawPanelSave');
-            const originalText = btn.innerHTML;
+            const originalText = btn.textContent;
+            const originalWidth = btn.offsetWidth;
 
             try {
                 btn.disabled = true;
-                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Updating...</span>`;
+                btn.style.minWidth = originalWidth + 'px';
+                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div>`;
 
-                await api('/sites/' + currentSite.name, 'PUT', { name, path, php, ssl });
+                await api('/sites/' + currentSite.name, 'PUT', { name, path, php, server, ssl });
                 closeDrawPanel();
                 showToast('Site updated successfully');
                 loadSites();
@@ -4295,6 +4310,7 @@
                 showToast(err.message, 'error');
             } finally {
                 btn.disabled = false;
+                btn.style.minWidth = '';
                 btn.innerHTML = originalText;
             }
         }
