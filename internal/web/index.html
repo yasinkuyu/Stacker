@@ -2122,6 +2122,52 @@
                     </div>
 
                     <div class="settings-section">
+                        <div class="settings-section-title">Built-in Services</div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">
+                                    <span style="display:inline-flex;align-items:center;gap:8px;">
+                                        <span
+                                            style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+                                        SMTP Server
+                                    </span>
+                                </div>
+                                <div class="settings-desc">Local mail server for catching outgoing emails from your apps
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:12px;align-items:center;">
+                                <span style="font-size:12px;color:var(--text-muted);">Port: 1025</span>
+                                <span class="status-badge status-running"><span class="status-dot"></span>Running</span>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Mail Catcher</div>
+                                <div class="settings-desc">View captured emails in the Mail section</div>
+                            </div>
+                            <button class="btn" onclick="showPage('mail')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path
+                                        d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                    <polyline points="22,6 12,13 2,6" />
+                                </svg>
+                                View Emails
+                            </button>
+                        </div>
+                        <div class="settings-row"
+                            style="background:var(--bg-tertiary);border-radius:8px;padding:12px;margin-top:8px;">
+                            <div style="font-size:12px;color:var(--text-muted);">
+                                <strong>SMTP Configuration for your apps:</strong><br>
+                                <code
+                                    style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-family:'SF Mono',Monaco,monospace;">
+                                    Host: localhost &nbsp;|&nbsp; Port: 1025 &nbsp;|&nbsp; No authentication required
+                                </code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <div class="settings-section-title">Support</div>
                         <div class="settings-row">
                             <div class="settings-info">
