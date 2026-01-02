@@ -150,7 +150,7 @@ func (ws *WebServer) Start() error {
 	ws.mailManager.Start()
 
 	// Start background service status worker (checks every 10 seconds)
-	ws.serviceManager.StartStatusWorker(10 * time.Second)
+	ws.serviceManager.StartStatusWorker(3 * time.Second)
 
 	prefMutex.RLock()
 	port := prefs.Port

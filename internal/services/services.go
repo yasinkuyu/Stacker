@@ -59,16 +59,17 @@ type DetailedStatus struct {
 }
 
 type ServiceManager struct {
-	services      map[string]*Service
-	available     []ServiceVersion
-	mu            sync.RWMutex
-	baseDir       string
-	installStatus map[string]int
-	installErrors map[string]string // Key: svcType-version
-	statusMu      sync.RWMutex
-	processes     map[string]*exec.Cmd
-	wg            sync.WaitGroup
-	shutdown      chan struct{}
+	services       map[string]*Service
+	available      []ServiceVersion
+	mu             sync.RWMutex
+	baseDir        string
+	installStatus  map[string]int
+	installErrors  map[string]string // Key: svcType-version
+	statusMu       sync.RWMutex
+	processes      map[string]*exec.Cmd
+	wg             sync.WaitGroup
+	shutdown       chan struct{}
+	OnStatusChange func()
 }
 
 func NewServiceManager() *ServiceManager {
@@ -1169,6 +1170,10 @@ func (sm *ServiceManager) UninstallService(name string) error {
 	delete(sm.services, name)
 	sm.saveServices()
 	sm.mu.Unlock()
+
+	if sm.OnStatusChange != nil {
+		sm.OnStatusChange()
+	}
 	return nil
 }
 
@@ -1614,6 +1619,9 @@ func (sm *ServiceManager) StartService(name string) error {
 	sm.updateInstallProgress(svc.Type, svc.Version, 100)
 
 	fmt.Printf("✅ Service %s started (PID: %d)\n", name, cmd.Process.Pid)
+	if sm.OnStatusChange != nil {
+		sm.OnStatusChange()
+	}
 	return nil
 }
 
@@ -1654,6 +1662,10 @@ func (sm *ServiceManager) monitorProcess(name string, cmd *exec.Cmd) {
 		fmt.Printf("🔄 Auto-restarting service %s...\n", name)
 		time.Sleep(2 * time.Second)
 		sm.StartService(name)
+	}
+
+	if sm.OnStatusChange != nil {
+		sm.OnStatusChange()
 	}
 }
 
@@ -1818,6 +1830,9 @@ func (sm *ServiceManager) StopService(name string) error {
 	os.Remove(sm.getPIDFile(name))
 
 	fmt.Printf("⏹️ Service %s stopped\n", name)
+	if sm.OnStatusChange != nil {
+		sm.OnStatusChange()
+	}
 	return nil
 }
 
@@ -2014,6 +2029,8 @@ func (sm *ServiceManager) GetStatus(name string) string {
 		return "none"
 	}
 
+	oldStatus := svc.Status
+
 	// Check if process is running
 	pid := svc.PID
 	if pid == 0 {
@@ -2040,6 +2057,13 @@ func (sm *ServiceManager) GetStatus(name string) string {
 	}
 
 	svc.LastCheck = time.Now().Format(time.RFC3339)
+
+	if oldStatus != svc.Status {
+		if sm.OnStatusChange != nil {
+			sm.OnStatusChange()
+		}
+	}
+
 	return svc.Status
 }
 

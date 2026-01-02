@@ -65,6 +65,12 @@ func (tm *TrayManager) onReady() {
 	systray.SetTitle("")
 	systray.SetTooltip("Stacker - PHP Development Environment")
 
+	// Set service manager status change callback
+	tm.svcManager.OnStatusChange = func() {
+		tm.updateServiceStatus()
+		tm.updateIconByStatus()
+	}
+
 	// Open Dashboard
 	mOpen := systray.AddMenuItem("Open Stacker", "Open web dashboard")
 
@@ -253,7 +259,7 @@ func (tm *TrayManager) onReady() {
 }
 
 func (tm *TrayManager) watchStatus() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -295,7 +301,7 @@ func (tm *TrayManager) updateIconByStatus() {
 	total := len(svcs)
 
 	if total == 0 {
-		systray.SetIcon(iconRed)
+		systray.SetIcon(iconData)
 		return
 	}
 
@@ -305,7 +311,7 @@ func (tm *TrayManager) updateIconByStatus() {
 		}
 	}
 
-	if running == total && total > 0 {
+	if running == total {
 		systray.SetIcon(iconGreen)
 	} else if running > 0 {
 		systray.SetIcon(iconOrange)
