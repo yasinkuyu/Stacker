@@ -728,13 +728,18 @@ func (sm *ServiceManager) findApacheBinary(installDir string) string {
 
 func (sm *ServiceManager) findNginxBinary(installDir string) string {
 	fmt.Printf("🔍 Checking Nginx binary in: %s\n", installDir)
+
+	// Check both bin and sbin directories
+	binPaths := []string{"sbin/nginx", "bin/nginx"}
+
 	// Direct check
-	directPath := filepath.Join(installDir, "sbin", "nginx")
-	if _, err := os.Stat(directPath); err == nil {
-		fmt.Printf("✅ Found Nginx binary directly at: %s\n", directPath)
-		return directPath
+	for _, binPath := range binPaths {
+		directPath := filepath.Join(installDir, binPath)
+		if _, err := os.Stat(directPath); err == nil {
+			fmt.Printf("✅ Found Nginx binary directly at: %s\n", directPath)
+			return directPath
+		}
 	}
-	fmt.Printf("❌ Direct check failed for: %s\n", directPath)
 
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
@@ -742,14 +747,16 @@ func (sm *ServiceManager) findNginxBinary(installDir string) string {
 		return ""
 	}
 
+	// Check subdirectories (for nested version folders)
 	for _, entry := range entries {
 		if entry.IsDir() {
 			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
-			// Check nginx-bin/sbin/nginx or similar
-			binaryPath := filepath.Join(installDir, entry.Name(), "sbin", "nginx")
-			if _, err := os.Stat(binaryPath); err == nil {
-				fmt.Printf("✅ Found Nginx binary in subdirectory: %s\n", binaryPath)
-				return binaryPath
+			for _, binPath := range binPaths {
+				binaryPath := filepath.Join(installDir, entry.Name(), binPath)
+				if _, err := os.Stat(binaryPath); err == nil {
+					fmt.Printf("✅ Found Nginx binary in subdirectory: %s\n", binaryPath)
+					return binaryPath
+				}
 			}
 		}
 	}
