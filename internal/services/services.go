@@ -24,20 +24,22 @@ import (
 )
 
 type Service struct {
-	Name        string    `json:"name"`
-	Type        string    `json:"type"`
-	Version     string    `json:"version"`
-	Port        int       `json:"port"`
-	Status      string    `json:"status"`
-	DataDir     string    `json:"data_dir"`
-	ConfigDir   string    `json:"config_dir"`
-	BinaryDir   string    `json:"binary_dir"`
-	PID         int       `json:"pid"`
-	Installed   string    `json:"installed"`
-	LastCheck   string    `json:"last_check,omitempty"`
-	StartTime   time.Time `json:"start_time,omitempty"`
-	AutoRestart bool      `json:"auto_restart"`
-	HasConfig   bool      `json:"has_config"`
+	Name         string    `json:"name"`
+	Type         string    `json:"type"`
+	Version      string    `json:"version"`
+	Port         int       `json:"port"`
+	Status       string    `json:"status"`
+	DataDir      string    `json:"data_dir"`
+	ConfigDir    string    `json:"config_dir"`
+	BinaryDir    string    `json:"binary_dir"`
+	PID          int       `json:"pid"`
+	Installed    string    `json:"installed"`
+	LastCheck    string    `json:"last_check,omitempty"`
+	StartTime    time.Time `json:"start_time,omitempty"`
+	AutoRestart  bool      `json:"auto_restart"`
+	HasConfig    bool      `json:"has_config"`
+	PortInUse    bool      `json:"port_in_use"`
+	PortConflict string    `json:"port_conflict,omitempty"`
 }
 
 type ServiceVersion = config.ServiceVersion
@@ -200,11 +202,25 @@ func (sm *ServiceManager) loadInstalledServices() {
 					// Check if config file exists
 					svc.HasConfig = sm.checkConfigExists(svc)
 
+					// Check if port is in use (by another program)
+					if svc.Status != "running" {
+						svc.PortInUse, svc.PortConflict = sm.checkPortInUse(svc.Port)
+					}
+
 					sm.services[svcName] = svc
 				}
 			}
 		}
 	}
+}
+
+func (sm *ServiceManager) checkPortInUse(port int) (bool, string) {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 1*time.Second)
+	if err != nil {
+		return false, ""
+	}
+	conn.Close()
+	return true, fmt.Sprintf("Port %d is already in use by another application", port)
 }
 
 func (sm *ServiceManager) checkConfigExists(svc *Service) bool {

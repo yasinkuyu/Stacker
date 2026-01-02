@@ -781,6 +781,15 @@
             right: 0;
         }
 
+        .draw-panel.wide {
+            width: 800px;
+            right: -800px;
+        }
+
+        .draw-panel.wide.open {
+            right: 0;
+        }
+
         .draw-panel-header {
             display: flex;
             justify-content: space-between;
@@ -2593,11 +2602,14 @@
         let currentPanel = null;
         let currentSite = null;
 
-        function openDrawPanel(title, content, onSave, saveText = 'Save') {
+        function openDrawPanel(title, content, onSave, saveText = 'Save', wide = false) {
             document.getElementById('drawPanelTitle').textContent = title;
             document.getElementById('drawPanelBody').innerHTML = content;
             document.getElementById('drawPanelOverlay').classList.add('open');
-            document.getElementById('drawPanel').classList.add('open');
+            const panel = document.getElementById('drawPanel');
+            panel.classList.add('open');
+            if (wide) panel.classList.add('wide');
+            else panel.classList.remove('wide');
 
             const saveBtn = document.getElementById('drawPanelSave');
             saveBtn.style.display = onSave ? 'block' : 'none';
@@ -2611,7 +2623,9 @@
 
         function closeDrawPanel() {
             document.getElementById('drawPanelOverlay').classList.remove('open');
-            document.getElementById('drawPanel').classList.remove('open');
+            const panel = document.getElementById('drawPanel');
+            panel.classList.remove('open');
+            panel.classList.remove('wide');
             currentPanel = null;
             currentSite = null;
         }
@@ -3271,10 +3285,11 @@
                                         <div>
                                             <div class="service-name">${s.name} ${s.version}</div>
                                             <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
+                                            ${s.port_in_use && s.status !== 'running' ? `<div style="color: var(--warning); font-size: 11px; margin-top: 4px;">⚠️ Port ${s.port} is in use by another app</div>` : ''}
                                         </div>
                                     </div>
                                     <div class="service-actions">
-                                        <span class="status-badge status-${s.status}"><span class="status-dot"></span>${s.status}</span>
+                                        <span class="status-badge status-${s.status}"><span class="status-dot"></span>${s.status}${s.port_in_use && s.status !== 'running' ? ' (conflict)' : ''}</span>
                                         <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" title="${s.status === 'running' ? 'Stop' : 'Start'}">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 ${s.status === 'running' ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}
@@ -3483,7 +3498,7 @@
             try {
                 const logs = await api('/logs/view?path=' + encodeURIComponent(path));
                 if (logs && logs.content) {
-                    openDrawPanel('Log: ' + path.split('/').pop(), `<pre style="padding:16px;background:#1e1e1e;color:#fff;overflow:auto;font-size:12px;line-height:1.5;">${logs.content}</pre>`, null, 'Close');
+                    openDrawPanel('Log: ' + path.split('/').pop(), `<pre style="padding:16px;background:#1e1e1e;color:#fff;overflow:auto;font-size:12px;line-height:1.5;max-height:70vh;">${logs.content}</pre>`, null, 'Close', true);
                 }
             } catch (err) { showToast('Could not load log file', 'error'); }
         }
