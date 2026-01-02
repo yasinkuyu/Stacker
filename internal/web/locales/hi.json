@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "शुरू करें",
+        "stop": "रोकें",
+        "restart": "पुनः आरंभ करें",
+        "install": "इंस्टॉल करें",
+        "uninstall": "अनइंस्टॉल करें",
+        "config": "कॉन्फिग",
+        "save": "सहेजें",
+        "cancel": "रद्द करें",
+        "confirm": "पुष्टि करें",
+        "loading": "लोड हो रहा है...",
+        "search": "खोजें...",
+        "status": "स्थिति",
+        "version": "संस्करण",
+        "port": "पोर्ट",
+        "actions": "कार्य"
+    },
+    "nav": {
+        "dashboard": "डैशबोर्ड",
+        "sites": "साइटें",
+        "services": "सेवाएं",
+        "php": "PHP",
+        "logs": "लॉग्स",
+        "mail": "मेल",
+        "tools": "उपकरण",
+        "settings": "सेटिंग्स",
+        "about": "के बारे में"
+    },
+    "dashboard": {
+        "title": "डैशबोर्ड",
+        "stats_sites": "साइटें",
+        "stats_services": "चल रही सेवाएं",
+        "stats_dumps": "डंप",
+        "stats_php": "PHP संस्करण",
+        "recent_sites": "हाल की साइटें",
+        "quick_services": "त्वरित सेवाएं",
+        "quick_actions": "त्वरित कार्य",
+        "add_new_site": "नई साइट जोड़ें",
+        "open_terminal": "टर्मिनल खोलें",
+        "refresh": "रीफ्रेश करें"
+    },
+    "settings": {
+        "title": "सेटिंग्स",
+        "general": "सामान्य",
+        "appearance": "दिखावट",
+        "language": "भाषा",
+        "theme": "थीम",
+        "dark_mode": "डार्क मोड",
+        "light_mode": "लाइट मोड",
+        "system_mode": "सिस्टम मोड",
+        "slim_mode": "पतला साइडबार",
+        "notifications": "सूचनाएं",
+        "updates": "अपडेट"
+    },
+    "services": {
+        "title": "सेवाएं",
+        "installed": "इंस्टॉल की गई सेवाएं",
+        "available": "उपलब्ध सेवाएं",
+        "no_services": "कोई सेवा इंस्टॉल नहीं है",
+        "install_success": "सेवा सफलतापूर्वक इंस्टॉल हो गई",
+        "uninstall_confirm": "क्या आप वाकई इस सेवा को अनइंस्टॉल करना चाहते हैं?"
+    },
+    "footer": {
+        "start_all": "सभी शुरू करें",
+        "stop_all": "सभी रोकें"
+    }
+}

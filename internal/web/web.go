@@ -35,6 +35,9 @@ var logoPNG []byte
 //go:embed services/*.svg
 var serviceLogos embed.FS
 
+//go:embed locales/*.json
+var localeFS embed.FS
+
 // Site represents a local development site
 type Site struct {
 	Name string `json:"name"`
@@ -155,6 +158,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/php/install-status", ws.handlePHPInstallStatus)
 	http.HandleFunc("/api/php/default", ws.handlePHPDefault)
 	http.HandleFunc("/api/preferences", ws.handlePreferences)
+	http.HandleFunc("/api/locales/", ws.handleLocales)
 	http.HandleFunc("/api/open-folder", ws.handleOpenFolder)
 	http.HandleFunc("/api/open-terminal", ws.handleOpenTerminal)
 	http.HandleFunc("/api/browse-folder", ws.handleBrowseFolder)
@@ -272,7 +276,19 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add to hosts file simulation - create a config file
-		ws.createSiteConfig(site)
+		if err := ws.createSiteConfig(site); err != nil {
+			http.Error(w, "Failed to create site config: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Reload Nginx if it's running
+		ws.serviceManager.RestartService("nginx-active") // We need a way to find the active nginx
+		// Actually, let's just attempt to reload any service of type nginx
+		for _, svc := range ws.serviceManager.GetServices() {
+			if svc.Type == "nginx" && svc.Status == "running" {
+				ws.serviceManager.RestartService(svc.Name)
+			}
+		}
 
 		sitesMu.Lock()
 		sites = append(sites, site)
@@ -412,37 +428,50 @@ func (ws *WebServer) handleBrowseFolder(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]string{"path": path})
 }
 
-func (ws *WebServer) createSiteConfig(site Site) {
+func (ws *WebServer) createSiteConfig(site Site) error {
 	confDir := filepath.Join(ws.stackerDir, "conf", "nginx")
-	os.MkdirAll(confDir, 0755)
+	if err := os.MkdirAll(confDir, 0755); err != nil {
+		return err
+	}
 
 	configPath := filepath.Join(confDir, site.Name+".conf")
 
-	protocol := "http"
-	if site.SSL {
-		protocol = "https"
-	}
-
 	phpPort := ws.getPHPPort(site.PHP)
 
-	config := fmt.Sprintf(`# Stacker Site Config: %s
-# Generated: %s
+	// Detect document root
+	docRoot := site.Path
+	if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
+		docRoot = filepath.Join(site.Path, "public")
+	}
+
+	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
+# Generated: %[2]s
 server {
     listen 80;
-    server_name %s.test;
-    root %s/public;
-    index index.php index.html;
+    server_name %[1]s.test;
+    root "%[3]s";
+    index index.php index.html index.htm;
+
+    client_max_body_size 100M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
 
     location ~ \.php$ {
-        fastcgi_pass 127.0.0.1:%d;
+        fastcgi_pass 127.0.0.1:%[4]d;
+        fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
     }
-}
-# Access: %s://%s.test
-`, site.Name, time.Now().Format(time.RFC3339), site.Name, site.Path, phpPort, protocol, site.Name)
 
-	os.WriteFile(configPath, []byte(config), 0644)
+    location ~ /\.ht {
+        deny all;
+    }
+}
+`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort)
+
+	return os.WriteFile(configPath, []byte(config), 0644)
 }
 
 type ProgressReader struct {
@@ -912,6 +941,8 @@ func (ws *WebServer) handleDumpIngest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit payload to 10MB
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read body", http.StatusBadRequest)
@@ -1329,4 +1360,30 @@ func (ws *WebServer) startRequiredFPMPools() {
 			fmt.Printf("⚠️ Failed to start PHP-FPM %s: %v\n", version, err)
 		}
 	}
+}
+func (ws *WebServer) handleLocales(w http.ResponseWriter, r *http.Request) {
+	// Extract language from URL: /api/locales/en
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 {
+		http.Error(w, "Language required", http.StatusBadRequest)
+		return
+	}
+	lang := parts[3]
+	if lang == "" {
+		lang = "en"
+	}
+
+	// Read from embedded FS
+	data, err := localeFS.ReadFile("locales/" + lang + ".json")
+	if err != nil {
+		// Fallback to English
+		data, err = localeFS.ReadFile("locales/en.json")
+		if err != nil {
+			http.Error(w, "Locale not found", http.StatusNotFound)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 func (mm *MailManager) Start() {
@@ -32,6 +33,7 @@ func (mm *MailManager) startSMTP() {
 
 func (mm *MailManager) handleSMTPConnection(conn net.Conn) {
 	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(10 * time.Minute))
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 

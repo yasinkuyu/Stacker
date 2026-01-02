@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "시작",
+        "stop": "중지",
+        "restart": "재시작",
+        "install": "설치",
+        "uninstall": "제거",
+        "config": "설정",
+        "save": "저장",
+        "cancel": "취소",
+        "confirm": "확인",
+        "loading": "로딩 중...",
+        "search": "검색...",
+        "status": "상태",
+        "version": "버전",
+        "port": "포트",
+        "actions": "작업"
+    },
+    "nav": {
+        "dashboard": "대시보드",
+        "sites": "사이트",
+        "services": "서비스",
+        "php": "PHP",
+        "logs": "로그",
+        "mail": "메일",
+        "tools": "도구",
+        "settings": "설정",
+        "about": "정보"
+    },
+    "dashboard": {
+        "title": "대시보드",
+        "stats_sites": "사이트 수",
+        "stats_services": "실행 중인 서비스",
+        "stats_dumps": "덤프",
+        "stats_php": "PHP 버전",
+        "recent_sites": "최근 사이트",
+        "quick_services": "빠른 서비스",
+        "quick_actions": "빠른 작업",
+        "add_new_site": "새 사이트 추가",
+        "open_terminal": "터미널 열기",
+        "refresh": "새로고침"
+    },
+    "settings": {
+        "title": "설정",
+        "general": "일반",
+        "appearance": "모양",
+        "language": "언어",
+        "theme": "테마",
+        "dark_mode": "다크 모드",
+        "light_mode": "라이트 모드",
+        "system_mode": "시스템 설정",
+        "slim_mode": "좁은 사이드바",
+        "notifications": "알림",
+        "updates": "업데이트"
+    },
+    "services": {
+        "title": "서비스",
+        "installed": "설치된 서비스",
+        "available": "사용 가능한 서비스",
+        "no_services": "설치된 서비스가 없습니다",
+        "install_success": "서비스가 성공적으로 설치되었습니다",
+        "uninstall_confirm": "이 서비스를 정말로 제거하시겠습니까?"
+    },
+    "footer": {
+        "start_all": "모두 시작",
+        "stop_all": "모두 중지"
+    }
+}

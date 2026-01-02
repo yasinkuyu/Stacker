@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Avvia",
+        "stop": "Ferma",
+        "restart": "Riavvia",
+        "install": "Installa",
+        "uninstall": "Disinstalla",
+        "config": "Config",
+        "save": "Salva",
+        "cancel": "Annulla",
+        "confirm": "Conferma",
+        "loading": "Caricamento...",
+        "search": "Cerca...",
+        "status": "Stato",
+        "version": "Versione",
+        "port": "Porta",
+        "actions": "Azioni"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "sites": "Siti",
+        "services": "Servizi",
+        "php": "PHP",
+        "logs": "Log",
+        "mail": "Posta",
+        "tools": "Strumenti",
+        "settings": "Impostazioni",
+        "about": "Informazioni"
+    },
+    "dashboard": {
+        "title": "Pannello di Controllo",
+        "stats_sites": "Siti",
+        "stats_services": "Servizi in esecuzione",
+        "stats_dumps": "Dump",
+        "stats_php": "Versione PHP",
+        "recent_sites": "Siti Recenti",
+        "quick_services": "Servizi Rapidi",
+        "quick_actions": "Azioni Rapide",
+        "add_new_site": "Aggiungi Nuovo Sito",
+        "open_terminal": "Apri Terminale",
+        "refresh": "Aggiorna"
+    },
+    "settings": {
+        "title": "Impostazioni",
+        "general": "Generale",
+        "appearance": "Aspetto",
+        "language": "Lingua",
+        "theme": "Tema",
+        "dark_mode": "Modalità Scura",
+        "light_mode": "Modalità Chiara",
+        "system_mode": "Modalità di Sistema",
+        "slim_mode": "Barra Laterale Sottile",
+        "notifications": "Notifiche",
+        "updates": "Aggiornamenti"
+    },
+    "services": {
+        "title": "Servizi",
+        "installed": "Servizi Installati",
+        "available": "Servizi Disponibili",
+        "no_services": "Nessun servizio installato",
+        "install_success": "Servizio installato con successo",
+        "uninstall_confirm": "Sei sicuro di voler disinstallare questo servizio?"
+    },
+    "footer": {
+        "start_all": "Avvia Tutto",
+        "stop_all": "Ferma Tutto"
+    }
+}

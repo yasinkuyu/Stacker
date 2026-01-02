@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Starten",
+        "stop": "Stoppen",
+        "restart": "Neustart",
+        "install": "Installieren",
+        "uninstall": "Deinstallieren",
+        "config": "Konfig",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "confirm": "Bestätigen",
+        "loading": "Laden...",
+        "search": "Suchen...",
+        "status": "Status",
+        "version": "Version",
+        "port": "Port",
+        "actions": "Aktionen"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "sites": "Seiten",
+        "services": "Dienste",
+        "php": "PHP",
+        "logs": "Protokolle",
+        "mail": "Mail",
+        "tools": "Tools",
+        "settings": "Einstellungen",
+        "about": "Über"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "stats_sites": "Seiten",
+        "stats_services": "Laufende Dienste",
+        "stats_dumps": "Dumps",
+        "stats_php": "PHP-Version",
+        "recent_sites": "Aktuelle Seiten",
+        "quick_services": "Schnelldienste",
+        "quick_actions": "Schnellaktionen",
+        "add_new_site": "Neue Seite hinzufügen",
+        "open_terminal": "Terminal öffnen",
+        "refresh": "Aktualisieren"
+    },
+    "settings": {
+        "title": "Einstellungen",
+        "general": "Allgemein",
+        "appearance": "Erscheinungsbild",
+        "language": "Sprache",
+        "theme": "Theme",
+        "dark_mode": "Dunkelmodus",
+        "light_mode": "Hellmodus",
+        "system_mode": "Systemmodus",
+        "slim_mode": "Schmale Seitenleiste",
+        "notifications": "Benachrichtigungen",
+        "updates": "Updates"
+    },
+    "services": {
+        "title": "Dienste",
+        "installed": "Installierte Dienste",
+        "available": "Verfügbare Dienste",
+        "no_services": "Keine Dienste installiert",
+        "install_success": "Dienst erfolgreich installiert",
+        "uninstall_confirm": "Sind Sie sicher, dass Sie diesen Dienst deinstallieren möchten?"
+    },
+    "footer": {
+        "start_all": "Alle starten",
+        "stop_all": "Alle stoppen"
+    }
+}

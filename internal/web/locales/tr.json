@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Başlat",
+        "stop": "Durdur",
+        "restart": "Yeniden Başlat",
+        "install": "Yükle",
+        "uninstall": "Kaldır",
+        "config": "Yapılandırma",
+        "save": "Kaydet",
+        "cancel": "İptal",
+        "confirm": "Onayla",
+        "loading": "Yükleniyor...",
+        "search": "Ara...",
+        "status": "Durum",
+        "version": "Sürüm",
+        "port": "Port",
+        "actions": "İşlemler"
+    },
+    "nav": {
+        "dashboard": "Panel",
+        "sites": "Siteler",
+        "services": "Servisler",
+        "php": "PHP",
+        "logs": "Loglar",
+        "mail": "E-posta",
+        "tools": "Araçlar",
+        "settings": "Ayarlar",
+        "about": "Hakkında"
+    },
+    "dashboard": {
+        "title": "Panel",
+        "stats_sites": "Siteler",
+        "stats_services": "Çalışan Servisler",
+        "stats_dumps": "Dökümler",
+        "stats_php": "PHP Sürümü",
+        "recent_sites": "Son Siteler",
+        "quick_services": "Hızlı Servisler",
+        "quick_actions": "Hızlı İşlemler",
+        "add_new_site": "Yeni Site Ekle",
+        "open_terminal": "Terminali Aç",
+        "refresh": "Yenile"
+    },
+    "settings": {
+        "title": "Ayarlar",
+        "general": "Genel",
+        "appearance": "Görünüm",
+        "language": "Dil",
+        "theme": "Tema",
+        "dark_mode": "Karanlık Mod",
+        "light_mode": "Aydınlık Mod",
+        "system_mode": "Sistem Modu",
+        "slim_mode": "Dar Kenar Çubuğu",
+        "notifications": "Bildirimler",
+        "updates": "Güncellemeler"
+    },
+    "services": {
+        "title": "Servisler",
+        "installed": "Yüklü Servisler",
+        "available": "Kullanılabilir Servisler",
+        "no_services": "Yüklü servis yok",
+        "install_success": "Servis başarıyla yüklendi",
+        "uninstall_confirm": "Bu servisi kaldırmak istediğinize emin misiniz?"
+    },
+    "footer": {
+        "start_all": "Hepsini Başlat",
+        "stop_all": "Hepsini Durdur"
+    }
+}

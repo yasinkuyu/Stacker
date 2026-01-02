@@ -1593,6 +1593,19 @@ func (sm *ServiceManager) StartService(name string) error {
 
 	sm.updateInstallProgress(svc.Type, svc.Version, 60)
 
+	// Setup logging
+	logsDir := filepath.Join(sm.baseDir, "logs")
+	os.MkdirAll(logsDir, 0755)
+	logFile := filepath.Join(logsDir, name+".log")
+
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		cmd.Stdout = f
+		cmd.Stderr = f
+	} else {
+		utils.LogError(fmt.Sprintf("Failed to open service log file %s: %v", logFile, err))
+	}
+
 	if err := cmd.Start(); err != nil {
 		utils.LogService(name, "start", "failed: "+err.Error())
 		sm.updateInstallProgress(svc.Type, svc.Version, -1)
@@ -1614,7 +1627,7 @@ func (sm *ServiceManager) StartService(name string) error {
 	sm.savePID(name, cmd.Process.Pid)
 
 	// Start monitoring
-	go sm.monitorProcess(name, cmd)
+	go sm.monitorProcess(name, cmd, f)
 
 	sm.updateInstallProgress(svc.Type, svc.Version, 100)
 
@@ -1625,9 +1638,12 @@ func (sm *ServiceManager) StartService(name string) error {
 	return nil
 }
 
-func (sm *ServiceManager) monitorProcess(name string, cmd *exec.Cmd) {
+func (sm *ServiceManager) monitorProcess(name string, cmd *exec.Cmd, logFile *os.File) {
 	sm.wg.Add(1)
 	defer sm.wg.Done()
+	if logFile != nil {
+		defer logFile.Close()
+	}
 
 	err := cmd.Wait()
 
@@ -2044,6 +2060,18 @@ func (sm *ServiceManager) GetStatus(name string) string {
 			if err := process.Signal(syscall.Signal(0)); err == nil {
 				svc.Status = "running"
 				svc.PID = pid
+
+				// Verify if it's actually listening on its port (only for TCP services)
+				if svc.Type != "composer" && svc.Type != "nodejs" {
+					if err := sm.checkPortAvailable(svc.Port); err != nil {
+						// Port is not listening yet or closed
+						// We keep it as running if PID is alive, but maybe mark as "starting" or "unhealthy"?
+						// For now, let's just log it if unhealthy
+						svc.PortInUse = false
+					} else {
+						svc.PortInUse = true
+					}
+				}
 			} else {
 				svc.Status = "stopped"
 				svc.PID = 0

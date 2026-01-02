@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Iniciar",
+        "stop": "Detener",
+        "restart": "Reiniciar",
+        "install": "Instalar",
+        "uninstall": "Desinstalar",
+        "config": "Config",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar",
+        "loading": "Cargando...",
+        "search": "Buscar...",
+        "status": "Estado",
+        "version": "Versión",
+        "port": "Puerto",
+        "actions": "Acciones"
+    },
+    "nav": {
+        "dashboard": "Panel",
+        "sites": "Sitios",
+        "services": "Servicios",
+        "php": "PHP",
+        "logs": "Registros",
+        "mail": "Correo",
+        "tools": "Herramientas",
+        "settings": "Ajustes",
+        "about": "Acerca de"
+    },
+    "dashboard": {
+        "title": "Panel de Control",
+        "stats_sites": "Sitios",
+        "stats_services": "Servicios en ejecución",
+        "stats_dumps": "Volcados",
+        "stats_php": "Versión PHP",
+        "recent_sites": "Sitios Recientes",
+        "quick_services": "Servicios Rápidos",
+        "quick_actions": "Acciones Rápidas",
+        "add_new_site": "Añadir Nuevo Sitio",
+        "open_terminal": "Abrir Terminal",
+        "refresh": "Refrescar"
+    },
+    "settings": {
+        "title": "Ajustes",
+        "general": "General",
+        "appearance": "Apariencia",
+        "language": "Idioma",
+        "theme": "Tema",
+        "dark_mode": "Modo Oscuro",
+        "light_mode": "Modo Claro",
+        "system_mode": "Modo Sistema",
+        "slim_mode": "Barra Lateral Delgada",
+        "notifications": "Notificaciones",
+        "updates": "Actualizaciones"
+    },
+    "services": {
+        "title": "Servicios",
+        "installed": "Servicios Instalados",
+        "available": "Servicios Disponibles",
+        "no_services": "No hay servicios instalados",
+        "install_success": "Servicio instalado con éxito",
+        "uninstall_confirm": "¿Estás seguro de que quieres desinstalar este servicio?"
+    },
+    "footer": {
+        "start_all": "Iniciar Todo",
+        "stop_all": "Detener Todo"
+    }
+}

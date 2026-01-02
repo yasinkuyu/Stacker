@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Démarrer",
+        "stop": "Arrêter",
+        "restart": "Redémarrer",
+        "install": "Installer",
+        "uninstall": "Désinstaller",
+        "config": "Config",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "confirm": "Confirmer",
+        "loading": "Chargement...",
+        "search": "Rechercher...",
+        "status": "Statut",
+        "version": "Version",
+        "port": "Port",
+        "actions": "Actions"
+    },
+    "nav": {
+        "dashboard": "Tableau de bord",
+        "sites": "Sites",
+        "services": "Services",
+        "php": "PHP",
+        "logs": "Journaux",
+        "mail": "Email",
+        "tools": "Outils",
+        "settings": "Paramètres",
+        "about": "À propos"
+    },
+    "dashboard": {
+        "title": "Tableau de bord",
+        "stats_sites": "Sites",
+        "stats_services": "Services en cours",
+        "stats_dumps": "Dumps",
+        "stats_php": "Version PHP",
+        "recent_sites": "Sites Récents",
+        "quick_services": "Services Rapides",
+        "quick_actions": "Actions Rapides",
+        "add_new_site": "Ajouter un nouveau site",
+        "open_terminal": "Ouvrir le terminal",
+        "refresh": "Actualiser"
+    },
+    "settings": {
+        "title": "Paramètres",
+        "general": "Général",
+        "appearance": "Apparence",
+        "language": "Langue",
+        "theme": "Thème",
+        "dark_mode": "Mode Sombre",
+        "light_mode": "Mode Clair",
+        "system_mode": "Mode Système",
+        "slim_mode": "Barre latérale mince",
+        "notifications": "Notifications",
+        "updates": "Mises à jour"
+    },
+    "services": {
+        "title": "Services",
+        "installed": "Services Installés",
+        "available": "Services Disponibles",
+        "no_services": "Aucun service installé",
+        "install_success": "Service installé avec succès",
+        "uninstall_confirm": "Êtes-vous sûr de vouloir désinstaller ce service ?"
+    },
+    "footer": {
+        "start_all": "Tout Démarrer",
+        "stop_all": "Tout Arrêter"
+    }
+}

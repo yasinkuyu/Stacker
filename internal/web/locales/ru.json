@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Запуск",
+        "stop": "Стоп",
+        "restart": "Перезапуск",
+        "install": "Установить",
+        "uninstall": "Удалить",
+        "config": "Конфиг",
+        "save": "Сохранить",
+        "cancel": "Отмена",
+        "confirm": "Подтвердить",
+        "loading": "Загрузка...",
+        "search": "Поиск...",
+        "status": "Статус",
+        "version": "Версия",
+        "port": "Порт",
+        "actions": "Действия"
+    },
+    "nav": {
+        "dashboard": "Панель",
+        "sites": "Сайты",
+        "services": "Сервисы",
+        "php": "PHP",
+        "logs": "Логи",
+        "mail": "Почта",
+        "tools": "Инструменты",
+        "settings": "Настройки",
+        "about": "О программе"
+    },
+    "dashboard": {
+        "title": "Панель управления",
+        "stats_sites": "Сайты",
+        "stats_services": "Работающие сервисы",
+        "stats_dumps": "Дампы",
+        "stats_php": "Версия PHP",
+        "recent_sites": "Недавние сайты",
+        "quick_services": "Быстрые сервисы",
+        "quick_actions": "Быстрые действия",
+        "add_new_site": "Добавить сайт",
+        "open_terminal": "Открыть терминал",
+        "refresh": "Обновить"
+    },
+    "settings": {
+        "title": "Настройки",
+        "general": "Общие",
+        "appearance": "Внешний вид",
+        "language": "Язык",
+        "theme": "Тема",
+        "dark_mode": "Темная тема",
+        "light_mode": "Светлая тема",
+        "system_mode": "Системная тема",
+        "slim_mode": "Узкая боковая панель",
+        "notifications": "Уведомления",
+        "updates": "Обновления"
+    },
+    "services": {
+        "title": "Сервисы",
+        "installed": "Установленные сервисы",
+        "available": "Доступные сервисы",
+        "no_services": "Нет установленных сервисов",
+        "install_success": "Сервис успешно установлен",
+        "uninstall_confirm": "Вы уверены, что хотите удалить этот сервис?"
+    },
+    "footer": {
+        "start_all": "Запустить все",
+        "stop_all": "Остановить все"
+    }
+}

@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "开始",
+        "stop": "停止",
+        "restart": "重启",
+        "install": "安装",
+        "uninstall": "卸载",
+        "config": "配置",
+        "save": "保存",
+        "cancel": "取消",
+        "confirm": "确认",
+        "loading": "加载中...",
+        "search": "搜索...",
+        "status": "状态",
+        "version": "版本",
+        "port": "端口",
+        "actions": "操作"
+    },
+    "nav": {
+        "dashboard": "控制台",
+        "sites": "网站",
+        "services": "服务",
+        "php": "PHP",
+        "logs": "日志",
+        "mail": "邮件",
+        "tools": "工具",
+        "settings": "设置",
+        "about": "关于"
+    },
+    "dashboard": {
+        "title": "控制台",
+        "stats_sites": "网站数量",
+        "stats_services": "运行中的服务",
+        "stats_dumps": "备份",
+        "stats_php": "PHP 版本",
+        "recent_sites": "最近网站",
+        "quick_services": "快速服务",
+        "quick_actions": "快速操作",
+        "add_new_site": "添加新网站",
+        "open_terminal": "打开终端",
+        "refresh": "刷新"
+    },
+    "settings": {
+        "title": "设置",
+        "general": "常规",
+        "appearance": "外观",
+        "language": "语言",
+        "theme": "主题",
+        "dark_mode": "深色模式",
+        "light_mode": "浅色模式",
+        "system_mode": "跟随系统",
+        "slim_mode": "紧凑型侧边栏",
+        "notifications": "通知",
+        "updates": "更新"
+    },
+    "services": {
+        "title": "服务",
+        "installed": "已安装服务",
+        "available": "可用服务",
+        "no_services": "未安装任何服务",
+        "install_success": "服务安装成功",
+        "uninstall_confirm": "您确定要卸载此服务吗？"
+    },
+    "footer": {
+        "start_all": "启动全部",
+        "stop_all": "停止全部"
+    }
+}

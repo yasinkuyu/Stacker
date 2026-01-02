@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/yasinkuyu/Stacker/internal/utils"
 )
@@ -93,10 +94,19 @@ func (fm *FPMManager) StartFPM(version string) error {
 
 	// Start PHP-FPM
 	cmd := exec.Command(binary, "-y", configPath, "-F")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	// Setup logging
+	logFile := filepath.Join(fm.logDir, fmt.Sprintf("php-fpm-%s.log", version))
+	f, errOpen := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if errOpen == nil {
+		cmd.Stdout = f
+		cmd.Stderr = f
+	}
 
 	if err := cmd.Start(); err != nil {
+		if f != nil {
+			f.Close()
+		}
 		return fmt.Errorf("failed to start PHP-FPM: %w", err)
 	}
 
@@ -112,7 +122,7 @@ func (fm *FPMManager) StartFPM(version string) error {
 	fm.savePID(version, cmd.Process.Pid)
 
 	// Monitor process
-	go fm.monitorProcess(version, cmd)
+	go fm.monitorProcess(version, cmd, f)
 
 	fmt.Printf("✅ PHP-FPM %s started on port %d (PID: %d)\n", version, port, cmd.Process.Pid)
 	return nil
@@ -245,7 +255,10 @@ pm.status_path = /fpm-status
 }
 
 // monitorProcess watches for FPM process exit
-func (fm *FPMManager) monitorProcess(version string, cmd *exec.Cmd) {
+func (fm *FPMManager) monitorProcess(version string, cmd *exec.Cmd, logFile *os.File) {
+	if logFile != nil {
+		defer logFile.Close()
+	}
 	cmd.Wait()
 
 	fm.mu.Lock()
@@ -266,11 +279,18 @@ func (fm *FPMManager) killProcess(pid int) {
 	}
 
 	// Try SIGTERM first
-	if err := process.Signal(syscall.SIGTERM); err == nil {
-		return
+	process.Signal(syscall.SIGTERM)
+
+	// Wait up to 2 seconds for graceful exit
+	for i := 0; i < 20; i++ {
+		time.Sleep(100 * time.Millisecond)
+		if err := process.Signal(syscall.Signal(0)); err != nil {
+			// Process is gone
+			return
+		}
 	}
 
-	// Force kill
+	// Force kill if still alive
 	process.Signal(syscall.SIGKILL)
 }
 

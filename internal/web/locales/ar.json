@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "ابدأ",
+        "stop": "إيقاف",
+        "restart": "إعادة تشغيل",
+        "install": "تثبيت",
+        "uninstall": "إلغاء التثبيت",
+        "config": "التكوين",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "confirm": "تأكيد",
+        "loading": "جاري التحميل...",
+        "search": "بحث...",
+        "status": "الحالة",
+        "version": "الإصدار",
+        "port": "المنفذ",
+        "actions": "الإجراءات"
+    },
+    "nav": {
+        "dashboard": "لوحة القيادة",
+        "sites": "المواقع",
+        "services": "الخدمات",
+        "php": "PHP",
+        "logs": "السجلات",
+        "mail": "البريد",
+        "tools": "الأدوات",
+        "settings": "الإعدادات",
+        "about": "حول"
+    },
+    "dashboard": {
+        "title": "لوحة القيادة",
+        "stats_sites": "المواقع",
+        "stats_services": "الخدمات المشغلة",
+        "stats_dumps": "المقالب",
+        "stats_php": "إصدار PHP",
+        "recent_sites": "المواقع الأخيرة",
+        "quick_services": "خدمات سريعة",
+        "quick_actions": "إجراءات سريعة",
+        "add_new_site": "إضافة موقع جديد",
+        "open_terminal": "افتح المحطة",
+        "refresh": "تحديث"
+    },
+    "settings": {
+        "title": "الإعدادات",
+        "general": "عام",
+        "appearance": "المظهر",
+        "language": "اللغة",
+        "theme": "السمة",
+        "dark_mode": "الوضع الداكن",
+        "light_mode": "الوضع الفاتح",
+        "system_mode": "وضع النظام",
+        "slim_mode": "شريط جانبي نحيف",
+        "notifications": "الإشعارات",
+        "updates": "التحديثات"
+    },
+    "services": {
+        "title": "الخدمات",
+        "installed": "الخدمات المثبتة",
+        "available": "الخدمات المتاحة",
+        "no_services": "لا توجد خدمات مثبتة",
+        "install_success": "تم تثبيت الخدمة بنجاح",
+        "uninstall_confirm": "هل أنت متأكد أنك تريد إلغاء تثبيت هذه الخدمة؟"
+    },
+    "footer": {
+        "start_all": "ابدأ الكل",
+        "stop_all": "إيقاف الكل"
+    }
+}

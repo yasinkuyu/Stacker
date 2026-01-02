@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "起動",
+        "stop": "停止",
+        "restart": "再起動",
+        "install": "インストール",
+        "uninstall": "アンインストール",
+        "config": "設定",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "confirm": "確認",
+        "loading": "読み込み中...",
+        "search": "検索...",
+        "status": "ステータス",
+        "version": "バージョン",
+        "port": "ポート",
+        "actions": "アクション"
+    },
+    "nav": {
+        "dashboard": "ダッシュボード",
+        "sites": "サイト",
+        "services": "サービス",
+        "php": "PHP",
+        "logs": "ログ",
+        "mail": "メール",
+        "tools": "ツール",
+        "settings": "設定",
+        "about": "情報"
+    },
+    "dashboard": {
+        "title": "ダッシュボード",
+        "stats_sites": "サイト数",
+        "stats_services": "実行中のサービス",
+        "stats_dumps": "ダンプ",
+        "stats_php": "PHPバージョン",
+        "recent_sites": "最近のサイト",
+        "quick_services": "クイックサービス",
+        "quick_actions": "クイックアクション",
+        "add_new_site": "新しいサイトを追加",
+        "open_terminal": "ターミナルを開く",
+        "refresh": "更新"
+    },
+    "settings": {
+        "title": "設定",
+        "general": "全般",
+        "appearance": "外観",
+        "language": "言語",
+        "theme": "テーマ",
+        "dark_mode": "ダークモード",
+        "light_mode": "ライトモード",
+        "system_mode": "システムに従う",
+        "slim_mode": "スリムサイドバー",
+        "notifications": "通知",
+        "updates": "アップデート"
+    },
+    "services": {
+        "title": "サービス",
+        "installed": "インストール済み",
+        "available": "利用可能",
+        "no_services": "サービスがインストールされていません",
+        "install_success": "インストールが完了しました",
+        "uninstall_confirm": "このサービスをアンインストールしてもよろしいですか？"
+    },
+    "footer": {
+        "start_all": "すべて起動",
+        "stop_all": "すべて停止"
+    }
+}
