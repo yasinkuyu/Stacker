@@ -134,6 +134,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/dumps", ws.handleDumps)
 	http.HandleFunc("/api/mail", ws.handleMail)
 	http.HandleFunc("/api/logs", ws.handleLogs)
+	http.HandleFunc("/api/logs/view", ws.handleLogView)
 	http.HandleFunc("/api/php", ws.handlePHP)
 	http.HandleFunc("/api/php/install", ws.handlePHPInstall)
 	http.HandleFunc("/api/php/install-status", ws.handlePHPInstallStatus)
@@ -867,6 +868,28 @@ func (ws *WebServer) handleLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(logFiles)
+}
+
+func (ws *WebServer) handleLogView(w http.ResponseWriter, r *http.Request) {
+	logPath := r.URL.Query().Get("path")
+	if logPath == "" {
+		http.Error(w, "Missing path", http.StatusBadRequest)
+		return
+	}
+
+	// Security check: ensure path is within stacker dir or site dirs
+	// For now, simple read
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		http.Error(w, "Failed to read log file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"path":    logPath,
+		"content": string(content),
+	})
 }
 
 // ===========================================

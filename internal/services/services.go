@@ -514,107 +514,147 @@ func (sm *ServiceManager) initializeMariaDB(binaryPath, configDir, dataDir strin
 }
 
 func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
+	fmt.Printf("🔍 Checking MariaDB binary in: %s\n", installDir)
 	// Direct check (if stripped)
-	if _, err := os.Stat(filepath.Join(installDir, "bin", "mariadbd")); err == nil {
+	directPath := filepath.Join(installDir, "bin", "mariadbd")
+	if _, err := os.Stat(directPath); err == nil {
+		fmt.Printf("✅ Found MariaDB binary directly at: %s\n", directPath)
 		return installDir
 	}
+	fmt.Printf("❌ Direct check failed for: %s\n", directPath)
 
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
+		fmt.Printf("⚠️ Could not read installDir: %v\n", err)
 		return ""
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			if strings.Contains(entry.Name(), "mariadb") {
 				binaryPath := filepath.Join(installDir, entry.Name())
-				if _, err := os.Stat(filepath.Join(binaryPath, "bin", "mariadbd")); err == nil {
+				checkPath := filepath.Join(binaryPath, "bin", "mariadbd")
+				if _, err := os.Stat(checkPath); err == nil {
+					fmt.Printf("✅ Found MariaDB binary in subdirectory: %s\n", binaryPath)
 					return binaryPath
 				}
+				fmt.Printf("❌ Subdirectory check failed for: %s\n", checkPath)
 			}
 		}
 	}
+	fmt.Printf("🚫 MariaDB binary NOT found in %s\n", installDir)
 	return ""
 }
 
 func (sm *ServiceManager) findMySQLBinary(installDir string) string {
+	fmt.Printf("🔍 Checking MySQL binary in: %s\n", installDir)
 	// Direct check (if stripped)
-	if _, err := os.Stat(filepath.Join(installDir, "bin", "mysqld")); err == nil {
+	directPath := filepath.Join(installDir, "bin", "mysqld")
+	if _, err := os.Stat(directPath); err == nil {
+		fmt.Printf("✅ Found MySQL binary directly at: %s\n", directPath)
 		return installDir
 	}
+	fmt.Printf("❌ Direct check failed for: %s\n", directPath)
 
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
+		fmt.Printf("⚠️ Could not read installDir: %v\n", err)
 		return ""
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			if strings.Contains(strings.ToLower(entry.Name()), "mysql") {
 				binaryPath := filepath.Join(installDir, entry.Name())
-				if _, err := os.Stat(filepath.Join(binaryPath, "bin", "mysqld")); err == nil {
+				checkPath := filepath.Join(binaryPath, "bin", "mysqld")
+				if _, err := os.Stat(checkPath); err == nil {
+					fmt.Printf("✅ Found MySQL binary in subdirectory: %s\n", binaryPath)
 					return binaryPath
 				}
+				fmt.Printf("❌ Subdirectory check failed for: %s\n", checkPath)
 			}
 		}
 	}
+	fmt.Printf("🚫 MySQL binary NOT found in %s\n", installDir)
 	return ""
 }
 
 func (sm *ServiceManager) findApacheBinary(installDir string) string {
+	fmt.Printf("🔍 Checking Apache binary in: %s\n", installDir)
 	// Check compiled binary location first
-	if _, err := os.Stat(filepath.Join(installDir, "apache-bin", "bin", "httpd")); err == nil {
-		return filepath.Join(installDir, "apache-bin", "bin", "httpd")
+	compiledPath := filepath.Join(installDir, "apache-bin", "bin", "httpd")
+	if _, err := os.Stat(compiledPath); err == nil {
+		fmt.Printf("✅ Found Apache binary in compiled path: %s\n", compiledPath)
+		return compiledPath
 	}
+	fmt.Printf("❌ Compiled path check failed for: %s\n", compiledPath)
 
 	// Direct check
-	if _, err := os.Stat(filepath.Join(installDir, "bin", "httpd")); err == nil {
-		return filepath.Join(installDir, "bin", "httpd")
+	directPath := filepath.Join(installDir, "bin", "httpd")
+	if _, err := os.Stat(directPath); err == nil {
+		fmt.Printf("✅ Found Apache binary directly at: %s\n", directPath)
+		return directPath
 	}
+	fmt.Printf("❌ Direct check failed for: %s\n", directPath)
 
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
+		fmt.Printf("⚠️ Could not read installDir: %v\n", err)
 		return ""
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			// Subdirectory check (e.g., httpd-2.4.58/bin/httpd)
 			binaryPath := filepath.Join(installDir, entry.Name(), "bin", "httpd")
 			if _, err := os.Stat(binaryPath); err == nil {
+				fmt.Printf("✅ Found Apache binary in subdirectory: %s\n", binaryPath)
 				return binaryPath
 			}
 
 			// Check for apache2/bin/httpd
 			binaryPath = filepath.Join(installDir, entry.Name(), "apache2", "bin", "httpd")
 			if _, err := os.Stat(binaryPath); err == nil {
+				fmt.Printf("✅ Found Apache binary in apache2 subdirectory: %s\n", binaryPath)
 				return binaryPath
 			}
 		}
 	}
+	fmt.Printf("🚫 Apache binary NOT found in %s\n", installDir)
 	return ""
 }
 
 func (sm *ServiceManager) findNginxBinary(installDir string) string {
+	fmt.Printf("🔍 Checking Nginx binary in: %s\n", installDir)
 	// Direct check
-	if _, err := os.Stat(filepath.Join(installDir, "sbin", "nginx")); err == nil {
-		return filepath.Join(installDir, "sbin", "nginx")
+	directPath := filepath.Join(installDir, "sbin", "nginx")
+	if _, err := os.Stat(directPath); err == nil {
+		fmt.Printf("✅ Found Nginx binary directly at: %s\n", directPath)
+		return directPath
 	}
+	fmt.Printf("❌ Direct check failed for: %s\n", directPath)
 
 	entries, err := os.ReadDir(installDir)
 	if err != nil {
+		fmt.Printf("⚠️ Could not read installDir: %v\n", err)
 		return ""
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			// Check nginx-bin/sbin/nginx or similar
 			binaryPath := filepath.Join(installDir, entry.Name(), "sbin", "nginx")
 			if _, err := os.Stat(binaryPath); err == nil {
+				fmt.Printf("✅ Found Nginx binary in subdirectory: %s\n", binaryPath)
 				return binaryPath
 			}
 		}
 	}
+	fmt.Printf("🚫 Nginx binary NOT found in %s\n", installDir)
 	return ""
 }
 
