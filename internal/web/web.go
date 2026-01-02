@@ -72,9 +72,9 @@ var (
 		Port:            9999,
 		SlimMode:        false,
 		DomainExtension: ".local",
-		ApachePort:      80,
-		NginxPort:       80,
-		MySQLPort:       3306,
+		ApachePort:      8080,
+		NginxPort:       7070,
+		MySQLPort:       3307,
 	}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
@@ -1715,26 +1715,69 @@ func (ws *WebServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
 		if slimMode, ok := updates["slimMode"].(bool); ok {
 			prefs.SlimMode = slimMode
 		}
-		if port, ok := updates["port"].(float64); ok {
+		portChanged := false
+		if port, ok := updates["port"].(float64); ok && int(port) != prefs.Port {
 			prefs.Port = int(port)
+			portChanged = true
 		}
-		if apachePort, ok := updates["apachePort"].(float64); ok {
+		if apachePort, ok := updates["apachePort"].(float64); ok && int(apachePort) != prefs.ApachePort {
 			prefs.ApachePort = int(apachePort)
+			portChanged = true
 		}
-		if nginxPort, ok := updates["nginxPort"].(float64); ok {
+		if nginxPort, ok := updates["nginxPort"].(float64); ok && int(nginxPort) != prefs.NginxPort {
 			prefs.NginxPort = int(nginxPort)
+			portChanged = true
 		}
-		if mysqlPort, ok := updates["mysqlPort"].(float64); ok {
+		if mysqlPort, ok := updates["mysqlPort"].(float64); ok && int(mysqlPort) != prefs.MySQLPort {
 			prefs.MySQLPort = int(mysqlPort)
+			portChanged = true
 		}
 
 		savePreferences(ws.stackerDir)
+
+		// If ports changed, regenerate configs and restart services in background
+		if portChanged {
+			go func() {
+				fmt.Println("🔄 Ports changed, regenerating configs and restarting services...")
+				ws.regenerateAllConfigs()
+
+				// Update global service configs and restart
+				svcs := ws.serviceManager.GetServices()
+				for _, svc := range svcs {
+					if svc.Status == "running" {
+						if svc.Type == "apache" {
+							ws.serviceManager.StopService(svc.Name)
+							ws.serviceManager.StartService(svc.Name)
+						} else if svc.Type == "nginx" {
+							ws.serviceManager.StopService(svc.Name)
+							ws.serviceManager.StartService(svc.Name)
+						} else if svc.Type == "mysql" {
+							ws.serviceManager.StopService(svc.Name)
+							ws.serviceManager.StartService(svc.Name)
+						}
+					}
+				}
+			}()
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(prefs)
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (ws *WebServer) regenerateAllConfigs() {
+	sitesMu.RLock()
+	sitesToUpdate := make([]Site, len(sites))
+	copy(sitesToUpdate, sites)
+	sitesMu.RUnlock()
+
+	for _, site := range sitesToUpdate {
+		if err := ws.createSiteConfig(site); err != nil {
+			fmt.Printf("⚠️  Failed to regenerate config for %s: %v\n", site.Name, err)
+		}
 	}
 }
 
