@@ -38,6 +38,9 @@ var serviceLogos embed.FS
 //go:embed locales/*.json
 var localeFS embed.FS
 
+//go:embed CHANGELOG.md
+var changelogMD string
+
 // Site represents a local development site
 type Site struct {
 	Name string `json:"name"`
@@ -143,6 +146,8 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/services/install", ws.handleServiceInstall)
 	http.HandleFunc("/api/services/install-status", ws.handleServiceInstallStatus)
 	http.HandleFunc("/api/services/progress/stream", ws.handleInstallProgressSSE)
+
+	http.HandleFunc("/api/changelog", ws.handleChangelog)
 	http.HandleFunc("/api/services/health/stream", ws.handleServiceHealthSSE)
 	http.HandleFunc("/api/services/uninstall", ws.handleServiceUninstall)
 	http.HandleFunc("/api/services/start/", ws.handleServiceStart)
@@ -980,6 +985,18 @@ func (ws *WebServer) handleMail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(emails)
+}
+
+func (ws *WebServer) handleChangelog(w http.ResponseWriter, r *http.Request) {
+	content := []byte(changelogMD)
+	if len(content) == 0 {
+		content = []byte("# Changelog\n\nNo changelog found.")
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"content": string(content),
+	})
 }
 
 func (ws *WebServer) handleLogs(w http.ResponseWriter, r *http.Request) {

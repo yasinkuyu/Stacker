@@ -4580,22 +4580,78 @@
         }
 
         // Show Change Log
-        function showChangeLog() {
-            showDrawPanel('Change Log', `
-                <div style="padding: 24px;">
-                    <div style="font-weight: 600; font-size: 16px; margin-bottom: 12px; color: var(--text-primary);">Version 1.0.1</div>
-                    <div style="font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
-                        <ul style="margin: 0; padding-left: 20px;">
-                            <li>Added 3-column layout for better navigation</li>
-                            <li>Implemented global progress bar for bulk actions</li>
-                            <li>Added footer with server controls and branding</li>
-                            <li>Improved UI aesthetics: softer shadows and rounded corners</li>
-                            <li>Optimized sites and services panel interaction</li>
-                            <li>Fixed service version duplication and tray status sync</li>
+        async function showChangeLog() {
+            showOperationProgress('Loading changes...');
+            try {
+                const data = await api('/changelog');
+                hideOperationProgress();
+
+                // Parse Markdown
+                const lines = data.content.split('\n');
+                const history = [];
+                let currentVersion = null;
+
+                lines.forEach(line => {
+                    const versionMatch = line.match(/^##\s+(v[\d\.]+)\s+\((.+)\)/);
+                    if (versionMatch) {
+                        if (currentVersion) history.push(currentVersion);
+                        currentVersion = {
+                            version: versionMatch[1],
+                            date: versionMatch[2],
+                            type: versionMatch[1].endsWith('.0') ? 'major' : 'minor',
+                            changes: []
+                        };
+                    } else if (currentVersion && line.trim().startsWith('-')) {
+                        const changeMatch = line.match(/-\s+\[(\w+)\]\s+(.+)/);
+                        if (changeMatch) {
+                            currentVersion.changes.push({
+                                type: changeMatch[1],
+                                text: changeMatch[2]
+                            });
+                        } else {
+                            // Fallback for simple list items
+                            currentVersion.changes.push({
+                                type: 'misc',
+                                text: line.replace('-', '').trim()
+                            });
+                        }
+                    }
+                });
+                if (currentVersion) history.push(currentVersion);
+
+                const html = history.map(item => `
+                    <div class="changelog-item" style="margin-bottom: 32px; position: relative; padding-left: 24px; border-left: 2px solid var(--border-color);">
+                        <div style="position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: ${item.type === 'major' ? 'var(--accent)' : 'var(--text-muted)'}; border: 2px solid var(--bg-primary);"></div>
+                        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px;">
+                            <span style="font-size: 18px; font-weight: 700; color: var(--text-primary);">${item.version}</span>
+                            <span style="font-size: 13px; color: var(--text-muted);">${item.date}</span>
+                            ${item.type === 'major' ? '<span class="status-badge status-running" style="font-size: 10px;">Major Release</span>' : ''}
+                        </div>
+                        <ul style="margin: 0; padding: 0; list-style: none;">
+                            ${item.changes.map(change => `
+                                <li style="margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); display: flex; gap: 8px;">
+                                    <span style="
+                                        display: inline-flex; align-items: center; justify-content: center;
+                                        width: 36px; height: 18px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase;
+                                        background: ${change.type === 'feat' ? 'rgba(52, 211, 153, 0.1)' : change.type === 'fix' ? 'rgba(248, 113, 113, 0.1)' : 'rgba(96, 165, 250, 0.1)'};
+                                        color: ${change.type === 'feat' ? 'rgb(52, 211, 153)' : change.type === 'fix' ? 'rgb(248, 113, 113)' : 'rgb(96, 165, 250)'};
+                                    ">${change.type}</span>
+                                    <span style="flex: 1; line-height: 1.5;">${change.text}</span>
+                                </li>
+                            `).join('')}
                         </ul>
                     </div>
-                </div>
-            `);
+                `).join('');
+
+                openDrawPanel('Change Log', `
+                    <div style="padding: 32px 24px;">
+                        ${html}
+                    </div>
+                `);
+            } catch (err) {
+                hideOperationProgress();
+                showToast('Failed to load changelog', 'error');
+            }
         }
 
         async function loadServices() {
