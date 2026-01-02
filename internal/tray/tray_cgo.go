@@ -312,7 +312,7 @@ func (tm *TrayManager) updateIconByStatus() {
 	}
 
 	if running == total {
-		systray.SetIcon(iconGreen)
+		systray.SetIcon(iconData)
 	} else if running > 0 {
 		systray.SetIcon(iconOrange)
 	} else {

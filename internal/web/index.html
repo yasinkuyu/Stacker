@@ -3721,13 +3721,13 @@
                         recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
                             <div class="list-item" style="padding: 12px 16px;">
                                 <div class="item-info">
-                                    <div class="item-primary" style="display: flex; align-items: center; gap: 8px;">
-                                        ${s.name}.test
+                                <div class="item-primary" style="display: flex; align-items: center; gap: 8px;">
+                                        ${s.url.replace(/^https?:\/\//, '')}
                                         ${s.php ? `<span class="site-badge php" style="font-size: 9px; padding: 2px 6px;">PHP ${s.php}</span>` : ''}
                                     </div>
                                     <div class="item-secondary" style="font-size: 12px;">${s.path}</div>
                                 </div>
-                                <button class="icon-btn" onclick="openSiteInBrowser('${s.name}')" title="Open in browser">
+                                <button class="icon-btn" onclick="window.open('${s.url}', '_blank')" title="Open in browser">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                                         <polyline points="15 3 21 3 21 9"/>
@@ -4006,7 +4006,7 @@
                 list.innerHTML = sites.map(s => `
                     <div class="site-row">
                         <div class="site-info" onclick='editSite(${JSON.stringify(s)})'>
-                            <div class="site-name">${s.name}.test</div>
+                            <div class="site-name">${s.url ? s.url.replace(/^https?:\/\//, '') : s.name}</div>
                             <div class="site-path">${s.path}</div>
                         </div>
                         <div class="site-badges">
@@ -4014,7 +4014,7 @@
                             ${s.ssl ? '<span class="site-badge ssl">SSL</span>' : ''}
                         </div>
                         <div class="site-actions">
-                            <button class="icon-btn" onclick="openSiteInBrowser('${s.name}')" title="Open"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+                            <button class="icon-btn" onclick="window.open('${s.url}', '_blank')" title="Open"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
                             <button class="icon-btn" onclick="openSiteFolder('${s.path}')" title="Folder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>
                             <button class="icon-btn danger" onclick="deleteSite('${s.name}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                         </div>
@@ -4030,11 +4030,14 @@
                 `<option value="${v.version}">PHP ${v.version}${v.default ? ' (Default)' : ''}</option>`
             ).join('');
 
+            const prefs = await api('/preferences').catch(() => ({}));
+            const domainExt = prefs.domainExtension || '.local';
+
             const content = `
                 <div class="form-group">
                     <label class="form-label">Site Name</label>
-                    <input type="text" class="form-input" id="siteName" placeholder="my-project">
-                    <div class="form-hint">Will be accessible at my-project.test</div>
+                    <input type="text" class="form-input" id="siteName" placeholder="my-project" oninput="updateSiteHint(this.value, '${domainExt}')">
+                    <div class="form-hint" id="siteHint">Will be accessible at my-project${domainExt}</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Project Path</label>
@@ -4063,6 +4066,10 @@
             `;
 
             openDrawPanel('Add New Site', content, saveSite);
+        }
+
+        function updateSiteHint(val, ext) {
+            document.getElementById('siteHint').textContent = 'Will be accessible at ' + (val || 'my-project') + ext;
         }
 
         async function editSite(site) {

@@ -47,19 +47,21 @@ type Site struct {
 	Path string `json:"path"`
 	PHP  string `json:"php,omitempty"`
 	SSL  bool   `json:"ssl"`
+	Url  string `json:"url"` // Dynamic URL based on settings
 }
 
 // Preferences holds user settings
 type Preferences struct {
-	Theme     string `json:"theme"`
-	AutoStart bool   `json:"autoStart"`
-	ShowTray  bool   `json:"showTray"`
-	Port      int    `json:"port"`
-	SlimMode  bool   `json:"slimMode"`
+	Theme           string `json:"theme"`
+	AutoStart       bool   `json:"autoStart"`
+	ShowTray        bool   `json:"showTray"`
+	Port            int    `json:"port"`
+	SlimMode        bool   `json:"slimMode"`
+	DomainExtension string `json:"domainExtension"`
 }
 
 var (
-	prefs     = Preferences{Theme: "dark", AutoStart: false, ShowTray: true, Port: 9999, SlimMode: false}
+	prefs     = Preferences{Theme: "light", AutoStart: false, ShowTray: true, Port: 9999, SlimMode: false, DomainExtension: ".local"}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
 	sitesMu   sync.RWMutex
@@ -253,7 +255,25 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		sitesMu.RLock()
 		defer sitesMu.RUnlock()
-		json.NewEncoder(w).Encode(sites)
+
+		prefMutex.RLock()
+		domainExt := prefs.DomainExtension
+		prefMutex.RUnlock()
+		if domainExt == "" {
+			domainExt = ".local"
+		}
+
+		// Create a copy to inject dynamic URLs without modifying stored data
+		displaySites := make([]Site, len(sites))
+		for i, s := range sites {
+			s.Url = "http://" + s.Name + domainExt
+			if s.SSL {
+				s.Url = "https://" + s.Name + domainExt
+			}
+			displaySites[i] = s
+		}
+
+		json.NewEncoder(w).Encode(displaySites)
 
 	case "POST":
 		var site Site
@@ -285,6 +305,23 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		if err := ws.createSiteConfig(site); err != nil {
 			http.Error(w, "Failed to create site config: "+err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		// Add to system hosts file
+		prefMutex.RLock()
+		domainExt := prefs.DomainExtension
+		if domainExt == "" {
+			domainExt = ".local"
+		}
+		prefMutex.RUnlock()
+
+		fullDomain := site.Name + domainExt
+		// Only run if not already exists (utils checks, but good to know)
+		// We catch error but don't fail request entirely, just warn
+		if err := utils.AddToHosts(fullDomain); err != nil {
+			fmt.Printf("⚠️ Failed to add to hosts file: %v (try running as admin/root)\n", err)
+		} else {
+			fmt.Printf("✅ Added %s to hosts file\n", fullDomain)
 		}
 
 		// Reload Nginx if it's running
@@ -494,11 +531,18 @@ func (ws *WebServer) createSiteConfig(site Site) error {
 		}
 	}
 
+	prefMutex.RLock()
+	domainExt := prefs.DomainExtension
+	prefMutex.RUnlock()
+	if domainExt == "" {
+		domainExt = ".local" // Default fallback if empty
+	}
+
 	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
 # Generated: %[2]s
 server {
     listen 80;
-    server_name %[1]s.test;
+    server_name %[1]s%[5]s;
     root "%[3]s";
     index index.php index.html index.htm;
 
@@ -519,7 +563,7 @@ server {
         deny all;
     }
 }
-`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort)
+`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
 
 	return os.WriteFile(configPath, []byte(config), 0644)
 }
@@ -674,29 +718,6 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 	fmt.Printf("\nAfter installation, Stacker will detect it automatically.\n")
 
 	return lastErr
-}
-
-// GetPlatformPHPInstallCommand returns platform-specific install commands
-func (ws *WebServer) GetPlatformPHPInstallCommands(version string) map[string]string {
-	commands := make(map[string]string)
-	osName := runtime.GOOS
-
-	switch osName {
-	case "darwin":
-		commands["brew"] = fmt.Sprintf("brew install php%s", version)
-		commands["brew_versioned"] = fmt.Sprintf("brew install php@%s", version)
-	case "linux":
-		commands["apt"] = fmt.Sprintf("sudo apt install php%s", version)
-		commands["yum"] = fmt.Sprintf("sudo yum install php%s", version)
-		commands["dnf"] = fmt.Sprintf("sudo dnf install php%s", version)
-	case "windows":
-		commands["winget"] = fmt.Sprintf("winget install PHP.php%s", version)
-		commands["url"] = "https://windows.php.net/download/"
-	default:
-		commands["generic"] = fmt.Sprintf("Install PHP %s from https://php.net/downloads.php", version)
-	}
-
-	return commands
 }
 
 func (ws *WebServer) getPHPPort(version string) int {
