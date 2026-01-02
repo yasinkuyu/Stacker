@@ -3,10 +3,11 @@ package web
 import (
 	"archive/tar"
 	"compress/gzip"
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -30,6 +31,9 @@ var indexHTML string
 
 //go:embed logo.png
 var logoPNG []byte
+
+//go:embed services/*.svg
+var serviceLogos embed.FS
 
 // Site represents a local development site
 type Site struct {
@@ -155,6 +159,9 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/open-terminal", ws.handleOpenTerminal)
 	http.HandleFunc("/api/browse-folder", ws.handleBrowseFolder)
 	http.HandleFunc("/api/dumps/ingest", ws.handleDumpIngest)
+
+	logoFS, _ := fs.Sub(serviceLogos, "services")
+	http.Handle("/api/static/services/", http.StripPrefix("/api/static/services/", http.FileServer(http.FS(logoFS))))
 
 	ws.mailManager.Start()
 

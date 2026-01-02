@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -758,6 +758,12 @@
             transition: all 0.2s;
         }
 
+        .footer-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            filter: grayscale(0.5);
+        }
+
         .footer-btn-start {
             background: var(--success-bg);
             color: var(--success);
@@ -818,9 +824,15 @@
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
             margin-bottom: 32px;
+        }
+
+        @media (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .stat-card {
@@ -1604,6 +1616,22 @@
             align-items: center;
             box-shadow: 0 1px 3px var(--shadow);
             transition: all 0.2s;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .service-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .service-actions {
+                width: 100%;
+                justify-content: flex-start;
+                padding-top: 8px;
+                border-top: 1px solid var(--border-light);
+            }
         }
 
         .service-info {
@@ -2158,7 +2186,7 @@
         </div>
         <!-- Icon Navigation (always visible) -->
         <nav class="icon-nav">
-            <div class="icon-nav-logo">
+            <div class="icon-nav-logo" onclick="showPage('dashboard')" style="cursor: pointer;">
                 <img src="/logo.png" alt="S" onerror="this.parentElement.innerHTML='S'">
                 <span class="icon-nav-title">Stacker</span>
             </div>
@@ -2240,7 +2268,7 @@
 
         <!-- Dynamic Panel (changes based on selected section) -->
         <aside class="sites-panel" id="sitesPanel">
-            <div class="sites-panel-header">
+            <div class="sites-panel-header" onclick="showPage('dashboard')" style="cursor: pointer;">
                 <div class="sites-panel-title" id="panelTitle">Local Sites</div>
                 <input type="text" class="sites-panel-search" placeholder="Search..." id="panelSearch"
                     oninput="filterPanelList()">
@@ -2367,10 +2395,7 @@
         <main class="main-content">
             <!-- Dashboard -->
             <div id="dashboard" class="page active">
-                <div class="page-header">
-                    <h1 class="page-title">Dashboard</h1>
-                    <p class="page-subtitle">Overview of your development environment</p>
-                </div>
+
 
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -2684,15 +2709,13 @@
                     <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 32px;">Version 1.0.1 Stable
                         (macOS Edition)</p>
 
-                    <div id="about-content">
-                        <p
-                            style="max-width: 520px; margin: 0 auto 48px; line-height: 1.8; color: var(--text-secondary); font-size: 16px;">
-                            Stacker is a modern, standalone development environment crafted for high-performance web
-                            development.
-                            It empowers developers to manage multiple PHP versions, databases, and servers without local
-                            system dependencies.
-                        </p>
-                    </div>
+                    <p
+                        style="max-width: 520px; margin: 0 auto 48px; line-height: 1.8; color: var(--text-secondary); font-size: 16px;">
+                        Stacker is a modern, standalone development environment crafted for high-performance web
+                        development.
+                        It empowers developers to manage multiple PHP versions, databases, and servers without local
+                        system dependencies.
+                    </p>
 
                     <div
                         style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; text-align: left; max-width: 440px; margin: 0 auto;">
@@ -2759,7 +2782,8 @@
                                 <div class="settings-desc">Choose your preferred interface style</div>
                             </div>
                             <div class="theme-toggle">
-                                <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Light">
+                                <button class="theme-btn active" data-theme="light" onclick="setTheme('light')"
+                                    title="Light">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2">
                                         <circle cx="12" cy="12" r="5" />
@@ -2773,8 +2797,7 @@
                                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                                     </svg>
                                 </button>
-                                <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')"
-                                    title="Dark">
+                                <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" title="Dark">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2">
                                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
@@ -2883,17 +2906,17 @@
         <!-- Footer Bar -->
         <footer class="footer-bar">
             <div class="footer-left">
-                <button class="footer-btn footer-btn-start" onclick="startAllServers()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <button id="btn-start-all" class="footer-btn footer-btn-start" onclick="startAllServers()">
+                    <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                         <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
-                    Start All
+                    <span>Start All</span>
                 </button>
-                <button class="footer-btn footer-btn-stop" onclick="stopAllServers()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <button id="btn-stop-all" class="footer-btn footer-btn-stop" onclick="stopAllServers()">
+                    <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                         <rect x="6" y="6" width="12" height="12" />
                     </svg>
-                    Stop All
+                    <span>Stop All</span>
                 </button>
             </div>
             <div class="footer-right">
@@ -2998,6 +3021,7 @@
 
         // Panel section configurations
         const panelConfig = {
+            dashboard: { title: 'Dashboard', placeholder: '' },
             sites: { title: 'Local Sites', placeholder: 'Search sites...' },
             services: { title: 'Services', placeholder: 'Search services...' },
             php: { title: 'PHP Versions', placeholder: 'Search PHP...' },
@@ -3018,6 +3042,7 @@
 
             // Render appropriate content
             switch (section) {
+                case 'dashboard': renderDashboardPanelList(); break;
                 case 'sites': renderSitesPanelList(cachedSites); break;
                 case 'services': renderServicesPanelList(); break;
                 case 'php': renderPHPPanelList(); break;
@@ -3271,6 +3296,14 @@
 
         // Start all servers
         async function startAllServers() {
+            const btn = document.getElementById('btn-start-all');
+            let originalHtml = '';
+            if (btn) {
+                originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Starting...</span>`;
+            }
+
             try {
                 showToast('Starting all servers...', 'info');
                 showGlobalProgress();
@@ -3285,7 +3318,7 @@
 
                 let completed = 0;
                 for (const service of servicesToStart) {
-                    await api(`/services/${service.type}-${service.version}/start`, 'POST');
+                    await api(`/services/start/${service.name}`, 'POST');
                     completed++;
                     updateGlobalProgress((completed / servicesToStart.length) * 100);
                 }
@@ -3296,11 +3329,24 @@
             } catch (err) {
                 hideGlobalProgress();
                 showToast('Error starting servers: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
             }
         }
 
         // Stop all servers
         async function stopAllServers() {
+            const btn = document.getElementById('btn-stop-all');
+            let originalHtml = '';
+            if (btn) {
+                originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Stopping...</span>`;
+            }
+
             try {
                 showToast('Stopping all servers...', 'warning');
                 showGlobalProgress();
@@ -3315,7 +3361,7 @@
 
                 let completed = 0;
                 for (const service of servicesToStop) {
-                    await api(`/services/${service.type}-${service.version}/stop`, 'POST');
+                    await api(`/services/stop/${service.name}`, 'POST');
                     completed++;
                     updateGlobalProgress((completed / servicesToStop.length) * 100);
                 }
@@ -3326,6 +3372,11 @@
             } catch (err) {
                 hideGlobalProgress();
                 showToast('Error stopping servers: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
             }
         }
 
@@ -3569,10 +3620,15 @@
                         const installed = servicesData.installed;
                         if (installed.length) {
                             quickServicesEl.innerHTML = installed.slice(0, 5).map(s => `
-                                <div class="list-item" style="padding: 10px 0; border-bottom: none;">
-                                    <div class="item-info">
-                                        <div class="item-primary" style="font-size: 13px; font-weight: 600;">${s.type.toUpperCase()} ${s.version}</div>
-                                        <div class="item-secondary" style="font-size: 11px; color: var(--text-muted);">Port: ${s.port || 'Default'}</div>
+                                <div class="list-item" style="padding: 12px 0; border-bottom: none;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="service-icon ${s.type}" style="width: 24px; height: 24px;">
+                                            ${getServiceIcon(s.type)}
+                                        </div>
+                                        <div class="item-info">
+                                            <div class="item-primary" style="font-size: 13px; font-weight: 600;">${s.type.toUpperCase()} ${s.version}</div>
+                                            <div class="item-secondary" style="font-size: 11px; color: var(--text-muted);">Port: ${s.port || 'Default'}</div>
+                                        </div>
                                     </div>
                                     <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 10px; margin-right: 8px;">
                                         <span class="status-dot"></span>${s.status}
@@ -4414,29 +4470,21 @@
 
         // Show Change Log
         function showChangeLog() {
-            showPage('about');
-            setTimeout(() => {
-                const el = document.getElementById('about-content');
-                if (el) {
-                    el.innerHTML = `
-                        <div class="card" style="margin-top:20px; text-align:left; border:1px solid var(--border-light); background:var(--bg-primary);">
-                            <div class="card-header" style="background:var(--bg-tertiary);">
-                                <h4 style="margin:0; font-size:14px;">Change Log v1.0.1</h4>
-                            </div>
-                            <div style="padding:16px; font-size:13px; line-height:1.6; color:var(--text-secondary);">
-                                <ul style="margin:0; padding-left:20px;">
-                                    <li>Added 3-column layout for better navigation</li>
-                                    <li>Implemented global progress bar for bulk actions</li>
-                                    <li>Added footer with server controls and branding</li>
-                                    <li>Improved UI aesthetics: softer shadows and rounded corners</li>
-                                    <li>Optimized sites and services panel interaction</li>
-                                    <li>Fixed service version duplication and tray status sync</li>
-                                </ul>
-                            </div>
-                        </div>
-                    `;
-                }
-            }, 300);
+            showDrawPanel('Change Log', `
+                <div style="padding: 24px;">
+                    <div style="font-weight: 600; font-size: 16px; margin-bottom: 12px; color: var(--text-primary);">Version 1.0.1</div>
+                    <div style="font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Added 3-column layout for better navigation</li>
+                            <li>Implemented global progress bar for bulk actions</li>
+                            <li>Added footer with server controls and branding</li>
+                            <li>Improved UI aesthetics: softer shadows and rounded corners</li>
+                            <li>Optimized sites and services panel interaction</li>
+                            <li>Fixed service version duplication and tray status sync</li>
+                        </ul>
+                    </div>
+                </div>
+            `);
         }
 
         async function loadServices() {
@@ -4482,16 +4530,7 @@
                                 <div class="service-card">
                                     <div class="service-info">
                                         <div class="service-icon ${s.type}">
-                                            ${s.type === 'mysql' ? '<svg viewBox="0 0 128 128"><path fill="#00618A" d="M116.948 97.807c-6.863-.187-12.104.452-16.585 2.341-1.273.537-3.305.552-3.513 2.147.7.733.807 1.83 1.365 2.731 1.07 1.73 2.876 4.052 4.488 5.268 1.762 1.33 3.577 2.751 5.465 3.902 3.358 2.047 7.107 3.217 10.34 5.268 1.906 1.21 3.799 2.733 5.658 4.097.92.675 1.537 1.724 2.732 2.147v-.194c-.628-.79-.79-1.898-1.366-2.733l-2.537-2.537c-2.48-3.292-5.629-6.184-8.976-8.585-2.669-1.916-8.642-4.504-9.755-7.609l-.195-.195c1.892-.214 4.107-.898 5.854-1.367 2.934-.786 5.556-.583 8.585-1.365l4.097-1.171v-.78c-1.531-1.571-2.623-3.651-4.292-5.073-4.37-3.72-9.138-7.437-14.048-10.537-2.724-1.718-6.089-2.835-8.976-4.292-.971-.491-2.677-.746-3.318-1.562-1.517-1.932-2.342-4.382-3.511-6.633-2.449-4.717-4.854-9.868-7.024-14.831-1.48-3.384-2.447-6.72-4.292-9.756-8.86-14.567-18.396-23.358-33.169-32-3.144-1.838-6.929-2.563-10.929-3.513l-6.438-.389c-1.309-.547-2.676-2.149-3.902-2.927C11.931 4.319 5.3.625 1.907 4.411c-2.14 2.389.247 4.817 1.171 7.219.653 1.698 1.316 3.405 2.147 5.073.566 1.136 1.316 2.229 1.757 3.317 1.13 2.79 1.655 5.844 2.927 8.585 2.47 5.323 4.86 10.889 8.195 15.61 1.669 2.363 3.044 4.81 5.073 6.829 1.231 1.225 3.31 1.993 4.097 3.708-2.308 3.225-2.442 7.547-3.902 11.318-6.577 16.978-4.098 38.121 5.463 50.712 2.935 3.868 9.834 12.166 19.318 8.976 8.303-2.789 6.447-11.438 8.78-19.122 1.296-4.274 1.166-7.455 2.733-10.73-.095-.048-.097-.021-.195.194v.584c-1.452 2.927-3.053 5.79-4.29 8.975-1.807 4.653-2.818 9.803-4.489 14.44-.621 1.722-1.66 4.413-3.122 5.462-2.854 2.046-8.982.99-11.903-.195-2.47-.988-5.089-2.656-7.024-4.097-3.976-2.961-7.496-6.631-10.538-10.538-7.419-9.523-13.106-20.193-15.22-32.392-.595-3.455-.503-6.896-1.171-10.342-.658-9.37 2.19-17.16 5.072-23.36 3.055-6.571 8.125-12.965 12.899-17.952 2.554-2.668 5.554-4.858 8.585-6.829 2.565-1.669 4.977-2.888 7.804-3.902 1.131-.406 2.932-.298 3.513-1.171v-.78c-2.019-.195-3.905-.911-5.854-1.367-3.244-.758-6.127-.389-9.365-1.17-6.685-1.612-13.322-4.098-19.513-6.439-3.239-1.225-6.498-1.79-9.366-2.537-2.915-.76-5.817-1.832-8.78-2.146l-1.757-1.171c-.65-.709-.79-2.21-1.171-3.122z"/><path fill="#F29111" d="M52.767 43.76c-2.095.195-3.615.633-5.263 1.366v.389l2.342 2.342c1.414 1.464 2.971 3.53 4.293 4.682l.977.195c.934-.462 1.665-1.195 2.342-1.952 1.892-2.114 3.739-5.002 5.073-7.609l.39-.78h-.585c-.9.561-1.665.973-2.731 1.366-2.256.833-4.82.833-7.024.797-2.095 0-4.295.389-5.268-.389h-.389v.389c1.133.12 2.316.462 3.512.585.875.09 1.787.051 2.537.39l.782.389v.389h-1.56c-2.09.195-4.239-.317-5.659.97-.655.593-1.138 1.455-1.756 2.342-.489.703-.755 1.756-.587 2.927.134.928.804 1.807 1.172 2.731.543 1.368 1.103 2.732 1.952 3.902.756 1.043 1.466 2.243 2.732 2.927.57.307 1.61.376 2.342.585l.975.195c.607-.309 1.109-.925 1.561-1.366 1.082-1.054 2.148-2.428 2.927-3.709.487-.803.82-1.639 1.171-2.536.181-.462.158-.924.389-1.366.573-1.095 1.399-1.998 1.952-3.122.952-1.938 1.349-4.104 2.342-5.854.424-.748.978-1.5 1.367-2.147.412-.687.819-1.386.779-2.342-.261-.608-.425-1.472-.975-1.757z"/></svg>' :
-                        s.type === 'mariadb' ? '<svg viewBox="0 0 128 128"><path fill="#003545" d="M4.5 108.1c.3.5.7 1 1.2 1.4 1.5 1.2 3.4 1.6 5.3 1.4 2.1-.2 4.1-.9 6-1.7 2.3-1 4.4-2.3 6.3-3.8 1.6-1.3 3.1-2.7 4.5-4.2.9-.9 1.7-1.9 2.4-2.9.6-.8 1.1-1.7 1.4-2.6.2-.7.3-1.4.2-2.1-.1-.8-.4-1.5-.9-2.1-.6-.8-1.4-1.3-2.3-1.7-1.1-.4-2.2-.6-3.4-.5-.9.1-1.8.3-2.6.6-.7.3-1.3.6-1.9 1-.5.3-.9.7-1.2 1.1-.3.4-.4.8-.4 1.2 0 .6.2 1.1.7 1.5.4.3.9.5 1.4.6.6.1 1.2 0 1.8-.3.5-.2.9-.6 1.1-1.1.2-.4.2-.9.1-1.3-.1-.4-.4-.8-.7-1-.5-.4-1.1-.6-1.7-.5-.6.1-1.2.4-1.6.9-.3.3-.5.8-.5 1.2 0 .5.2 1 .5 1.3.4.4.9.7 1.5.8.8.1 1.5-.1 2.2-.4.6-.3 1.1-.8 1.4-1.3.4-.6.5-1.4.4-2.1-.1-.6-.4-1.2-.9-1.6-.5-.4-1.1-.6-1.7-.6-.8 0-1.5.3-2.1.8-.5.5-.9 1.1-1 1.8-.2.8 0 1.7.4 2.4.5.8 1.2 1.4 2.1 1.7 1 .4 2.2.3 3.2-.2.9-.4 1.6-1.1 2-2 .5-1 .5-2.1.2-3.1-.4-1-.1-1.9-1.6-2.5-1.2-.5-2.6-.5-3.8-.1-1.3.5-2.4 1.3-3.3 2.3-1 1.1-1.8 2.4-2.4 3.8-.6 1.3-1 2.7-1.3 4.1-.3 1.3-.4 2.7-.4 4.1 0 .7 0 1.5.1 2.2.1.7.2 1.3.5 2 .2.6.5 1.2.9 1.7.4.5.9.9 1.4 1.2z"/><path fill="#C0765A" d="M125.5 19.9c-2.3-.3-4.6-.5-6.9-.5-3.8 0-7.7.4-11.4 1.3-4.7 1.1-9.2 2.9-13.3 5.2-4.5 2.6-8.5 5.8-12.1 9.5-3.6 3.8-6.6 8-9 12.6-2.2 4.3-3.8 8.8-4.9 13.5-.5 2.3-.9 4.6-1.1 7-.1.6-.1 1.2-.1 1.9 0 .3 0 .6.1.9 0 .2.1.4.2.6.1.1.2.2.4.2.2 0 .3-.1.5-.2.2-.2.4-.4.5-.6.2-.3.3-.6.4-.9.2-.5.3-1 .4-1.5.2-.8.4-1.7.6-2.5.7-2.3 1.4-4.5 2.3-6.7 1.8-4.3 4-8.4 6.7-12.2 2.5-3.6 5.4-6.9 8.7-9.8 3.1-2.8 6.5-5.2 10.2-7.2 3.4-1.9 7-3.4 10.8-4.5 3.3-1 6.7-1.6 10.2-1.8 1.6-.1 3.1-.1 4.6.1l2.5.3c.6.1 1.1.3 1.6.5.4.2.8.4 1.2.7.3.3.6.6.8 1 .2.4.3.8.3 1.2 0 .6-.2 1.1-.5 1.6-.4.6-.9 1-1.5 1.4-.8.4-1.6.7-2.5.8-1.1.2-2.2.2-3.3 0-.9-.1-1.8-.4-2.7-.8-.7-.3-1.3-.8-1.8-1.4-.4-.5-.6-1.1-.6-1.7 0-.7.3-1.3.8-1.8.5-.5 1.2-.8 1.9-1 .9-.2 1.9-.2 2.8 0 .8.2 1.5.6 2.1 1.1.5.5.8 1.1.9 1.8.1.6 0 1.2-.3 1.7-.4.5-.9.9-1.4 1.2-.7.3-1.4.5-2.2.4-.7 0-1.3-.2-1.9-.6-.5-.3-.8-.8-1-1.3-.1-.5-.1-1 .1-1.5.2-.4.5-.7.9-.9.5-.2 1-.2 1.5-.1s.9.4 1.2.8c.2.3.3.7.2 1.1-.1.4-.3.7-.6.9-.4.2-.8.3-1.2.2-.4-.1-.7-.3-.9-.6-.2-.3-.3-.7-.2-1.1.1-.3.3-.6.6-.8.2-.2.5-.3.8-.3.3 0 .7.1.9.3.3.3.5.6.5 1 0 .3-.1.5-.2.8-.2.4-.5.6-.9.8-.4.2-.8.2-1.2.1-.4-.1-.8-.3-1-.6-.2-.3-.3-.7-.2-1.1 0-.1.1-.3.2-.4z"/></svg>' :
-                            s.type === 'nginx' ? '<svg viewBox="0 0 128 128"><path fill="#009639" d="M 28.998 110.667 L 44.271 118 L 44.271 10 L 28.998 17.333 Z"/><path fill="#009639" d="M 83.729 10 L 99.002 17.333 L 99.002 110.667 L 83.729 118 Z"/><path fill="#009639" d="M 44.271 10 L 44.271 35.333 L 83.729 92.667 L 83.729 118 L 44.271 60.667 L 44.271 35.333 Z"/></svg>' :
-                                s.type === 'apache' ? '<svg viewBox="0 0 128 128"><path fill="#D22128" d="M64 0L4 117h20l8-15h64l8 15h20L64 0zm0 30l24 52H40l24-52z"/><path fill="#303284" d="M64 47l-12 26h24L64 47z"/></svg>' :
-                                    s.type === 'redis' ? '<svg viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3.9C49.9 112.6 9 97.7 2.2 94.4c-3.4-1.7-5.2-3.1-5.2-4.4V75.4s48-10.5 55.9-13.4c7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 47.3 9.8 53.9 12.4v13.8c0 1.4-1.4 2.8-2.2 4.9z"/><path fill="#D82C20" d="M121.8 79.5c-6.7 3.5-41.4 17.7-48.8 21.6C65.6 105 61.5 105 55.7 102 49.9 99 9 84.1 2.2 80.8c-6.8-3.4-6.3-5.7-.2-8.1 6.1-2.4 40.9-16.3 48.8-19.3 7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 39.2 15.6 46 18.5s7.5 4.1.8 7.6z"/><path fill="#A41E11" d="M121.8 71.5c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3.9C49.9 91 9 76.1 2.2 72.8c-3.4-1.7-5.2-3.1-5.2-4.4V53.8s48-10.5 55.9-13.4c7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 47.3 9.8 53.9 12.4v13.8c0 1.3-1.4 2.8-2.2 4.9z"/><path fill="#D82C20" d="M121.8 57.9c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3.9C49.9 77.4 9 62.5 2.2 59.2c-6.8-3.4-6.3-5.7-.2-8.1 6.1-2.4 40.9-16.3 48.8-19.3 7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 39.2 15.6 46 18.5s7.5 4.1.8 7.6z"/><path fill="#A41E11" d="M121.8 50.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3.9C49.9 69.6 9 54.7 2.2 51.4c-3.4-1.7-5.2-3.1-5.2-4.4V32.4s48-10.5 55.9-13.4c7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 47.3 9.8 53.9 12.4V45c0 1.3-1.4 2.8-2.2 5.1z"/><path fill="#D82C20" d="M121.8 36.5c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3.9C49.9 56 9 41.1 2.2 37.8c-6.8-3.4-6.3-5.7-.2-8.1 6.1-2.4 40.9-16.3 48.8-19.3 7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 39.2 15.6 46 18.5s7.5 4.1.8 7.6z"/><path fill="#fff" d="M80.4 26.1L68 22.4l13.8-2.2-1.4 5.9zm-9.7 5.3l-5.8 11.5-8.3-17.2 14.1 5.7z"/><ellipse fill="#fff" cx="38.2" cy="35.5" rx="11.3" ry="4.4"/><path fill="#7A0C00" d="M93.3 27.7L77 34.8l-14.1-5.5 16-7.4z"/><path fill="#AD2115" d="M93.3 27.7L77 34.8V21.9z"/></svg>' :
-                                        s.type === 'composer' ? '<svg viewBox="0 0 128 128"><path fill="#40454c" d="M16.403 17.856c7.49-8.506 19.003-13.163 28.028-14.502 10.139-1.505 18.637.23 22.48 1.327-7.705 5.64-13.9 12.57-18.31 19.49l2.122 1.41c4.2-6.587 10.053-13.157 17.388-18.493 14.464 4.693 27.522 14.973 35.122 27.582-6.058.926-11.21 3.96-14.696 7.987-4.618 5.332-6.707 12.53-5.726 19.748.962 7.076 4.636 13.57 10.37 18.36l-4.025 4.97c-1.018-1.22-2.056-2.475-3.108-3.763a104.408 104.408 0 01-8.403-12.07l-2.296 1.1c3.188 5.693 7.16 11.324 11.842 16.804 3.54 4.143 7.244 8.062 11.044 11.678l-7.148 6.36c-6.4-5.84-13.133-12.646-19.67-20.302-8.436-9.88-15.59-20.266-21.233-30.79l-2.1 1.48c5.825 10.867 13.24 21.632 22.066 31.933 6.794 7.93 13.816 15.002 20.495 21.087l-5.78 6.56c-14.698-11.92-31.352-28.632-45.52-49.368-12.03-17.608-20.63-35.41-25.596-51.64l2.562-1.038c4.722 15.417 12.9 32.336 24.38 49.134.28.412.556.823.84 1.232l2.076-1.52c-.403-.55-.8-1.104-1.19-1.66-11.87-16.963-20.31-34.198-25.317-50.023 3.59-6.47 8.393-12.293 14.104-17.162z"/><path fill="#885630" d="M116.776 110.2c-4.1 3.37-11.74 8.32-23.1 10-11.97 1.78-21.99-1.96-26.43-3.94h-.01c7.68-5.36 14.15-11.9 19.16-18.88l-2.1-1.42c-4.78 6.66-10.93 12.9-18.27 18.08-15.09-6.42-27.75-18.41-34.46-32.79 5.86-.9 10.89-3.6 14.44-7.42 5.11-5.48 7.62-13.18 6.88-21.13-.68-7.33-4-14.1-9.39-19.24l3.9-5.16c.97 1.28 1.97 2.59 2.99 3.94 2.68 3.56 5.52 7.53 8.51 11.92l2.25-1.21c-3.18-4.56-6.16-8.68-8.98-12.38-3.39-4.46-6.69-8.59-9.83-12.35l7.53-6.16c7.05 7.04 14.45 15.24 21.41 24.49 8.84 11.77 15.85 23.58 20.87 35.01l2.21-1.38c-5.17-11.77-12.34-24.01-21.53-36.23-7.24-9.64-15-18.22-22.38-25.61l6.4-6.46c15.45 14.05 33.08 33.3 46.39 56.51 11.63 20.28 18.35 40.15 20.06 57.97l-2.53.81c-1.4-16.83-7.6-35.78-18.51-55.01-.36-.64-.73-1.28-1.11-1.92l-2.19 1.32c.47.79.93 1.59 1.38 2.39 11.3 19.45 17.72 38.73 19.42 55.89-4.23 6.24-9.58 11.59-15.57 15.89z"/></svg>' :
-                                            s.type === 'nodejs' ? '<svg viewBox="0 0 128 128"><path fill="#83CD29" d="M112.771 30.334L68.674 4.729c-2.781-1.584-6.402-1.584-9.205 0L14.901 30.334C12.031 31.985 10 35.088 10 38.407v51.142c0 3.319 2.084 6.423 4.954 8.083l11.775 6.688c5.628 2.772 7.617 2.772 10.178 2.772 8.333 0 13.093-5.039 13.093-13.828v-50.49c0-.713-.371-1.774-1.071-1.774h-5.623c-.712 0-2.306 1.061-2.306 1.773v50.49c0 3.896-3.524 7.773-10.11 4.48L18.723 90.73c-.424-.23-.723-.693-.723-1.181V38.407c0-.482.555-.966.982-1.213l44.424-25.561c.415-.235 1.025-.235 1.439 0l43.882 25.555c.42.253.272.722.272 1.219v51.142c0 .488.183.963-.232 1.198l-44.086 25.576c-.378.227-.847.227-1.261 0l-11.307-6.749c-.341-.198-.746-.269-1.073-.086-3.146 1.783-3.726 2.02-6.677 3.043-.726.253-1.797.692.41 1.929l14.798 8.754a9.294 9.294 0 004.647 1.246c1.642 0 3.25-.426 4.667-1.246l43.885-25.582c2.87-1.672 4.23-4.764 4.23-8.083V38.407c0-3.319-1.36-6.414-4.229-8.073zM77.91 81.445c-11.726 0-14.309-3.235-15.17-9.066-.1-.628-.633-1.379-1.272-1.379h-5.731c-.71 0-1.279.86-1.279 1.566 0 7.466 4.059 16.512 23.453 16.512 14.039 0 22.088-5.455 22.088-15.109 0-9.572-6.467-12.084-20.082-13.886-13.762-1.819-15.16-2.738-15.16-5.962 0-2.658 1.184-6.203 11.374-6.203 9.105 0 12.461 1.954 13.842 8.091.118.577.645 1.131 1.287 1.131h5.762c.36 0 .704-.224.953-.482.246-.271.321-.548.321-.869-.469-9.541-8.086-13.961-22.168-13.961-12.659 0-20.228 5.334-20.228 14.29 0 9.698 7.496 12.378 19.622 13.577 14.505 1.422 15.633 3.542 15.633 6.395 0 4.955-3.978 7.066-13.309 7.066z"/></svg>' :
-                                                s.type === 'php' ? '<svg viewBox="0 0 128 128"><path fill="#6181B6" d="M64 33.039C30.26 33.039 2.906 46.901 2.906 64S30.26 94.961 64 94.961 125.094 81.099 125.094 64 97.74 33.039 64 33.039zM48.103 70.032c-1.458 1.364-3.077 1.927-4.86 2.507-1.783.581-4.052.461-6.811.461h-6.253l-1.733 10h-7.301l6.515-34H41.7c4.224 0 7.305 1.215 9.242 3.432 1.937 2.217 2.519 5.364 1.747 9.337-.319 1.637-.856 3.159-1.614 4.515a15.118 15.118 0 01-2.972 3.748zM69.414 73l2.881-14.42c.328-1.688.132-2.913-.586-3.676-.719-.764-1.94-1.15-3.659-1.15h-6.3L59.092 73h-7.32l6.199-32H65.14l-1.706 8.665h6.439c3.634 0 6.202.682 7.706 2.05 1.504 1.368 1.948 3.582 1.333 6.639L76.1 73h-6.686zm35.227-19.068c-.856 1.637-1.958 3.1-3.302 4.399-1.344 1.299-3.008 1.863-4.99 2.475-1.982.611-4.381.49-7.197.49h-6.19l-1.733 10H73.94l6.515-34h14.039c4.198 0 7.259 1.204 9.183 3.399 1.923 2.196 2.493 5.336 1.708 9.303-.319 1.637-.856 3.159-1.614 4.515-.374.687-.775 1.35-1.227 1.987a15.16 15.16 0 01-1.703 1.932z"/><path fill="#fff" d="M38.626 49.918h-5.052l-2.571 13.054h5.052c2.554 0 4.379-.405 5.469-1.217 1.088-.815 1.898-2.322 2.422-4.525.524-2.204.432-3.629-.276-4.28-.708-.648-2.213-.972-4.514-.972-.03 0-.061-.006-.092-.018-.031-.006-.061-.012-.092-.012h-.346zM78.07 53.748h-5.052l-2.571 13.054h5.052c2.554 0 4.378-.405 5.469-1.217 1.089-.815 1.898-2.322 2.422-4.525.524-2.204.432-3.629-.276-4.28-.708-.648-2.214-.972-4.514-.972-.03 0-.061-.006-.092-.018-.031-.006-.061-.012-.093-.012h-.345z"/><path fill="#fff" d="M38.626 46.147H24.587l-.346 1.78-.693 3.483-.693 3.483-.693 3.483-.346 1.78h5.052l2.571-13.054h5.052c2.301 0 3.806.324 4.514.972.708.651.8 2.076.276 4.28-.524 2.202-1.333 3.71-2.422 4.525-1.09.812-2.915 1.217-5.469 1.217h-5.052l-.693 3.483-.693 3.483-.693 3.483-.346 1.78h5.052l1.733-10h6.253c2.759 0 5.028.12 6.811-.461 1.783-.58 3.402-1.143 4.86-2.507a15.118 15.118 0 002.972-3.748c.758-1.356 1.295-2.878 1.614-4.515.772-3.973.19-7.12-1.747-9.337-1.937-2.217-5.018-3.432-9.242-3.432H38.626zM78.07 49.918h-5.052l-2.571 13.054h5.052c2.554 0 4.378-.405 5.469-1.217 1.089-.815 1.898-2.322 2.422-4.525.524-2.204.432-3.629-.276-4.28-.708-.648-2.214-.972-4.514-.972-.03 0-.061-.006-.092-.018-.031-.006-.061-.012-.093-.012h-.345z"/></svg>' :
-                                                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/></svg>'
-                    }
+                                            ${getServiceIcon(s.type)}
                                         </div>
                                         <div>
                                             <div class="service-name">${s.name} ${s.version}</div>
@@ -4534,21 +4573,13 @@
                             <h3 style="margin-bottom: 16px; font-size: 14px; text-transform: uppercase; color: var(--text-muted);">Available Services</h3>
                             <div class="card">
                                 ${Object.keys(availableByType).filter(type => availableByType[type].some(v => !v.installed)).map(type => {
-                        const availableVersions = availableByType[type].filter(v => !v.installed);
-                        if (availableVersions.length === 0) return '';
-                        return `
+                    const availableVersions = availableByType[type].filter(v => !v.installed);
+                    if (availableVersions.length === 0) return '';
+                    return `
                                     <div class="list-item" style="padding: 16px 24px;">
                                         <div class="service-info">
                                             <div class="service-icon ${type}" style="width: 36px; height: 36px; font-size: 14px;">
-                                                ${type === 'mysql' ? '<svg viewBox="0 0 128 128"><path fill="#00618A" d="M116.948 97.807c-6.863-.187-12.104.452-16.585 2.341-1.273.537-3.305.552-3.513 2.147.7.733.807 1.83 1.365 2.731 1.07 1.73 2.876 4.052 4.488 5.268 1.762 1.33 3.577 2.751 5.465 3.902 3.358 2.047 7.107 3.217 10.34 5.268 1.906 1.21 3.799 2.733 5.658 4.097.92.675 1.537 1.724 2.732 2.147v-.194c-.628-.79-.79-1.898-1.366-2.733l-2.537-2.537c-2.48-3.292-5.629-6.184-8.976-8.585-2.669-1.916-8.642-4.504-9.755-7.609l-.195-.195c1.892-.214 4.107-.898 5.854-1.367 2.934-.786 5.556-.583 8.585-1.365l4.097-1.171v-.78c-1.531-1.571-2.623-3.651-4.292-5.073-4.37-3.72-9.138-7.437-14.048-10.537-2.724-1.718-6.089-2.835-8.976-4.292-.971-.491-2.677-.746-3.318-1.562-1.517-1.932-2.342-4.382-3.511-6.633-2.449-4.717-4.854-9.868-7.024-14.831-1.48-3.384-2.447-6.72-4.292-9.756-8.86-14.567-18.396-23.358-33.169-32-3.144-1.838-6.929-2.563-10.929-3.513l-6.438-.389c-1.309-.547-2.676-2.149-3.902-2.927C11.931 4.319 5.3.625 1.907 4.411c-2.14 2.389.247 4.817 1.171 7.219.653 1.698 1.316 3.405 2.147 5.073.566 1.136 1.316 2.229 1.757 3.317 1.13 2.79 1.655 5.844 2.927 8.585 2.47 5.323 4.86 10.889 8.195 15.61 1.669 2.363 3.044 4.81 5.073 6.829 1.231 1.225 3.31 1.993 4.097 3.708-2.308 3.225-2.442 7.547-3.902 11.318-6.577 16.978-4.098 38.121 5.463 50.712 2.935 3.868 9.834 12.166 19.318 8.976 8.303-2.789 6.447-11.438 8.78-19.122z"/><path fill="#F29111" d="M52.767 43.76c-2.095.195-3.615.633-5.263 1.366v.389l2.342 2.342c1.414 1.464 2.971 3.53 4.293 4.682l.977.195c.934-.462 1.665-1.195 2.342-1.952 1.892-2.114 3.739-5.002 5.073-7.609l.39-.78h-.585c-.9.561-1.665.973-2.731 1.366-2.256.833-4.82.833-7.024.797z"/></svg>' :
-                                type === 'mariadb' ? '<svg viewBox="0 0 128 128"><path fill="#003545" d="M4.5 108.1c.3.5.7 1 1.2 1.4 1.5 1.2 3.4 1.6 5.3 1.4 2.1-.2 4.1-.9 6-1.7 2.3-1 4.4-2.3 6.3-3.8 1.6-1.3 3.1-2.7 4.5-4.2.9-.9 1.7-1.9 2.4-2.9.6-.8 1.1-1.7 1.4-2.6.2-.7.3-1.4.2-2.1-.1-.8-.4-1.5-.9-2.1-.6-.8-1.4-1.3-2.3-1.7-1.1-.4-2.2-.6-3.4-.5z"/><path fill="#C0765A" d="M125.5 19.9c-2.3-.3-4.6-.5-6.9-.5-3.8 0-7.7.4-11.4 1.3-4.7 1.1-9.2 2.9-13.3 5.2-4.5 2.6-8.5 5.8-12.1 9.5-3.6 3.8-6.6 8-9 12.6-2.2 4.3-3.8 8.8-4.9 13.5-.5 2.3-.9 4.6-1.1 7-.1.6-.1 1.2-.1 1.9z"/></svg>' :
-                                    type === 'nginx' ? '<svg viewBox="0 0 128 128"><path fill="#009639" d="M 28.998 110.667 L 44.271 118 L 44.271 10 L 28.998 17.333 Z"/><path fill="#009639" d="M 83.729 10 L 99.002 17.333 L 99.002 110.667 L 83.729 118 Z"/><path fill="#009639" d="M 44.271 10 L 44.271 35.333 L 83.729 92.667 L 83.729 118 L 44.271 60.667 L 44.271 35.333 Z"/></svg>' :
-                                        type === 'apache' ? '<svg viewBox="0 0 128 128"><path fill="#D22128" d="M64 0L4 117h20l8-15h64l8 15h20L64 0zm0 30l24 52H40l24-52z"/><path fill="#303284" d="M64 47l-12 26h24L64 47z"/></svg>' :
-                                            type === 'redis' ? '<svg viewBox="0 0 128 128"><path fill="#A41E11" d="M121.8 93.1c-6.7 3.5-41.4 17.7-48.8 21.6-7.4 3.8-11.5 3.8-17.3.9C49.9 112.6 9 97.7 2.2 94.4c-3.4-1.7-5.2-3.1-5.2-4.4V75.4s48-10.5 55.9-13.4c7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 47.3 9.8 53.9 12.4v13.8c0 1.4-1.4 2.8-2.2 4.9z"/><path fill="#D82C20" d="M121.8 79.5c-6.7 3.5-41.4 17.7-48.8 21.6C65.6 105 61.5 105 55.7 102 49.9 99 9 84.1 2.2 80.8c-6.8-3.4-6.3-5.7-.2-8.1 6.1-2.4 40.9-16.3 48.8-19.3 7.9-2.9 10.6-2.9 17.2 0 6.6 2.9 39.2 15.6 46 18.5s7.5 4.1.8 7.6z"/></svg>' :
-                                                type === 'composer' ? '<svg viewBox="0 0 128 128"><path fill="#40454c" d="M16.403 17.856c7.49-8.506 19.003-13.163 28.028-14.502 10.139-1.505 18.637.23 22.48 1.327-7.705 5.64-13.9 12.57-18.31 19.49l2.122 1.41c4.2-6.587 10.053-13.157 17.388-18.493z"/><path fill="#885630" d="M116.776 110.2c-4.1 3.37-11.74 8.32-23.1 10-11.97 1.78-21.99-1.96-26.43-3.94h-.01c7.68-5.36 14.15-11.9 19.16-18.88l-2.1-1.42c-4.78 6.66-10.93 12.9-18.27 18.08z"/></svg>' :
-                                                    type === 'nodejs' ? '<svg viewBox="0 0 128 128"><path fill="#83CD29" d="M112.771 30.334L68.674 4.729c-2.781-1.584-6.402-1.584-9.205 0L14.901 30.334C12.031 31.985 10 35.088 10 38.407v51.142c0 3.319 2.084 6.423 4.954 8.083l11.775 6.688c5.628 2.772 7.617 2.772 10.178 2.772 8.333 0 13.093-5.039 13.093-13.828v-50.49c0-.713-.371-1.774-1.071-1.774h-5.623c-.712 0-2.306 1.061-2.306 1.773v50.49c0 3.896-3.524 7.773-10.11 4.48z"/></svg>' :
-                                                        type === 'php' ? '<svg viewBox="0 0 128 128"><path fill="#6181B6" d="M64 33.039C30.26 33.039 2.906 46.901 2.906 64S30.26 94.961 64 94.961 125.094 81.099 125.094 64 97.74 33.039 64 33.039z"/><path fill="#fff" d="M38.626 49.918h-5.052l-2.571 13.054h5.052c2.554 0 4.379-.405 5.469-1.217 1.088-.815 1.898-2.322 2.422-4.525.524-2.204.432-3.629-.276-4.28-.708-.648-2.213-.972-4.514-.972z"/></svg>' :
-                                                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/></svg>'}
+                                                ${getServiceIcon(type)}
                                             </div>
                                             <div>
                                                 <div class="service-name" style="text-transform: capitalize;">${type} Server</div>
@@ -4809,6 +4840,22 @@
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeDrawPanel();
+        });
+
+        // Panel Search Functionality
+        document.getElementById('panelSearch')?.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const activeNav = document.querySelector('.nav-item.active')?.getAttribute('onclick');
+
+            if (activeNav && activeNav.includes('sites')) {
+                renderSitesPanelList(query);
+            } else if (activeNav && activeNav.includes('services')) {
+                renderServicesPanelList(query);
+            } else if (activeNav && activeNav.includes('php')) {
+                renderPHPPanelList(query);
+            } else if (activeNav && activeNav.includes('dumps')) {
+                renderDumpsPanelList(query);
+            }
         });
     </script>
 </body>
