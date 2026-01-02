@@ -3122,6 +3122,9 @@
             localStorage.setItem('stacker_lang', lang);
             await loadTranslations(lang);
             showToast(t('common.save') || 'Language changed', 'success');
+
+            // Save to backend
+            await api('/preferences', 'PUT', { language: lang });
         }
 
         // Initialize i18n
@@ -3847,6 +3850,11 @@
                     if (document.getElementById('slim-mode-toggle')) {
                         document.getElementById('slim-mode-toggle').classList.toggle('active', prefs.slimMode);
                         setSlimMode(prefs.slimMode);
+                    }
+                    if (prefs.language) {
+                        currentLang = prefs.language;
+                        localStorage.setItem('stacker_lang', currentLang);
+                        loadTranslations(currentLang);
                     }
                 }
             } catch (err) { }

@@ -62,6 +62,7 @@ type Preferences struct {
 	ApachePort      int    `json:"apachePort"`
 	NginxPort       int    `json:"nginxPort"`
 	MySQLPort       int    `json:"mysqlPort"`
+	Language        string `json:"language"`
 }
 
 var (
@@ -75,6 +76,7 @@ var (
 		ApachePort:      8080,
 		NginxPort:       7070,
 		MySQLPort:       3307,
+		Language:        "en",
 	}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
@@ -1741,6 +1743,9 @@ func (ws *WebServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
 		if mysqlPort, ok := updates["mysqlPort"].(float64); ok && int(mysqlPort) != prefs.MySQLPort {
 			prefs.MySQLPort = int(mysqlPort)
 			portChanged = true
+		}
+		if language, ok := updates["language"].(string); ok {
+			prefs.Language = language
 		}
 
 		savePreferences(ws.stackerDir)
