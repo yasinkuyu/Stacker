@@ -1607,13 +1607,14 @@ func (sm *ServiceManager) downloadAndExtract(urlStr, targetDir string, progressC
 			continue
 		}
 
-		parts := strings.SplitN(name, "/", 2)
+		// Improved stripping logic: if the name corresponds to a common wrapper pattern
+		// (like "apache-2.4.66/" or "2.4.58/"), strip it.
+		parts := strings.Split(name, "/")
 		var targetName string
-		if len(parts) == 2 && parts[1] != "" {
-			// Strip the first component if it looks like a wrapper directory
-			targetName = parts[1]
+		if len(parts) > 1 {
+			// Strip the first component
+			targetName = strings.Join(parts[1:], "/")
 		} else {
-			// Use the name as is (file at root or just a directory)
 			targetName = name
 		}
 
