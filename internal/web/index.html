@@ -27,15 +27,15 @@
             --danger-bg: rgba(220, 38, 38, 0.15);
             --border: #e0e0e5;
             --border-light: #efefef;
-            --shadow: rgba(0, 0, 0, 0.04);
-            --shadow-lg: rgba(0, 0, 0, 0.08);
+            --shadow: rgba(0, 0, 0, 0.03);
+            --shadow-lg: rgba(0, 0, 0, 0.06);
             --gradient-start: #6366f1;
             --gradient-end: #8b5cf6;
             /* New 3-column layout */
             --icon-nav-width: 64px;
             --sites-panel-width: 260px;
             --sidebar-width: calc(var(--icon-nav-width) + var(--sites-panel-width));
-            --statusbar-height: 48px;
+            --statusbar-height: 40px;
         }
 
         [data-theme="dark"] {
@@ -58,8 +58,8 @@
             --danger-bg: rgba(248, 113, 113, 0.15);
             --border: #252535;
             --border-light: #353545;
-            --shadow: rgba(0, 0, 0, 0.25);
-            --shadow-lg: rgba(0, 0, 0, 0.35);
+            --shadow: rgba(0, 0, 0, 0.15);
+            --shadow-lg: rgba(0, 0, 0, 0.25);
             --gradient-start: #818cf8;
             --gradient-end: #a78bfa;
         }
@@ -322,7 +322,7 @@
             top: 0;
             left: var(--icon-nav-width);
             height: calc(100vh - var(--statusbar-height));
-            z-index: 1000;
+            z-index: 1040;
             transition: width 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
             overflow: hidden;
         }
@@ -698,6 +698,30 @@
         }
 
         /* Footer Bar */
+        /* Global Progress */
+        .global-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(0, 0, 0, 0.05);
+            z-index: 2000;
+            display: none;
+        }
+
+        .global-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        [data-theme="dark"] .global-progress {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
         .footer-bar {
             position: fixed;
             bottom: 0;
@@ -861,19 +885,19 @@
         .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 8px var(--shadow);
-            margin-bottom: 20px;
+            box-shadow: 0 1px 4px var(--shadow);
+            margin-bottom: 16px;
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg-tertiary);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-light);
+            background: var(--bg-secondary);
         }
 
         .card-title {
@@ -1083,7 +1107,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 24px;
+            padding: 14px 20px;
             border-bottom: 1px solid var(--border-light);
         }
 
@@ -1216,7 +1240,7 @@
             display: none;
             align-items: center;
             gap: 12px;
-            z-index: 1000;
+            z-index: 1600;
             animation: slideIn 0.3s ease;
         }
 
@@ -1297,7 +1321,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            z-index: 1450;
             opacity: 0;
             visibility: hidden;
             transition: all 0.3s ease;
@@ -1316,7 +1340,7 @@
             height: 100vh;
             background: var(--bg-secondary);
             border-left: 1px solid var(--border);
-            z-index: 1001;
+            z-index: 1500;
             display: flex;
             flex-direction: column;
             transition: right 0.3s ease;
@@ -1403,7 +1427,7 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(4px);
-            z-index: 2000;
+            z-index: 1550;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1570,14 +1594,16 @@
 
         /* Service Card */
         .service-card {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 1px 3px var(--shadow);
+            transition: all 0.2s;
         }
 
         .service-info {
@@ -1589,17 +1615,19 @@
         .service-icon {
             width: 44px;
             height: 44px;
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            background: var(--bg-tertiary);
+            background: var(--bg-primary);
+            padding: 8px;
+            border: 1px solid var(--border-light);
         }
 
         .service-icon svg {
-            width: 24px;
-            height: 24px;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .service-icon.mysql {
@@ -2125,6 +2153,9 @@
 
 <body>
     <div class="app-container">
+        <div id="global-progress" class="global-progress">
+            <div id="global-progress-bar" class="global-progress-bar"></div>
+        </div>
         <!-- Icon Navigation (always visible) -->
         <nav class="icon-nav">
             <div class="icon-nav-logo">
@@ -2653,13 +2684,15 @@
                     <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 32px;">Version 1.0.1 Stable
                         (macOS Edition)</p>
 
-                    <p
-                        style="max-width: 520px; margin: 0 auto 48px; line-height: 1.8; color: var(--text-secondary); font-size: 16px;">
-                        Stacker is a modern, standalone development environment crafted for high-performance web
-                        development.
-                        It empowers developers to manage multiple PHP versions, databases, and servers without local
-                        system dependencies.
-                    </p>
+                    <div id="about-content">
+                        <p
+                            style="max-width: 520px; margin: 0 auto 48px; line-height: 1.8; color: var(--text-secondary); font-size: 16px;">
+                            Stacker is a modern, standalone development environment crafted for high-performance web
+                            development.
+                            It empowers developers to manage multiple PHP versions, databases, and servers without local
+                            system dependencies.
+                        </p>
+                    </div>
 
                     <div
                         style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; text-align: left; max-width: 440px; margin: 0 auto;">
@@ -3212,36 +3245,86 @@
             showToast('Stopping all sites...', 'warning');
         }
 
+        // Global Progress Logic
+        function showGlobalProgress() {
+            const el = document.getElementById('global-progress');
+            const bar = document.getElementById('global-progress-bar');
+            if (el && bar) {
+                el.style.display = 'block';
+                bar.style.width = '0%';
+            }
+        }
+
+        function updateGlobalProgress(percent) {
+            const bar = document.getElementById('global-progress-bar');
+            if (bar) bar.style.width = percent + '%';
+        }
+
+        function hideGlobalProgress() {
+            updateGlobalProgress(100);
+            setTimeout(() => {
+                const el = document.getElementById('global-progress');
+                if (el) el.style.display = 'none';
+            }, 400);
+        }
+
+
         // Start all servers
         async function startAllServers() {
-            showToast('Starting all servers...', 'info');
             try {
-                // Start all installed services
-                for (const service of cachedServices) {
-                    if (service.status !== 'running') {
-                        await api(`/services/${service.type}-${service.version}/start`, 'POST');
-                    }
+                showToast('Starting all servers...', 'info');
+                showGlobalProgress();
+
+                const servicesToStart = cachedServices.filter(s => s.status !== 'running');
+                if (servicesToStart.length === 0) {
+                    updateGlobalProgress(100);
+                    setTimeout(hideGlobalProgress, 500);
+                    showToast('All servers are already running');
+                    return;
                 }
-                showToast('All servers started!', 'success');
+
+                let completed = 0;
+                for (const service of servicesToStart) {
+                    await api(`/services/${service.type}-${service.version}/start`, 'POST');
+                    completed++;
+                    updateGlobalProgress((completed / servicesToStart.length) * 100);
+                }
+
+                showToast('All servers started successfully!');
                 loadServices();
+                setTimeout(hideGlobalProgress, 500);
             } catch (err) {
+                hideGlobalProgress();
                 showToast('Error starting servers: ' + err.message, 'error');
             }
         }
 
         // Stop all servers
         async function stopAllServers() {
-            showToast('Stopping all servers...', 'warning');
             try {
-                // Stop all running services
-                for (const service of cachedServices) {
-                    if (service.status === 'running') {
-                        await api(`/services/${service.type}-${service.version}/stop`, 'POST');
-                    }
+                showToast('Stopping all servers...', 'warning');
+                showGlobalProgress();
+
+                const servicesToStop = cachedServices.filter(s => s.status === 'running');
+                if (servicesToStop.length === 0) {
+                    updateGlobalProgress(100);
+                    setTimeout(hideGlobalProgress, 500);
+                    showToast('All servers are already stopped');
+                    return;
                 }
-                showToast('All servers stopped!', 'success');
+
+                let completed = 0;
+                for (const service of servicesToStop) {
+                    await api(`/services/${service.type}-${service.version}/stop`, 'POST');
+                    completed++;
+                    updateGlobalProgress((completed / servicesToStop.length) * 100);
+                }
+
+                showToast('All servers stopped successfully!');
                 loadServices();
+                setTimeout(hideGlobalProgress, 500);
             } catch (err) {
+                hideGlobalProgress();
                 showToast('Error stopping servers: ' + err.message, 'error');
             }
         }
@@ -4331,13 +4414,29 @@
 
         // Show Change Log
         function showChangeLog() {
-            // Show a simple modal or redirect to about with a tab
             showPage('about');
             setTimeout(() => {
-                // Assuming we'll add a changelog section to about
                 const el = document.getElementById('about-content');
-                if (el) el.innerHTML += '<div style="margin-top:20px;padding:16px;background:var(--bg-tertiary);border-radius:8px;"><h4>Change Log v1.0.0</h4><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">+ Added 3-column layout<br>+ Added footer bar with Start/Stop All<br>+ Fixed PHP-FPM lifecycle management<br>+ Improved UI aesthetics</p></div>';
-            }, 100);
+                if (el) {
+                    el.innerHTML = `
+                        <div class="card" style="margin-top:20px; text-align:left; border:1px solid var(--border-light); background:var(--bg-primary);">
+                            <div class="card-header" style="background:var(--bg-tertiary);">
+                                <h4 style="margin:0; font-size:14px;">Change Log v1.0.1</h4>
+                            </div>
+                            <div style="padding:16px; font-size:13px; line-height:1.6; color:var(--text-secondary);">
+                                <ul style="margin:0; padding-left:20px;">
+                                    <li>Added 3-column layout for better navigation</li>
+                                    <li>Implemented global progress bar for bulk actions</li>
+                                    <li>Added footer with server controls and branding</li>
+                                    <li>Improved UI aesthetics: softer shadows and rounded corners</li>
+                                    <li>Optimized sites and services panel interaction</li>
+                                    <li>Fixed service version duplication and tray status sync</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                }
+            }, 300);
         }
 
         async function loadServices() {
