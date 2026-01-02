@@ -193,6 +193,8 @@ func (sm *ServiceManager) loadInstalledServices() {
 
 					// Check for status file or binary
 					installDir := filepath.Join(binDir, svcType, version)
+					originalInstallDir := installDir
+					foundNested := false
 
 					// Fix for multiple nested directories (like apache/2.4/2.4.66)
 					// Keep diving as long as we only find exactly one subdirectory and no 'bin'
@@ -213,7 +215,24 @@ func (sm *ServiceManager) loadInstalledServices() {
 							version = subDirName
 							svcName = svcType + "-" + version
 						}
-						fmt.Printf("📂 Diving deeper into nested install root: %s (version updated to %s)\n", installDir, version)
+						foundNested = true
+						fmt.Printf("📂 Found nested install root for %s: %s\n", svcName, installDir)
+					}
+
+					// If nested structure found, try to move it up to the original version directory
+					if foundNested && originalInstallDir != installDir {
+						fmt.Printf("🔄 Flattening nested directory: %s -> %s\n", installDir, originalInstallDir)
+						// Moving contents of installDir to originalInstallDir
+						items, err := os.ReadDir(installDir)
+						if err == nil {
+							for _, item := range items {
+								oldPath := filepath.Join(installDir, item.Name())
+								newPath := filepath.Join(originalInstallDir, item.Name())
+								os.Rename(oldPath, newPath)
+							}
+							// Update variables to reflect flat structure
+							installDir = originalInstallDir
+						}
 					}
 
 					configDir := filepath.Join(baseDir, "conf", svcType, version)
@@ -410,12 +429,12 @@ func (sm *ServiceManager) getDefaultPort(svcType string) int {
 		if sm.nginxPort > 0 {
 			return sm.nginxPort
 		}
-		return 80
+		return 81
 	case "apache":
 		if sm.apachePort > 0 {
 			return sm.apachePort
 		}
-		return 8080
+		return 80
 	case "redis":
 		return 6379
 	}
@@ -1113,7 +1132,7 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir string, port int) error {
 	// Get Stacker base directory for vhost configs and shared htdocs
 	stackerDir := filepath.Dir(filepath.Dir(configDir)) // Go up from conf/apache/version to Stacker root
-	vhostDir := filepath.Join(stackerDir, "conf", "apache")
+	vhostDir := filepath.Join(stackerDir, "conf", "apache", version)
 	sharedHtdocs := filepath.Join(stackerDir, "htdocs")
 
 	// Create shared htdocs directory with default index.html
@@ -1607,13 +1626,24 @@ func (sm *ServiceManager) downloadAndExtract(urlStr, targetDir string, progressC
 			continue
 		}
 
-		// Improved stripping logic: if the name corresponds to a common wrapper pattern
-		// (like "apache-2.4.66/" or "2.4.58/"), strip it.
+		// Improved stripping logic: strip multiple levels of wrapper directories
+		// (like "apache/2.4.66/" or "2.4.58/")
 		parts := strings.Split(name, "/")
 		var targetName string
-		if len(parts) > 1 {
-			// Strip the first component
-			targetName = strings.Join(parts[1:], "/")
+
+		startIdx := 0
+		for i := 0; i < len(parts)-1; i++ {
+			p := parts[i]
+			// If it looks like a version (2.4, 2.4.66) or common name
+			if strings.Contains(p, ".") || p == "apache" || p == "apache2" || p == "httpd" || p == "mysql" || p == "nginx" {
+				startIdx = i + 1
+			} else {
+				break
+			}
+		}
+
+		if startIdx > 0 {
+			targetName = strings.Join(parts[startIdx:], "/")
 		} else {
 			targetName = name
 		}

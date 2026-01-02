@@ -3916,9 +3916,9 @@
         async function setPortPreset(type) {
             let apache, nginx, mysql;
             if (type === 'stacker') {
-                apache = 8080;
-                nginx = 7070;
-                mysql = 3307;
+                apache = 80;
+                nginx = 81;
+                mysql = 3306;
             } else {
                 apache = 80;
                 nginx = 80;
@@ -4213,12 +4213,23 @@
                 return;
             }
 
+            const btn = document.getElementById('drawPanelSave');
+            const originalText = btn.innerHTML;
+
             try {
+                btn.disabled = true;
+                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Saving...</span>`;
+
                 await api('/sites', 'POST', { name, path, php, ssl });
                 closeDrawPanel();
                 showToast('Site added successfully');
                 loadSites();
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
 
         async function updateSite() {
@@ -4227,12 +4238,23 @@
             const php = document.getElementById('sitePhp').value;
             const ssl = document.getElementById('siteSsl').classList.contains('active');
 
+            const btn = document.getElementById('drawPanelSave');
+            const originalText = btn.innerHTML;
+
             try {
+                btn.disabled = true;
+                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Updating...</span>`;
+
                 await api('/sites/' + currentSite.name, 'PUT', { name, path, php, ssl });
                 closeDrawPanel();
                 showToast('Site updated successfully');
                 loadSites();
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
 
         async function deleteSite(name) {

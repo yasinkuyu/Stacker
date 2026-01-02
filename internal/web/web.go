@@ -73,9 +73,9 @@ var (
 		Port:            9999,
 		SlimMode:        false,
 		DomainExtension: ".local",
-		ApachePort:      8080,
-		NginxPort:       7070,
-		MySQLPort:       3307,
+		ApachePort:      80,
+		NginxPort:       81,
+		MySQLPort:       3306,
 		Language:        "en",
 	}
 	prefMutex sync.RWMutex
