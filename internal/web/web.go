@@ -705,10 +705,28 @@ func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 		installedVersions = append(installedVersions, svc.Type+"-"+svc.Version)
 	}
 
+	// Check system versions
+	sysVersions := make(map[string]string)
+
+	// Mark installed in available list
+	for i := range available {
+		sType := available[i].Type
+		if _, ok := sysVersions[sType]; !ok {
+			ver, _ := services.GetSystemVersion(sType)
+			sysVersions[sType] = ver
+		}
+
+		sysVer := sysVersions[sType]
+		if sysVer != "" && strings.HasPrefix(sysVer, available[i].Version) {
+			available[i].SystemInstalled = true
+		}
+	}
+
 	response := map[string]interface{}{
 		"installed":         svcs,
 		"available":         available,
 		"installedVersions": installedVersions,
+		"systemVersions":    sysVersions,
 	}
 
 	json.NewEncoder(w).Encode(response)
@@ -770,8 +788,32 @@ func (ws *WebServer) handleServiceVersions(w http.ResponseWriter, r *http.Reques
 	svcType := r.URL.Query().Get("type")
 	versions := ws.serviceManager.GetAvailableVersions(svcType)
 
+	// Check system version
+	sysVer, _ := services.GetSystemVersion(svcType)
+
+	// Mark installed versions
+	for i := range versions {
+		svcName := versions[i].Type + "-" + versions[i].Version
+
+		// Check Stacker installation
+		if svc := ws.serviceManager.GetService(svcName); svc != nil {
+			versions[i].Installed = true
+		}
+
+		// Check System installation (approximate match on short version)
+		if sysVer != "" {
+			// If system version starts with the short version (e.g. sys=8.2.1 match short=8.2)
+			if strings.HasPrefix(sysVer, versions[i].Version) {
+				versions[i].SystemInstalled = true
+			}
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"versions": versions})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"versions":      versions,
+		"systemVersion": sysVer,
+	})
 }
 
 func (ws *WebServer) handleServiceInstallStatus(w http.ResponseWriter, r *http.Request) {

@@ -1038,6 +1038,16 @@
             transform: translateY(0);
         }
 
+        .btn:disabled,
+        .btn[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+            filter: grayscale(100%);
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
         .btn-primary {
             background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             color: white !important;
@@ -4683,6 +4693,7 @@
 
                 const installed = data.installed || [];
                 const available = data.available || [];
+                const systemVersions = data.systemVersions || {};
                 const installedVersions = data.installedVersions || [];
 
                 // Cache for panel
@@ -4698,7 +4709,11 @@
 
                     if (!availableByType[v.type]) availableByType[v.type] = [];
                     const isInstalled = installedVersions.includes(id);
-                    availableByType[v.type].push({ version: v.version, installed: isInstalled });
+                    availableByType[v.type].push({
+                        version: v.version,
+                        installed: isInstalled,
+                        system_installed: v.system_installed
+                    });
                 });
 
                 let html = `
@@ -4719,6 +4734,7 @@
                                     </div>
                                     <div class="service-actions">
                                         <span class="status-badge status-${s.status}"><span class="status-dot"></span>${s.status}${s.port_in_use && s.status !== 'running' ? ' (conflict)' : ''}</span>
+                                        ${s.runnable !== false ? `
                                         <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" title="${s.status === 'running' ? 'Stop' : 'Start'}">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 ${s.status === 'running' ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}
@@ -4731,6 +4747,7 @@
                                                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                                             </svg>
                                         </button>` : ''}
+                                        ` : ''}
                                         ${s.has_config ? `<button class="btn" onclick="editServiceConfig('${s.name}')" title="Config">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <circle cx="12" cy="12" r="3"/>
@@ -4751,8 +4768,9 @@
                         <div>
                             <h3 style="margin-bottom: 16px; font-size: 14px; text-transform: uppercase; color: var(--text-muted);">Available Services</h3>
                             <div class="card">
-                                ${Object.keys(availableByType).filter(type => availableByType[type].some(v => !v.installed)).map(type => {
-                    const availableVersions = availableByType[type].filter(v => !v.installed);
+                            <div class="card">
+                                ${Object.keys(availableByType).map(type => {
+                    const availableVersions = availableByType[type];
                     if (availableVersions.length === 0) return '';
                     return `
                                     <div class="list-item" style="padding: 16px 24px;">
@@ -4762,14 +4780,21 @@
                                             </div>
                                             <div>
                                                 <div class="service-name" style="text-transform: capitalize;">${type} Server</div>
-                                                <div class="service-port">Available versions: ${availableByType[type].length}</div>
+                                                <div class="service-port">
+                                                    ${systemVersions[type] ? `<span style="color: var(--success); font-weight: 500;">✓ Already installed: v${systemVersions[type]}</span>` : `Available versions: ${availableByType[type].length}`}
+                                                </div>
                                             </div>
                                         </div>
                                         <div style="display: flex; gap: 12px; align-items: center;">
-                                            <select class="form-select" id="version-${type}" style="padding: 6px 12px; font-size: 13px; width: 140px;">
-                                                ${availableVersions.map(v => `<option value="${v.version}">${v.version}</option>`).join('')}
+                                            <select class="form-select" id="version-${type}" style="padding: 6px 12px; font-size: 13px; width: 140px;" onchange="checkInstalled('${type}')">
+                                                ${availableVersions.map(v => {
+                        let suffix = '';
+                        if (v.installed) suffix = ' (Installed)';
+                        else if (v.system_installed) suffix = ' (System)';
+                        return `<option value="${v.version}" ${v.installed ? 'disabled' : ''}>${v.version}${suffix}</option>`;
+                    }).join('')}
                                             </select>
-                                            <button class="btn btn-primary" onclick="installService('${type}')" style="padding: 8px 20px;">
+                                            <button class="btn btn-primary" onclick="installService('${type}')" style="padding: 8px 20px;" ${systemVersions[type] ? 'disabled' : ''}>
                                                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                                                 </svg>
@@ -4784,6 +4809,10 @@
                 `;
                 list.innerHTML = html;
             } catch (err) { }
+        }
+
+        function checkInstalled(type) {
+            // Placeholder for future validation logic
         }
 
         async function installService(type) {

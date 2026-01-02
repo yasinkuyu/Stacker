@@ -65,17 +65,19 @@ type StackerInfo struct {
 
 // ServiceVersion represents an available service version for installation
 type ServiceVersion struct {
-	Type      string   `json:"type"`
-	Version   string   `json:"version"`
-	FullVer   string   `json:"fullVer"`
-	Available bool     `json:"available"`
-	Arch      string   `json:"arch"`
-	Platform  string   `json:"platform"`
-	URL       string   `json:"url"`
-	Checksum  string   `json:"checksum"`
-	Size      int64    `json:"size"`
-	Mirrors   []string `json:"mirrors,omitempty"`
-	Preferred bool     `json:"preferred"`
+	Type            string   `json:"type"`
+	Version         string   `json:"version"`
+	FullVer         string   `json:"fullVer"`
+	Available       bool     `json:"available"`
+	Installed       bool     `json:"installed"`
+	SystemInstalled bool     `json:"system_installed"`
+	Arch            string   `json:"arch"`
+	Platform        string   `json:"platform"`
+	URL             string   `json:"url"`
+	Checksum        string   `json:"checksum"`
+	Size            int64    `json:"size"`
+	Mirrors         []string `json:"mirrors,omitempty"`
+	Preferred       bool     `json:"preferred"`
 }
 
 // FetchRemoteConfig fetches update.json from GitHub with caching and ETag support

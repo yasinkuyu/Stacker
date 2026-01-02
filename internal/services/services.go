@@ -40,6 +40,7 @@ type Service struct {
 	HasConfig    bool      `json:"has_config"`
 	PortInUse    bool      `json:"port_in_use"`
 	PortConflict string    `json:"port_conflict,omitempty"`
+	Runnable     bool      `json:"runnable"` // true for daemons (nginx, mysql), false for tools (composer, git)
 }
 
 type ServiceVersion = config.ServiceVersion
@@ -173,6 +174,12 @@ func (sm *ServiceManager) loadInstalledServices() {
 					configDir := filepath.Join(baseDir, "conf", svcType, version)
 					dataDir := filepath.Join(baseDir, "data", svcType, version)
 
+					// Tools are not "runnable"
+					isRunnable := true
+					if svcType == "composer" || svcType == "nodejs" || svcType == "git" {
+						isRunnable = false
+					}
+
 					svc := &Service{
 						Name:      svcName,
 						Type:      svcType,
@@ -183,6 +190,7 @@ func (sm *ServiceManager) loadInstalledServices() {
 						ConfigDir: configDir,
 						BinaryDir: installDir,
 						Installed: time.Now().Format(time.RFC3339),
+						Runnable:  isRunnable,
 					}
 
 					// Check if service is running by PID file
@@ -315,6 +323,12 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 	sm.installStatus[key] = 100
 	sm.statusMu.Unlock()
 
+	// Tools are not "runnable" services (daemons)
+	isRunnable := true
+	if svcType == "composer" || svcType == "nodejs" || svcType == "git" {
+		isRunnable = false
+	}
+
 	svc := &Service{
 		Name:      svcType + "-" + version,
 		Type:      svcType,
@@ -326,6 +340,7 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 		BinaryDir: installDir,
 		PID:       0,
 		Installed: time.Now().Format(time.RFC3339),
+		Runnable:  isRunnable,
 	}
 
 	sm.mu.Lock()
