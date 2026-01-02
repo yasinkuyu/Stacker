@@ -34,8 +34,8 @@ func NewPHPManager() *PHPManager {
 }
 
 func (pm *PHPManager) DetectPHPVersions() error {
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
+	// Use local map to avoid locking during slow detection
+	detectedVersions := make(map[string]*PHPVersion)
 
 	paths := []string{
 		"/usr/bin/php",
@@ -57,7 +57,7 @@ func (pm *PHPManager) DetectPHPVersions() error {
 				continue
 			}
 
-			pm.versions[version.Version] = version
+			detectedVersions[version.Version] = version
 		}
 	}
 
@@ -68,8 +68,15 @@ func (pm *PHPManager) DetectPHPVersions() error {
 		version := pm.parsePHPVersionOutput(string(output))
 		if version != nil {
 			version.Binary = "php"
-			pm.versions[version.Version] = version
+			detectedVersions[version.Version] = version
 		}
+	}
+
+	// Now update the shared state with a lock
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	for v, info := range detectedVersions {
+		pm.versions[v] = info
 	}
 
 	return nil
