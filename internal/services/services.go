@@ -560,7 +560,7 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 
 			sm.updateInstallProgress("mysql", version, 70)
 			mysqlPort := sm.getDefaultPort("mysql")
-			sm.createMySQLConfig(configDir, dataDir, mysqlPort)
+			sm.createMySQLConfig(configDir, dataDir, mysqlPort, version)
 
 			// Initialize MySQL data directory
 			sm.updateInstallProgress("mysql", version, 80)
@@ -645,14 +645,14 @@ func (sm *ServiceManager) installPHP(version, installDir, configDir string) erro
 	return fmt.Errorf("PHP %s not found in available versions", version)
 }
 
-func (sm *ServiceManager) createMySQLConfig(configDir, dataDir string, port int) error {
+func (sm *ServiceManager) createMySQLConfig(configDir, dataDir string, port int, version string) error {
 	myCnf := fmt.Sprintf(`[mysqld]
 port = %d
 datadir = %s
 socket = %s/mysql.sock
-pid-file = %s/mysql.pid
+pid-file = %s/pids/mysql-%s.pid
 log-error = %s/error.log
-`, port, dataDir, dataDir, dataDir, dataDir)
+`, port, dataDir, dataDir, sm.baseDir, version, dataDir)
 
 	configPath := filepath.Join(configDir, "my.cnf")
 	os.MkdirAll(configDir, 0755)
@@ -683,7 +683,7 @@ func (sm *ServiceManager) installMariaDB(version, installDir, configDir, dataDir
 
 			binDir := filepath.Join(installDir, "bin")
 			mysqlPort := sm.getDefaultPort("mariadb")
-			sm.createMariaDBConfig(configDir, dataDir, mysqlPort)
+			sm.createMariaDBConfig(configDir, dataDir, mysqlPort, version)
 			sm.updateInstallProgress("mariadb", version, 90)
 
 			if err := sm.initializeMariaDB(binDir, configDir, dataDir); err != nil {
@@ -729,7 +729,7 @@ func (sm *ServiceManager) compileMariaDB(version, installDir, configDir, dataDir
 	configureCmd.Stderr = os.Stderr
 	if err := configureCmd.Run(); err != nil {
 		fmt.Println("Warning: cmake not found, trying alternative...")
-		return sm.alternativeMariaDBInstall(sourceDir, binDir, configDir, dataDir)
+		return sm.alternativeMariaDBInstall(sourceDir, binDir, configDir, dataDir, version)
 	}
 
 	makeCmd := exec.Command("make", "-j4")
@@ -753,7 +753,7 @@ func (sm *ServiceManager) compileMariaDB(version, installDir, configDir, dataDir
 		return fmt.Errorf("mariadb install failed: %w", err)
 	}
 
-	sm.createMariaDBConfig(configDir, dataDir, 3306)
+	sm.createMariaDBConfig(configDir, dataDir, 3306, version)
 	sm.updateInstallProgress("mariadb", version, 90)
 
 	if err := sm.initializeMariaDB(binDir, configDir, dataDir); err != nil {
@@ -765,7 +765,7 @@ func (sm *ServiceManager) compileMariaDB(version, installDir, configDir, dataDir
 	return nil
 }
 
-func (sm *ServiceManager) alternativeMariaDBInstall(sourceDir, binDir, configDir, dataDir string) error {
+func (sm *ServiceManager) alternativeMariaDBInstall(sourceDir, binDir, configDir, dataDir, version string) error {
 	fmt.Println("Using pre-built binary from source...")
 
 	for _, entry := range []string{"bin", "lib", "share"} {
@@ -776,7 +776,7 @@ func (sm *ServiceManager) alternativeMariaDBInstall(sourceDir, binDir, configDir
 		}
 	}
 
-	sm.createMariaDBConfig(configDir, dataDir, 3306)
+	sm.createMariaDBConfig(configDir, dataDir, 3306, version)
 
 	binaryPath := binDir
 	mariadbd := filepath.Join(binaryPath, "bin", "mariadbd")
@@ -981,7 +981,7 @@ func (sm *ServiceManager) findNginxBinary(installDir string) string {
 	return ""
 }
 
-func (sm *ServiceManager) createMariaDBConfig(configDir, dataDir string, port int) error {
+func (sm *ServiceManager) createMariaDBConfig(configDir, dataDir string, port int, version string) error {
 	binaryPath := sm.findMariaDBBinary(filepath.Join(sm.baseDir, "bin", "mariadb"))
 	basedir := "/usr/local"
 	if binaryPath != "" {
@@ -992,7 +992,7 @@ func (sm *ServiceManager) createMariaDBConfig(configDir, dataDir string, port in
 port = %d
 datadir = %s
 socket = %s/mysql.sock
-pid-file = %s/mysql.pid
+pid-file = %s/pids/mariadb-%s.pid
 log-error = %s/error.log
 general-log = 1
 general-log-file = %s/query.log
@@ -1003,7 +1003,7 @@ basedir = %s
 [client]
 port = %d
 socket = %s/mysql.sock
-`, port, dataDir, dataDir, dataDir, dataDir, dataDir, basedir, port, dataDir)
+`, port, dataDir, dataDir, sm.baseDir, version, dataDir, dataDir, basedir, port, dataDir)
 
 	configPath := filepath.Join(configDir, "my.cnf")
 	return os.WriteFile(configPath, []byte(myCnf), 0644)
@@ -1097,18 +1097,113 @@ func (sm *ServiceManager) compileNginx(version, installDir, configDir string) er
 		return fmt.Errorf("nginx make install failed: %w", err)
 	}
 
-	sm.createNginxConfig(configDir, sm.getDefaultPort("nginx"))
+	sm.createNginxConfig(configDir, sm.getDefaultPort("nginx"), version)
 	sm.updateInstallProgress("nginx", version, 100)
 	fmt.Printf("✅ Nginx %s compiled and installed successfully\n", version)
 	return nil
 }
 
-func (sm *ServiceManager) createNginxConfig(configDir string, port int) error {
+func (sm *ServiceManager) createNginxConfig(configDir string, port int, version string) error {
 	// Use absolute path for includes to be safe
 	vhostDir := filepath.Join(sm.baseDir, "conf", "nginx")
 	os.MkdirAll(vhostDir, 0755)
 
+	// Create mime.types for Nginx
+	mimeContent := `types {
+    text/html                             html htm shtml;
+    text/css                              css;
+    text/xml                              xml;
+    image/gif                             gif;
+    image/jpeg                            jpeg jpg;
+    application/javascript                js;
+    application/atom+xml                  atom;
+    application/rss+xml                   rss;
+    text/mathml                           mml;
+    text/plain                            txt;
+    text/vnd.sun.j2me.app-descriptor      jad;
+    text/vnd.wap.wml                      wml;
+    text/x-component                      htc;
+
+    image/png                             png;
+    image/svg+xml                         svg svgz;
+    image/tiff                            tif tiff;
+    image/vnd.wap.wbmp                    wbmp;
+    image/webp                            webp;
+    image/x-icon                          ico;
+    image/x-jng                           jng;
+    image/x-ms-bmp                        bmp;
+
+    application/font-woff                 woff;
+    application/java-archive              jar war ear;
+    application/json                      json;
+    application/mac-binhex40              hqx;
+    application/msword                    doc;
+    application/pdf                       pdf;
+    application/postscript                ps eps ai;
+    application/rtf                       rtf;
+    application/vnd.apple.mpegurl         m3u8;
+    application/vnd.google-earth.kml+xml  kml;
+    application/vnd.google-earth.kmz      kmz;
+    application/vnd.ms-excel              xls;
+    application/vnd.ms-fontobject         eot;
+    application/vnd.ms-powerpoint         ppt;
+    application/vnd.oasis.opendocument.graphics odg;
+    application/vnd.oasis.opendocument.presentation odp;
+    application/vnd.oasis.opendocument.spreadsheet ods;
+    application/vnd.oasis.opendocument.text odt;
+    application/vnd.openxmlformats-officedocument.presentationml.presentation pptx;
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet xlsx;
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document docx;
+    application/vnd.wap.wmlc              wmlc;
+    application/x-7z-compressed           7z;
+    application/x-cocoa                   cco;
+    application/x-java-archive-diff       jardiff;
+    application/x-java-jnlp-file          jnlp;
+    application/x-makeself                run;
+    application/x-perl                    pl pm;
+    application/x-pilot                   prc pdb;
+    application/x-rar-compressed          rar;
+    application/x-redhat-package-manager  rpm;
+    application/x-sea                     sea;
+    application/x-shockwave-flash         swf;
+    application/x-stuffit                 sit;
+    application/x-tcl                     tcl tk;
+    application/x-x509-ca-cert            der pem crt;
+    application/x-xpinstall               xpi;
+    application/xhtml+xml                 xhtml;
+    application/xspf+xml                  xspf;
+    application/zip                       zip;
+
+    application/octet-stream              bin exe dll;
+    application/octet-stream              deb;
+    application/octet-stream              dmg;
+    application/octet-stream              iso img;
+    application/octet-stream              msi msp msm;
+
+    audio/midi                            mid midi kar;
+    audio/mpeg                            mp3;
+    audio/ogg                             libvorbis.ogg;
+    audio/x-m4a                           m4a;
+    audio/x-realaudio                     ra;
+
+    video/3gpp                            3gpp 3gp;
+    video/mp4                             mp4;
+    video/mpeg                            mpeg mpg;
+    video/quicktime                       mov;
+    video/webm                            webm;
+    video/x-flv                           flv;
+    video/x-m4v                           m4v;
+    video/x-mng                           mng;
+    video/x-ms-asf                        asx asf;
+    video/x-ms-wmv                        wmv;
+    video/x-msvideo                       avi;
+}`
+	os.WriteFile(filepath.Join(configDir, "mime.types"), []byte(mimeContent), 0644)
+
 	conf := fmt.Sprintf(`worker_processes  1;
+daemon off;
+pid "%s/pids/nginx-%s.pid";
+
 events {
     worker_connections  1024;
 }
@@ -1131,7 +1226,7 @@ http {
     }
     include "%s/*.conf";
 }
-`, port, vhostDir)
+`, sm.baseDir, version, port, vhostDir)
 	return os.WriteFile(filepath.Join(configDir, "nginx.conf"), []byte(conf), 0644)
 }
 
@@ -1998,7 +2093,7 @@ func (sm *ServiceManager) StartService(name string) error {
 			return fmt.Errorf("MariaDB binary not found")
 		}
 		// Regenerate config
-		sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort(svc.Type))
+		sm.createMariaDBConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort(svc.Type), svc.Version)
 		cmd = sm.startMariaDB(svc, binaryPath)
 	case "mysql":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -2007,7 +2102,7 @@ func (sm *ServiceManager) StartService(name string) error {
 			return fmt.Errorf("MySQL binary not found")
 		}
 		// Regenerate config
-		sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort(svc.Type))
+		sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort(svc.Type), svc.Version)
 		cmd = sm.startMySQL(svc, binaryPath)
 	case "nginx":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -2019,7 +2114,7 @@ func (sm *ServiceManager) StartService(name string) error {
 			return fmt.Errorf("Nginx binary not found at %s", binaryPath)
 		}
 		// Regenerate config
-		sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort(svc.Type))
+		sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort(svc.Type), svc.Version)
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -2388,11 +2483,11 @@ func (sm *ServiceManager) createDefaultConfig(svc *Service) error {
 
 	switch svc.Type {
 	case "mysql":
-		return sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mysql"))
+		return sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mysql"), svc.Version)
 	case "mariadb":
-		return sm.createMariaDBConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mariadb"))
+		return sm.createMariaDBConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mariadb"), svc.Version)
 	case "nginx":
-		return sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort("nginx"))
+		return sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort("nginx"), svc.Version)
 	case "apache":
 		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, svc.Version, sm.getDefaultPort("apache"))
 	case "redis":
