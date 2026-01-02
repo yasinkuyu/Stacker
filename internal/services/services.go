@@ -1328,7 +1328,10 @@ IncludeOptional "%s/*.conf"
 
 # Mime Types
 TypesConfig "%s/mime.types"
-`, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir, configDir)
+
+# PID File
+PidFile "%s/pids/apache-%s.pid"
+`, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir, configDir, stackerDir, version)
 
 	// Create a basic mime.types file
 	mimeContent := `application/javascript js
