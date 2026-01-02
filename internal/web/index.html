@@ -161,6 +161,25 @@
             color: white;
         }
 
+        /* Hover tooltip showing label on the right */
+        .icon-nav-item:hover .icon-nav-label {
+            display: block;
+            position: absolute;
+            left: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px var(--shadow-lg);
+            z-index: 1200;
+            pointer-events: none;
+        }
+
         .icon-nav-item.active {
             background: rgba(255, 255, 255, 0.25);
             color: white;
@@ -472,8 +491,8 @@
             flex: 1;
             padding: 32px 40px 40px;
             margin-left: calc(var(--icon-nav-width) + var(--sites-panel-width));
-            min-height: calc(100vh - var(--statusbar-height));
-            margin-bottom: var(--statusbar-height);
+            min-height: 100vh;
+            margin-bottom: 0;
             background: var(--bg-primary);
             position: relative;
             z-index: 1;
@@ -489,77 +508,6 @@
             width: 0;
             opacity: 0;
             pointer-events: none;
-        }
-
-        /* Bottom Status Bar */
-        .status-bar-bottom {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: var(--statusbar-height);
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px 0 calc(var(--icon-nav-width) + 20px);
-            z-index: 900;
-            transition: padding-left 0.3s ease;
-        }
-
-        body[data-panel-collapsed="true"] .status-bar-bottom {
-            padding-left: calc(var(--icon-nav-width) + 20px);
-        }
-
-        .status-bar-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .status-bar-sites {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .status-bar-sites span {
-            color: var(--success);
-            font-weight: 600;
-        }
-
-        .status-bar-stop-all {
-            font-size: 12px;
-            color: var(--danger);
-            cursor: pointer;
-            font-weight: 600;
-            padding: 6px 12px;
-            border-radius: 6px;
-            border: none;
-            background: var(--danger-bg);
-            transition: background 0.2s;
-        }
-
-        .status-bar-stop-all:hover {
-            background: var(--danger);
-            color: white;
-        }
-
-        .status-bar-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .live-link-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: var(--text-muted);
         }
 
         body[data-slim="true"] .main-content {
@@ -2551,6 +2499,18 @@
                     </div>
 
                     <div class="settings-section">
+                        <div class="settings-section-title">Navigation</div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Expanded Navigation</div>
+                                <div class="settings-desc">Show labels next to navigation icons</div>
+                            </div>
+                            <button class="toggle-switch" id="expanded-nav-toggle"
+                                onclick="toggleExpandedNav()"></button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <div class="settings-section-title">Network</div>
                         <div class="settings-row">
                             <div class="settings-info">
@@ -2633,21 +2593,6 @@
                 </div>
             </div>
         </main>
-
-        <!-- Bottom Status Bar -->
-        <div class="status-bar-bottom">
-            <div class="status-bar-left">
-                <div class="status-bar-sites">
-                    <span id="runningSitesCount">0</span> sites running
-                </div>
-                <button class="status-bar-stop-all" onclick="stopAllSites()">STOP ALL</button>
-            </div>
-            <div class="status-bar-right">
-                <div class="live-link-toggle">
-                    Live Link: <button class="btn" style="padding:4px 12px;font-size:11px;" disabled>Enable</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Toast Notification -->
@@ -3205,11 +3150,31 @@
             localStorage.setItem('stacker_slimMode', enabled);
         }
 
+        // Toggle expanded navigation
+        function toggleExpandedNav() {
+            const toggle = document.getElementById('expanded-nav-toggle');
+            const isExpanded = document.body.getAttribute('data-navbar-expanded') === 'true';
+            const newState = !isExpanded;
+
+            document.body.setAttribute('data-navbar-expanded', newState ? 'true' : 'false');
+            toggle.classList.toggle('active', newState);
+            localStorage.setItem('stacker_navExpanded', newState);
+            showToast(newState ? 'Navigation expanded' : 'Navigation collapsed');
+        }
+
         // Load slim mode on startup
         (function () {
             const slimMode = localStorage.getItem('stacker_slimMode') === 'true';
             if (slimMode) {
                 document.body.setAttribute('data-slim', 'true');
+            }
+
+            // Load expanded nav state
+            const navExpanded = localStorage.getItem('stacker_navExpanded') === 'true';
+            if (navExpanded) {
+                document.body.setAttribute('data-navbar-expanded', 'true');
+                const toggle = document.getElementById('expanded-nav-toggle');
+                if (toggle) toggle.classList.add('active');
             }
         })();
 
@@ -3949,6 +3914,9 @@
                 const installed = data.installed || [];
                 const available = data.available || [];
                 const installedVersions = data.installedVersions || [];
+
+                // Cache for panel
+                cachedServices = installed;
 
                 // Group available by type
                 const availableByType = {};
