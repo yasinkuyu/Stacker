@@ -207,6 +207,26 @@ func (sm *ServiceManager) loadInstalledServices() {
 	}
 }
 
+func (sm *ServiceManager) checkConfigExists(svc *Service) bool {
+	var configFile string
+	switch svc.Type {
+	case "mysql", "mariadb":
+		configFile = filepath.Join(svc.ConfigDir, "my.cnf")
+	case "nginx":
+		configFile = filepath.Join(svc.ConfigDir, "nginx.conf")
+	case "apache":
+		configFile = filepath.Join(svc.ConfigDir, "httpd.conf")
+	case "redis":
+		configFile = filepath.Join(svc.ConfigDir, "redis.conf")
+	case "php":
+		configFile = filepath.Join(svc.ConfigDir, "php.ini")
+	default:
+		return false
+	}
+	_, err := os.Stat(configFile)
+	return err == nil
+}
+
 func (sm *ServiceManager) GetAvailableVersions(svcType string) []ServiceVersion {
 	return config.GetAvailableVersions(svcType, "")
 }
