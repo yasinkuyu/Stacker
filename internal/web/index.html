@@ -164,11 +164,57 @@
         .icon-nav-item.active {
             background: rgba(255, 255, 255, 0.25);
             color: white;
+            box-shadow: inset 3px 0 0 white;
         }
 
         .icon-nav-item svg {
             width: 22px;
             height: 22px;
+            flex-shrink: 0;
+        }
+
+        /* Icon Nav Labels (hidden by default, shown when expanded) */
+        .icon-nav-label {
+            display: none;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* Expanded Navbar Mode */
+        body[data-navbar-expanded="true"] .icon-nav {
+            width: 160px;
+        }
+
+        body[data-navbar-expanded="true"] .icon-nav-item {
+            width: 140px;
+            justify-content: flex-start;
+            padding-left: 16px;
+            gap: 12px;
+        }
+
+        body[data-navbar-expanded="true"] .icon-nav-label {
+            display: block;
+        }
+
+        body[data-navbar-expanded="true"] .main-content {
+            margin-left: calc(160px + var(--sites-panel-width));
+        }
+
+        body[data-navbar-expanded="true"][data-panel-collapsed="true"] .main-content {
+            margin-left: 160px;
+        }
+
+        body[data-navbar-expanded="true"] .sites-panel {
+            left: 160px;
+        }
+
+        body[data-navbar-expanded="true"] .add-site-btn {
+            left: calc(160px + 16px);
+        }
+
+        body[data-navbar-expanded="true"] .status-bar-bottom {
+            padding-left: calc(160px + 20px);
         }
 
         .icon-nav-spacer {
@@ -1892,18 +1938,21 @@
                     <path
                         d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 </svg>
+                <span class="icon-nav-label">Sites</span>
             </button>
 
             <button class="icon-nav-item" data-page="services" title="Services">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                 </svg>
+                <span class="icon-nav-label">Services</span>
             </button>
 
             <button class="icon-nav-item" data-page="php" title="PHP">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <ellipse cx="12" cy="12" rx="10" ry="6" />
                 </svg>
+                <span class="icon-nav-label">PHP</span>
             </button>
 
             <button class="icon-nav-item" data-page="dumps" title="Dumps">
@@ -1911,6 +1960,7 @@
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                 </svg>
+                <span class="icon-nav-label">Dumps</span>
             </button>
 
             <button class="icon-nav-item" data-page="mail" title="Mail">
@@ -1918,9 +1968,29 @@
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                     <polyline points="22,6 12,13 2,6" />
                 </svg>
+                <span class="icon-nav-label">Mail</span>
+            </button>
+
+            <button class="icon-nav-item" data-page="logs" title="Logs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 2v6h6" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                <span class="icon-nav-label">Logs</span>
             </button>
 
             <div class="icon-nav-spacer"></div>
+
+            <button class="icon-nav-item" data-page="about" title="About">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                <span class="icon-nav-label">About</span>
+            </button>
 
             <button class="icon-nav-item" data-page="settings" title="Settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1928,6 +1998,7 @@
                     <path
                         d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                 </svg>
+                <span class="icon-nav-label">Settings</span>
             </button>
 
             <button class="icon-nav-toggle" onclick="toggleSitesPanel()" title="Toggle Panel">
