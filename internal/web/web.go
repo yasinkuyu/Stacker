@@ -137,6 +137,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/", ws.handleIndex)
 	http.HandleFunc("/logo.png", ws.handleLogo)
 	http.HandleFunc("/static/logo.png", ws.handleLogo)
+	http.HandleFunc("/static/services/", ws.handleServiceLogos)
 
 	http.HandleFunc("/api/status", ws.handleStatus)
 	http.HandleFunc("/api/sites", ws.handleSites)
@@ -997,6 +998,22 @@ func (ws *WebServer) handleChangelog(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"content": string(content),
 	})
+}
+
+func (ws *WebServer) handleServiceLogos(w http.ResponseWriter, r *http.Request) {
+	// Extract filename from path (e.g. /static/services/nginx.svg -> nginx.svg)
+	parts := strings.Split(r.URL.Path, "/")
+	filename := parts[len(parts)-1]
+
+	// Read from embedded FS
+	data, err := serviceLogos.ReadFile("services/" + filename)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Write(data)
 }
 
 func (ws *WebServer) handleLogs(w http.ResponseWriter, r *http.Request) {

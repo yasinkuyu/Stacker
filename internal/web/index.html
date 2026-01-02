@@ -2191,15 +2191,6 @@
                 <span class="icon-nav-title">Stacker</span>
             </div>
 
-            <button class="icon-nav-item" data-page="dashboard" title="Dashboard">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                </svg>
-                <span class="icon-nav-label" data-i18n="nav.dashboard">Dashboard</span>
-            </button>
 
             <button class="icon-nav-item" data-page="sites" title="Sites">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3161,6 +3152,11 @@
             }
         }
 
+        // Initialize dashboard panel
+        function renderDashboardPanelList() {
+            renderSitesPanelList(cachedSites);
+        }
+
         // Render sites panel list
         function renderSitesPanelList(sites) {
             const list = document.getElementById('panelList');
@@ -3557,6 +3553,22 @@
             confirm: (message, options = {}) => customModal.show({ message, ...options }),
             alert: (message, options = {}) => customModal.show({ message, hideCancel: true, confirmText: 'OK', ...options })
         };
+
+        function getServiceIcon(type) {
+            const icons = {
+                'nginx': '<img src="/static/services/nginx.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'apache': '<img src="/static/services/apache.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'mysql': '<img src="/static/services/mysql.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'mariadb': '<img src="/static/services/mariadb.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'php': '<img src="/static/services/php.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'redis': '<img src="/static/services/redis.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'memcached': '<img src="/static/services/memcached.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'postgresql': '<img src="/static/services/postgresql.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'mongodb': '<img src="/static/services/mongodb.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">',
+                'elasticsearch': '<img src="/static/services/elasticsearch.svg" width="24" height="24" onerror="this.src=\'/static/logo.png\'">'
+            };
+            return icons[type] || '<img src="/static/logo.png" width="24" height="24">';
+        }
 
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -4998,6 +5010,9 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('server-status-text').textContent = 'Server running on :' + window.location.port;
+            if (!window.location.hash) {
+                window.location.hash = '#dashboard';
+            }
             const hash = window.location.hash.slice(1) || 'dashboard';
             showPage(hash);
             loadStatus();
