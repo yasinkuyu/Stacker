@@ -8,6 +8,8 @@ Stacker is a powerful, cross-platform, standalone development environment design
 [![License](https://img.shields.io/github/license/yasinkuyu/Stacker)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/yasinkuyu/Stacker)](https://github.com/yasinkuyu/Stacker/stargazers)
 
+![Stacker Screenshot](screenshot.png)
+
 ---
 
 ## 🌟 Why Stacker?

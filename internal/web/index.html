@@ -3793,7 +3793,8 @@
             try {
                 const prefs = await api('/preferences');
                 if (prefs) {
-                    document.documentElement.setAttribute('data-theme', prefs.theme);
+                    const theme = prefs.theme || 'light';
+                    document.documentElement.setAttribute('data-theme', theme);
                     document.querySelectorAll('.theme-btn').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
                     });
