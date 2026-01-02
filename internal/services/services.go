@@ -71,6 +71,9 @@ type ServiceManager struct {
 	wg             sync.WaitGroup
 	shutdown       chan struct{}
 	OnStatusChange func()
+	apachePort     int
+	nginxPort      int
+	mysqlPort      int
 }
 
 func NewServiceManager() *ServiceManager {
@@ -143,6 +146,25 @@ func NewServiceManager() *ServiceManager {
 	return sm
 }
 
+func (sm *ServiceManager) UpdatePorts(apache, nginx, mysql int) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.apachePort = apache
+	sm.nginxPort = nginx
+	sm.mysqlPort = mysql
+
+	// Update existing services
+	for _, svc := range sm.services {
+		if svc.Type == "apache" {
+			svc.Port = apache
+		} else if svc.Type == "nginx" {
+			svc.Port = nginx
+		} else if svc.Type == "mysql" || svc.Type == "mariadb" {
+			svc.Port = mysql
+		}
+	}
+}
+
 func (sm *ServiceManager) loadInstalledServices() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -171,6 +193,22 @@ func (sm *ServiceManager) loadInstalledServices() {
 
 					// Check for status file or binary
 					installDir := filepath.Join(binDir, svcType, version)
+
+					// Fix for multiple nested directories (like apache/2.4/2.4.66)
+					// Keep diving as long as we only find exactly one subdirectory and no 'bin'
+					for {
+						if _, err := os.Stat(filepath.Join(installDir, "bin")); err == nil {
+							break
+						}
+						subEntries, err := os.ReadDir(installDir)
+						if err != nil || len(subEntries) != 1 || !subEntries[0].IsDir() {
+							break
+						}
+						// Move deeper
+						installDir = filepath.Join(installDir, subEntries[0].Name())
+						fmt.Printf("📂 Diving deeper into nested install root: %s\n", installDir)
+					}
+
 					configDir := filepath.Join(baseDir, "conf", svcType, version)
 					dataDir := filepath.Join(baseDir, "data", svcType, version)
 
@@ -352,12 +390,24 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 }
 
 func (sm *ServiceManager) getDefaultPort(svcType string) int {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
 	switch svcType {
 	case "mysql", "mariadb":
+		if sm.mysqlPort > 0 {
+			return sm.mysqlPort
+		}
 		return 3306
 	case "nginx":
+		if sm.nginxPort > 0 {
+			return sm.nginxPort
+		}
 		return 80
 	case "apache":
+		if sm.apachePort > 0 {
+			return sm.apachePort
+		}
 		return 8080
 	case "redis":
 		return 6379
@@ -378,7 +428,8 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 			}
 
 			sm.updateInstallProgress("mysql", version, 70)
-			sm.createMySQLConfig(configDir, dataDir, 3306)
+			mysqlPort := sm.getDefaultPort("mysql")
+			sm.createMySQLConfig(configDir, dataDir, mysqlPort)
 
 			// Initialize MySQL data directory
 			sm.updateInstallProgress("mysql", version, 80)
@@ -386,6 +437,8 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 			if binaryPath != "" {
 				fmt.Printf("📦 Initializing MySQL data directory...\n")
 				mysqldPath := filepath.Join(binaryPath, "bin", "mysqld")
+
+				// Initialize with insecure (no password)
 				initCmd := exec.Command(mysqldPath,
 					"--initialize-insecure",
 					"--datadir="+dataDir,
@@ -398,14 +451,27 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 				output, err := initCmd.CombinedOutput()
 				if err != nil {
 					fmt.Printf("⚠️ MySQL init error: %v\nOutput: %s\n", err, string(output))
-					// Don't fail, user can initialize manually
 				} else {
 					fmt.Printf("✅ MySQL data directory initialized\n")
+
+					// Set root password to 'root' using --bootstrap
+					fmt.Printf("🔐 Setting MySQL root password to 'root'...\n")
+					bootstrapCmd := exec.Command(mysqldPath,
+						"--bootstrap",
+						"--datadir="+dataDir,
+						"--basedir="+binaryPath,
+					)
+					bootstrapCmd.Stdin = strings.NewReader("ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';\nFLUSH PRIVILEGES;\n")
+					if bout, berr := bootstrapCmd.CombinedOutput(); berr != nil {
+						fmt.Printf("⚠️ MySQL bootstrap error: %v\nOutput: %s\n", berr, string(bout))
+					} else {
+						fmt.Printf("✅ MySQL root password set\n")
+					}
 				}
 			}
 
 			sm.updateInstallProgress("mysql", version, 100)
-			fmt.Printf("✅ MySQL %s installed and initialized\n", version)
+			fmt.Printf("✅ MySQL %s installed and initialized with password 'root'\n", version)
 			return nil
 		}
 	}
@@ -477,7 +543,8 @@ func (sm *ServiceManager) installMariaDB(version, installDir, configDir, dataDir
 			sm.updateInstallProgress("mariadb", version, 80)
 
 			binDir := filepath.Join(installDir, "bin")
-			sm.createMariaDBConfig(configDir, dataDir, 3306)
+			mysqlPort := sm.getDefaultPort("mariadb")
+			sm.createMariaDBConfig(configDir, dataDir, mysqlPort)
 			sm.updateInstallProgress("mariadb", version, 90)
 
 			if err := sm.initializeMariaDB(binDir, configDir, dataDir); err != nil {
@@ -603,20 +670,15 @@ func (sm *ServiceManager) initializeMariaDB(binaryPath, configDir, dataDir strin
 		os.MkdirAll(dataDir, 0755)
 		os.MkdirAll(mysqlDataDir, 0755)
 
-		cmd := exec.Command(mariadbd,
+		bootstrapCmd := exec.Command(mariadbd,
 			"--datadir="+mysqlDataDir,
 			"--basedir="+binaryPath,
 			"--bootstrap",
-			"--skip-grant-tables",
 		)
-		cmd.Env = append(os.Environ(),
-			"LD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
-			"DYLD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
-		)
-
-		output, err := cmd.CombinedOutput()
+		bootstrapCmd.Stdin = strings.NewReader("ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';\nFLUSH PRIVILEGES;\n")
+		output, err := bootstrapCmd.CombinedOutput()
 		if err != nil && len(output) > 0 {
-			fmt.Printf("MariaDB init warning: %s\n", string(output))
+			fmt.Printf("MariaDB bootstrap error: %v\nOutput: %s\n", err, string(output))
 		}
 	}
 
@@ -881,14 +943,17 @@ func (sm *ServiceManager) compileNginx(version, installDir, configDir string) er
 		return fmt.Errorf("nginx make install failed: %w", err)
 	}
 
-	sm.createNginxConfig(configDir)
+	sm.createNginxConfig(configDir, sm.getDefaultPort("nginx"))
 	sm.updateInstallProgress("nginx", version, 100)
 	fmt.Printf("✅ Nginx %s compiled and installed successfully\n", version)
 	return nil
 }
 
-func (sm *ServiceManager) createNginxConfig(configDir string) error {
-	conf := `worker_processes  1;
+func (sm *ServiceManager) createNginxConfig(configDir string, port int) error {
+	if port == 0 {
+		port = 80
+	}
+	conf := fmt.Sprintf(`worker_processes  1;
 events {
     worker_connections  1024;
 }
@@ -898,7 +963,7 @@ http {
     sendfile        on;
     keepalive_timeout  65;
     server {
-        listen       80;
+        listen       %d;
         server_name  localhost;
         location / {
             root   html;
@@ -911,7 +976,7 @@ http {
     }
     include ../../conf/nginx/*.conf;
 }
-`
+`, port)
 	return os.WriteFile(filepath.Join(configDir, "nginx.conf"), []byte(conf), 0644)
 }
 
@@ -1710,6 +1775,8 @@ func (sm *ServiceManager) StartService(name string) error {
 		if binaryPath == "" {
 			return fmt.Errorf("MariaDB binary not found")
 		}
+		// Regenerate config
+		sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort(svc.Type))
 		cmd = sm.startMariaDB(svc, binaryPath)
 	case "mysql":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -1717,6 +1784,8 @@ func (sm *ServiceManager) StartService(name string) error {
 		if binaryPath == "" {
 			return fmt.Errorf("MySQL binary not found")
 		}
+		// Regenerate config
+		sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort(svc.Type))
 		cmd = sm.startMySQL(svc, binaryPath)
 	case "nginx":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -1727,6 +1796,8 @@ func (sm *ServiceManager) StartService(name string) error {
 		if _, err := os.Stat(binaryPath); err != nil {
 			return fmt.Errorf("Nginx binary not found at %s", binaryPath)
 		}
+		// Regenerate config
+		sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort(svc.Type))
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -1740,6 +1811,8 @@ func (sm *ServiceManager) StartService(name string) error {
 			return fmt.Errorf("Apache binary not found at %s", binaryPath)
 		}
 
+		// Regenerate config
+		sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, sm.getDefaultPort(svc.Type))
 		cmd = sm.startApache(svc, binaryPath)
 	case "redis":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -2097,11 +2170,9 @@ func (sm *ServiceManager) createDefaultConfig(svc *Service) error {
 	case "mariadb":
 		return sm.createMariaDBConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mariadb"))
 	case "nginx":
-		return sm.createNginxConfig(svc.ConfigDir)
+		return sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort("nginx"))
 	case "apache":
-		// We'll need a way to pass the port here. For now, use a default or handle it in the caller.
-		// Since svc.Port is not yet available in the struct, we might need to add it or use a global.
-		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, 80)
+		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, sm.getDefaultPort("apache"))
 	case "redis":
 		return sm.createRedisConfig(svc.ConfigDir, svc.DataDir)
 	case "php":

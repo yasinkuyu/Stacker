@@ -101,6 +101,9 @@ func NewWebServer(cfg *config.Config) *WebServer {
 	loadSites(stackerDir)
 	loadPreferences(stackerDir)
 
+	// Update service manager with initial ports
+	sm.UpdatePorts(prefs.ApachePort, prefs.NginxPort, prefs.MySQLPort)
+
 	// Initialize PHP managers
 	pm := php.NewPHPManager()
 	pm.DetectPHPVersions()
@@ -283,9 +286,16 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		displaySites := make([]Site, len(sites))
 		for i, s := range sites {
 			// s.Name already includes domain extension (e.g., "mysite.local")
+			apachePort := prefs.ApachePort
+
+			// Default URL using Apache port (most common in MAMP-like setups)
+			// But if Nginx is preferred or running, this might need more complexity
+			// For now, let's use ApachePort for URL generation if it's not standard
 			s.Url = "http://" + s.Name
 			if s.SSL {
 				s.Url = "https://" + s.Name
+			} else if apachePort != 80 && apachePort != 0 {
+				s.Url = fmt.Sprintf("http://%s:%d", s.Name, apachePort)
 			}
 			displaySites[i] = s
 		}
@@ -1737,6 +1747,7 @@ func (ws *WebServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
 
 		// If ports changed, regenerate configs and restart services in background
 		if portChanged {
+			ws.serviceManager.UpdatePorts(prefs.ApachePort, prefs.NginxPort, prefs.MySQLPort)
 			go func() {
 				fmt.Println("🔄 Ports changed, regenerating configs and restarting services...")
 				ws.regenerateAllConfigs()
