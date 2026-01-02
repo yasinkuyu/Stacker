@@ -3276,10 +3276,15 @@
                                 <div class="service-card">
                                     <div class="service-info">
                                         <div class="service-icon ${s.type}">
-                                            ${s.type === 'mysql' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8.5c0 0.83 0.67 1.5 1.5 1.5h1c0.83 0 1.5 0.67 1.5 1.5v1c0 0.83-0.67 1.5-1.5 1.5H9v2h1.5C12.44 19 14 17.44 14 15.5v-1c0-0.83-0.67-1.5-1.5-1.5h-1c-0.83 0-1.5-0.67-1.5-1.5v-1c0-0.83 0.67-1.5 1.5-1.5h1.5V7H11.5C9.56 7 8 8.56 8 10.5v1z" fill="#00758F" stroke="none"/></svg>' :
-                        s.type === 'nginx' ? '<svg viewBox="0 0 24 24" fill="none" class="nginx-icon" stroke="none"><path d="M12 0L24 12L12 24L0 12L12 0Z" fill="#009639"/><path d="M11.603 6.009V11.23L6.963 6.046C6.671 5.925 6.353 6.014 6.16 6.262C5.967 6.51 5.95 6.852 6.118 7.118L10.749 12.339V17.561C10.749 18.256 11.758 18.604 12.249 18.113L17.47 12.892C17.762 12.6 17.762 12.128 17.47 11.836L12.249 6.615C12.067 6.433 11.815 6.331 11.558 6.331C11.399 6.331 11.242 6.37 11.101 6.446L11.603 6.009Z" fill="#FFFFFF"/></svg>' :
-                            s.type === 'redis' ? '<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4V4z" fill="#D82C20"/><path d="M4 20h16l2-4H2l2 4z" fill="#A51E14"/><path d="M20 4l2 4H2l2-4h16z" fill="#A51E14"/><path d="M4 4l-2 4v12l4 2h12l4-2V8l-2-4H4z" stroke="currentColor" stroke-width="0"/></svg>' :
-                                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/></svg>'
+                                            ${s.type === 'mysql' ? '<svg viewBox="0 0 24 24"><path fill="#00758F" d="M12.738 1.668c-1.764.03-3.47.456-4.67 1.05-.36.18-.93.57-.99.69-.03.06-.06.72-.06 1.47v1.37l.09.09c.09.09.12.09.69.09h.6v-.96c0-.93 0-.96.09-1.08.12-.21.48-.48.87-.66 1.26-.57 3.18-.72 4.71-.36.72.18 1.38.45 1.68.72.24.21.27.3.27 1.38v.96h.6c.57 0 .6 0 .69-.09l.09-.09V4.88c0-.78-.03-1.41-.06-1.47-.06-.12-.63-.51-.99-.69-1.08-.54-2.52-.99-3.66-1.05zm-7.2 5.97c-1.35.15-2.55.72-3.24 1.5-.21.24-.54.78-.63 1.02-.09.21-.24.93-.24 1.17 0 .3.15.99.27 1.26.21.51.63 1.02 1.17 1.44.48.39.93.6 2.01.96 1.53.51 2.01.72 2.4 1.02.45.36.63.69.63 1.14 0 .48-.21.87-.63 1.17-.54.39-1.5.57-2.52.48-.93-.09-1.68-.36-2.46-.93-.27-.18-.51-.36-.54-.36-.03 0-.06.42-.06 1.02v1.02l.21.12c.6.36 1.47.63 2.46.78.48.06.6.06 1.35.03.81-.03.87-.03 1.35-.15 1.38-.33 2.37-.99 2.94-1.92.33-.54.48-1.02.51-1.65.03-.72-.09-1.23-.42-1.77-.48-.78-1.29-1.32-2.79-1.86-1.59-.57-2.01-.75-2.4-1.02-.45-.33-.63-.66-.6-1.08.03-.36.18-.63.51-.87.57-.42 1.56-.54 2.58-.33.48.09 1.17.36 1.68.63l.27.15v-.96c0-.93 0-.96-.09-1.02-.21-.18-1.26-.45-2.1-.54-.39-.03-1.14-.06-1.38-.03zm8.46.03c-.3.03-.57.09-.57.12s.15.27.33.54c.75 1.11 1.38 2.49 1.65 3.66.24 1.02.27 1.38.27 2.37 0 .84-.03 1.14-.15 1.74-.18.81-.45 1.53-.87 2.28l-.15.27h.66c.66 0 .66 0 .84-.15.33-.27.78-.87 1.05-1.44.39-.81.54-1.47.57-2.55.03-.93-.03-1.44-.27-2.22-.45-1.5-1.47-3.21-2.46-4.14-.33-.3-.33-.33-.6-.42-.15-.06-.27-.09-.3-.06zm-6.9 10.26c-.93.24-1.62.75-1.89 1.38-.12.27-.15.39-.15.81s.03.54.15.81c.36.81 1.26 1.32 2.52 1.44.72.06 1.65-.09 2.28-.36.51-.24.87-.51 1.2-.93.24-.33.42-.72.42-.93 0-.12-.03-.15-.15-.18-.12-.06-.15-.03-.33.15-.51.54-1.08.81-1.86.93-.63.09-1.23 0-1.68-.27-.33-.18-.51-.39-.6-.69-.09-.27-.06-.69.06-.93.21-.39.66-.66 1.26-.78.24-.03.27-.06.24-.15-.06-.12-.21-.18-.45-.27-.27-.06-.72-.09-1.02-.03z"/></svg>' :
+                        s.type === 'mariadb' ? '<svg viewBox="0 0 24 24"><path fill="#003545" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path fill="#C0765A" d="M16.5 8.5c-.83 0-1.5.67-1.5 1.5v4c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5zm-9 0c-.83 0-1.5.67-1.5 1.5v4c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5zm4.5 0c-.83 0-1.5.67-1.5 1.5v4c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5z"/></svg>' :
+                            s.type === 'nginx' ? '<svg viewBox="0 0 24 24"><path fill="#009639" d="M12 0L24 12 12 24 0 12z"/><path fill="#fff" d="M7 7h2.5v10H7zm7.5 0H17v10l-5-5v5h-2.5V7l5 5z"/></svg>' :
+                                s.type === 'apache' ? '<svg viewBox="0 0 24 24"><path fill="#D22128" d="M12 2L2 19h3l1.5-3h11l1.5 3h3L12 2zm0 5l3.5 7h-7L12 7z"/></svg>' :
+                                    s.type === 'redis' ? '<svg viewBox="0 0 24 24"><path fill="#DC382D" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path fill="#fff" d="M17 12l-3-2v4l3-2zm-6.5-2.5l-3.5 2 3.5 2v-4zm3.5.5l-2.5 2 2.5 2v-4z"/></svg>' :
+                                        s.type === 'composer' ? '<svg viewBox="0 0 24 24"><path fill="#885630" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path fill="#fff" d="M16 8c-1 0-2 .5-2.5 1.3-.3-.8-1-1.3-2-1.3-1.3 0-2.5 1-2.5 2.5 0 2 1.5 3.5 4.5 5.5 3-2 4.5-3.5 4.5-5.5 0-1.5-1-2.5-2-2.5z"/></svg>' :
+                                            s.type === 'nodejs' ? '<svg viewBox="0 0 24 24"><path fill="#339933" d="M12 2L3 7v10l9 5 9-5V7l-9-5z"/><path fill="#fff" d="M12 6l-5 3v6l5 3 5-3V9l-5-3z"/></svg>' :
+                                                s.type === 'php' ? '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="6" fill="#777BB3"/><path fill="#fff" d="M7 10h1.5l.5 1h1l-.5-1h.5c.5 0 1 .5 1 1v1c0 .5-.5 1-1 1h-1l-.5 1h-1l.5-1H7v-3zm7 0h1.5l.5 1h1l-.5-1h.5c.5 0 1 .5 1 1v1c0 .5-.5 1-1 1h-1l-.5 1h-1l.5-1H14v-3z"/></svg>' :
+                                                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/></svg>'
                     }
                                         </div>
                                         <div>
@@ -3326,9 +3331,14 @@
                                     <div class="list-item" style="padding: 16px 24px;">
                                         <div class="service-info">
                                             <div class="service-icon ${type}" style="width: 36px; height: 36px; font-size: 14px;">
-                                                ${type === 'mysql' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8.5c0 0.83 0.67 1.5 1.5 1.5h1c0.83 0 1.5 0.67 1.5 1.5v1c0 0.83-0.67 1.5-1.5 1.5H9v2h1.5C12.44 19 14 17.44 14 15.5v-1c0-0.83-0.67-1.5-1.5-1.5h-1c-0.83 0-1.5-0.67-1.5-1.5v-1c0-0.83 0.67-1.5 1.5-1.5h1.5V7H11.5C9.56 7 8 8.56 8 10.5v1z" fill="#00758F" stroke="none"/></svg>' :
-                            type === 'nginx' ? '<svg viewBox="0 0 24 24" fill="none" class="nginx-icon" stroke="none"><path d="M12 0L24 12L12 24L0 12L12 0Z" fill="#009639"/><path d="M11.603 6.009V11.23L6.963 6.046C6.671 5.925 6.353 6.014 6.16 6.262C5.967 6.51 5.95 6.852 6.118 7.118L10.749 12.339V17.561C10.749 18.256 11.758 18.604 12.249 18.113L17.47 12.892C17.762 12.6 17.762 12.128 17.47 11.836L12.249 6.615C12.067 6.433 11.815 6.331 11.558 6.331C11.399 6.331 11.242 6.37 11.101 6.446L11.603 6.009Z" fill="#FFFFFF"/></svg>' :
-                                type === 'redis' ? '<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4V4z" fill="#D82C20"/><path d="M4 20h16l2-4H2l2 4z" fill="#A51E14"/><path d="M20 4l2 4H2l2-4h16z" fill="#A51E14"/><path d="M4 4l-2 4v12l4 2h12l4-2V8l-2-4H4z" stroke="currentColor" stroke-width="0"/></svg>' : 'KV'}
+                                                ${type === 'mysql' ? '<svg viewBox="0 0 24 24"><path fill="#00758F" d="M12.738 1.668c-1.764.03-3.47.456-4.67 1.05-.36.18-.93.57-.99.69-.03.06-.06.72-.06 1.47v1.37l.09.09c.09.09.12.09.69.09h.6v-.96c0-.93 0-.96.09-1.08.12-.21.48-.48.87-.66 1.26-.57 3.18-.72 4.71-.36.72.18 1.38.45 1.68.72.24.21.27.3.27 1.38v.96h.6c.57 0 .6 0 .69-.09l.09-.09V4.88c0-.78-.03-1.41-.06-1.47-.06-.12-.63-.51-.99-.69-1.08-.54-2.52-.99-3.66-1.05z"/></svg>' :
+                            type === 'mariadb' ? '<svg viewBox="0 0 24 24"><path fill="#003545" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path fill="#C0765A" d="M16.5 8.5c-.83 0-1.5.67-1.5 1.5v4c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5zm-9 0c-.83 0-1.5.67-1.5 1.5v4c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5zm4.5 0c-.83 0-1.5.67-1.5 1.5v4c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-4c0-.83-.67-1.5-1.5-1.5z"/></svg>' :
+                                type === 'nginx' ? '<svg viewBox="0 0 24 24"><path fill="#009639" d="M12 0L24 12 12 24 0 12z"/><path fill="#fff" d="M7 7h2.5v10H7zm7.5 0H17v10l-5-5v5h-2.5V7l5 5z"/></svg>' :
+                                    type === 'apache' ? '<svg viewBox="0 0 24 24"><path fill="#D22128" d="M12 2L2 19h3l1.5-3h11l1.5 3h3L12 2zm0 5l3.5 7h-7L12 7z"/></svg>' :
+                                        type === 'redis' ? '<svg viewBox="0 0 24 24"><path fill="#DC382D" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path fill="#fff" d="M17 12l-3-2v4l3-2zm-6.5-2.5l-3.5 2 3.5 2v-4zm3.5.5l-2.5 2 2.5 2v-4z"/></svg>' :
+                                            type === 'composer' ? '<svg viewBox="0 0 24 24"><path fill="#885630" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path fill="#fff" d="M16 8c-1 0-2 .5-2.5 1.3-.3-.8-1-1.3-2-1.3-1.3 0-2.5 1-2.5 2.5 0 2 1.5 3.5 4.5 5.5 3-2 4.5-3.5 4.5-5.5 0-1.5-1-2.5-2-2.5z"/></svg>' :
+                                                type === 'nodejs' ? '<svg viewBox="0 0 24 24"><path fill="#339933" d="M12 2L3 7v10l9 5 9-5V7l-9-5z"/><path fill="#fff" d="M12 6l-5 3v6l5 3 5-3V9l-5-3z"/></svg>' :
+                                                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/></svg>'}
                                             </div>
                                             <div>
                                                 <div class="service-name" style="text-transform: capitalize;">${type} Server</div>
@@ -3495,12 +3505,83 @@
         }
 
         async function viewLog(path) {
+            showOperationProgress('Loading log...');
             try {
-                const logs = await api('/logs/view?path=' + encodeURIComponent(path));
+                const logs = await api('/logs/view?path=' + encodeURIComponent(path) + '&lines=2000');
+                hideOperationProgress();
                 if (logs && logs.content) {
-                    openDrawPanel('Log: ' + path.split('/').pop(), `<pre style="padding:16px;background:#1e1e1e;color:#fff;overflow:auto;font-size:12px;line-height:1.5;max-height:70vh;">${logs.content}</pre>`, null, 'Close', true);
+                    const lines = logs.content.split('\n');
+                    const totalLines = lines.length;
+                    let filteredLines = lines;
+                    let searchTerm = '';
+
+                    const renderLogContent = () => {
+                        let html = filteredLines.map((line, i) => {
+                            let displayLine = line.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            // Highlight search term
+                            if (searchTerm) {
+                                const regex = new RegExp('(' + searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                                displayLine = displayLine.replace(regex, '<mark style="background:#ffd54f;color:#000;padding:0 2px;border-radius:2px;">$1</mark>');
+                            }
+                            // Highlight error/warning keywords
+                            if (/error|fatal|critical/i.test(line)) {
+                                return `<div style="color:#ff6b6b;background:rgba(255,107,107,0.1);padding:2px 8px;margin:1px 0;border-left:3px solid #ff6b6b;">${displayLine}</div>`;
+                            } else if (/warn/i.test(line)) {
+                                return `<div style="color:#ffd93d;background:rgba(255,217,61,0.1);padding:2px 8px;margin:1px 0;border-left:3px solid #ffd93d;">${displayLine}</div>`;
+                            } else if (/info|notice/i.test(line)) {
+                                return `<div style="color:#4ecdc4;padding:2px 8px;">${displayLine}</div>`;
+                            }
+                            return `<div style="padding:2px 8px;">${displayLine}</div>`;
+                        }).join('');
+                        document.getElementById('log-content').innerHTML = html;
+                    };
+
+                    const panelContent = `
+                        <div style="display:flex;flex-direction:column;height:100%;">
+                            <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
+                                <div style="position:relative;flex:1;">
+                                    <input type="text" id="log-search" placeholder="Search logs..." style="width:100%;padding:8px 12px 8px 36px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+                                    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:0.5;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                                </div>
+                                <span id="log-match-count" style="font-size:12px;color:var(--text-muted);min-width:80px;"></span>
+                                <button class="btn" onclick="document.getElementById('log-content').scrollTop = document.getElementById('log-content').scrollHeight" title="Jump to end">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                                    Tail
+                                </button>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+                                📄 ${path} • ${totalLines.toLocaleString()} lines
+                            </div>
+                            <div id="log-content" style="flex:1;overflow:auto;background:#1e1e1e;border-radius:8px;font-family:'SF Mono',Monaco,monospace;font-size:12px;line-height:1.4;color:#d4d4d4;max-height:calc(100vh - 220px);"></div>
+                        </div>
+                    `;
+
+                    openDrawPanel('Log: ' + path.split('/').pop(), panelContent, null, 'Close', true);
+                    renderLogContent();
+
+                    // Auto-scroll to end
+                    setTimeout(() => {
+                        const content = document.getElementById('log-content');
+                        if (content) content.scrollTop = content.scrollHeight;
+                    }, 100);
+
+                    // Search functionality
+                    document.getElementById('log-search').addEventListener('input', (e) => {
+                        searchTerm = e.target.value;
+                        if (searchTerm) {
+                            filteredLines = lines.filter(line => line.toLowerCase().includes(searchTerm.toLowerCase()));
+                            document.getElementById('log-match-count').textContent = filteredLines.length + ' matches';
+                        } else {
+                            filteredLines = lines;
+                            document.getElementById('log-match-count').textContent = '';
+                        }
+                        renderLogContent();
+                    });
                 }
-            } catch (err) { showToast('Could not load log file', 'error'); }
+            } catch (err) {
+                hideOperationProgress();
+                showToast('Could not load log file', 'error');
+            }
         }
 
         // ==========================================
