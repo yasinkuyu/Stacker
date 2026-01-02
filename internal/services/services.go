@@ -205,8 +205,15 @@ func (sm *ServiceManager) loadInstalledServices() {
 							break
 						}
 						// Move deeper
-						installDir = filepath.Join(installDir, subEntries[0].Name())
-						fmt.Printf("📂 Diving deeper into nested install root: %s\n", installDir)
+						subDirName := subEntries[0].Name()
+						installDir = filepath.Join(installDir, subDirName)
+
+						// Update version and service name if it looks like a version
+						if strings.Contains(subDirName, ".") {
+							version = subDirName
+							svcName = svcType + "-" + version
+						}
+						fmt.Printf("📂 Diving deeper into nested install root: %s (version updated to %s)\n", installDir, version)
 					}
 
 					configDir := filepath.Join(baseDir, "conf", svcType, version)
