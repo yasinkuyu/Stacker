@@ -905,6 +905,11 @@ func (sm *ServiceManager) findApacheBinary(installDir string) string {
 		fmt.Printf("✅ Found Apache binary in compiled path: %s\n", compiledPath)
 		return compiledPath
 	}
+	// Try nested apache-bin if necessary (some builds might nest it)
+	nestedCompiled := filepath.Join(installDir, "apache-bin", "apache-bin", "bin", "httpd")
+	if _, err := os.Stat(nestedCompiled); err == nil {
+		return nestedCompiled
+	}
 	fmt.Printf("❌ Compiled path check failed for: %s\n", compiledPath)
 
 	// Direct check
