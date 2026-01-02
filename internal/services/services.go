@@ -191,6 +191,7 @@ func (sm *ServiceManager) loadInstalledServices() {
 			}
 
 			for _, vEntry := range versionEntries {
+				fmt.Printf("🔍 Checking service version entry: %s/%s\n", svcType, vEntry.Name())
 				if vEntry.IsDir() {
 					version := vEntry.Name()
 					svcName := svcType + "-" + version
@@ -204,10 +205,20 @@ func (sm *ServiceManager) loadInstalledServices() {
 					// Keep diving as long as we only find exactly one subdirectory and no 'bin'
 					for {
 						if _, err := os.Stat(filepath.Join(installDir, "bin")); err == nil {
+							fmt.Printf("🔍 Dive: Found bin in %s, breaking\n", installDir)
 							break
 						}
 						subEntries, err := os.ReadDir(installDir)
-						if err != nil || len(subEntries) != 1 || !subEntries[0].IsDir() {
+						if err != nil {
+							fmt.Printf("🔍 Dive: Error reading %s: %v\n", installDir, err)
+							break
+						}
+						if len(subEntries) != 1 {
+							fmt.Printf("🔍 Dive: %d entries in %s, breaking\n", len(subEntries), installDir)
+							break
+						}
+						if !subEntries[0].IsDir() {
+							fmt.Printf("🔍 Dive: Entry in %s is not a dir, breaking\n", installDir)
 							break
 						}
 						// Move deeper
@@ -235,10 +246,11 @@ func (sm *ServiceManager) loadInstalledServices() {
 							for _, item := range items {
 								oldPath := filepath.Join(installDir, item.Name())
 								newPath := filepath.Join(originalInstallDir, item.Name())
+								fmt.Printf("🔄 Moving: %s -> %s\n", oldPath, newPath)
 								os.Rename(oldPath, newPath)
 							}
+							fmt.Printf("🔄 Removing empty nested dir: %s\n", installDir)
 							os.Remove(installDir) // Remove the now-empty nested directory
-
 							// Now rename the original install directory to the new version name
 							newBaseInstallDir := filepath.Join(binDir, svcType, version)
 							if originalInstallDir != newBaseInstallDir {
@@ -266,7 +278,7 @@ func (sm *ServiceManager) loadInstalledServices() {
 										}
 									}
 								} else {
-									installDir = originalInstallDir
+									installDir = newBaseInstallDir
 								}
 							}
 						}
@@ -303,6 +315,7 @@ func (sm *ServiceManager) loadInstalledServices() {
 						Runnable:  isRunnable,
 					}
 
+
 					// Check if service is running by PID file
 					pidFile := filepath.Join(baseDir, "pids", svcName+".pid")
 					if pidData, err := os.ReadFile(pidFile); err == nil {
@@ -319,11 +332,13 @@ func (sm *ServiceManager) loadInstalledServices() {
 					}
 
 					// Check if config file exists
+					fmt.Printf("🔍 Checking config for %s...\n", svcName)
 					svc.HasConfig = sm.checkConfigExists(svc)
 					fmt.Printf("🔍 Service %s (Type: %s, Version: %s) HasConfig: %v (Dir: %s)\n", svc.Name, svc.Type, svc.Version, svc.HasConfig, svc.ConfigDir)
 
 					// Check if port is in use (by another program)
 					if svc.Status != "running" {
+						fmt.Printf("🔍 Checking port usage for %d...\n", svc.Port)
 						svc.PortInUse, svc.PortConflict = sm.checkPortInUse(svc.Port)
 					}
 
@@ -1215,16 +1230,16 @@ func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir, ver
 Define APACHE_LOG_DIR "%s"
 Listen %d
 Listen 443
-LoadModule mpm_event_module modules/mod_mpm_event.so
-LoadModule authn_core_module modules/mod_authn_core.so
-LoadModule authz_core_module modules/mod_authz_core.so
-LoadModule dir_module modules/mod_dir.so
-LoadModule mime_module modules/mod_mime.so
-LoadModule unixd_module modules/mod_unixd.so
-LoadModule proxy_module modules/mod_proxy.so
-LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
-LoadModule ssl_module modules/mod_ssl.so
-LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
+LoadModule mpm_event_module lib/httpd/modules/mod_mpm_event.so
+LoadModule authn_core_module lib/httpd/modules/mod_authn_core.so
+LoadModule authz_core_module lib/httpd/modules/mod_authz_core.so
+LoadModule dir_module lib/httpd/modules/mod_dir.so
+LoadModule mime_module lib/httpd/modules/mod_mime.so
+LoadModule unixd_module lib/httpd/modules/mod_unixd.so
+LoadModule proxy_module lib/httpd/modules/mod_proxy.so
+LoadModule proxy_fcgi_module lib/httpd/modules/mod_proxy_fcgi.so
+LoadModule ssl_module lib/httpd/modules/mod_ssl.so
+LoadModule socache_shmcb_module lib/httpd/modules/mod_socache_shmcb.so
 
 # Logs
 ErrorLog "${APACHE_LOG_DIR}/error_log"
@@ -1848,16 +1863,19 @@ func (sm *ServiceManager) downloadFromMirrors(mirrors []string, target string, o
 		if err := sm.downloadWithRetry(url, target, onProgress); err == nil {
 			return nil
 		}
+```
 	}
 	return fmt.Errorf("all mirrors failed")
 }
 
 func (sm *ServiceManager) StartService(name string) error {
+	fmt.Printf("🚀 StartService called for: %s\n", name)
 	sm.mu.Lock()
-	svc, ok := sm.services[name]
-	sm.mu.Unlock()
+	defer sm.mu.Unlock()
 
-	if !ok {
+	svc, exists := sm.services[name]
+	fmt.Printf("🔍 Service %s exists in map? %v\n", name, exists)
+	if !exists {
 		return fmt.Errorf("service %s not found", name)
 	}
 
