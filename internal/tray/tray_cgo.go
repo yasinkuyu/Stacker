@@ -297,25 +297,34 @@ func (tm *TrayManager) updateServiceStatus() {
 
 func (tm *TrayManager) updateIconByStatus() {
 	svcs := tm.svcManager.GetServices()
-	running := 0
-	total := len(svcs)
 
-	if total == 0 {
-		systray.SetIcon(iconData)
-		return
-	}
+	// Check only MySQL/MariaDB + (Apache or Nginx) for tray icon color
+	mysqlRunning := false
+	webServerRunning := false
 
 	for _, s := range svcs {
-		if s.Status == "running" {
-			running++
+		if s.Status != "running" {
+			continue
+		}
+		// Check for database (MySQL or MariaDB)
+		if s.Type == "mysql" || s.Type == "mariadb" {
+			mysqlRunning = true
+		}
+		// Check for web server (Apache or Nginx)
+		if s.Type == "apache" || s.Type == "nginx" {
+			webServerRunning = true
 		}
 	}
 
-	if running == total {
+	// Determine icon color based on critical services
+	if mysqlRunning && webServerRunning {
+		// All critical services running - normal/green icon
 		systray.SetIcon(iconData)
-	} else if running > 0 {
+	} else if mysqlRunning || webServerRunning {
+		// Partial - orange icon
 		systray.SetIcon(iconOrange)
 	} else {
+		// None running - red icon
 		systray.SetIcon(iconRed)
 	}
 }

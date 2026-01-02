@@ -149,24 +149,108 @@ func NewServiceManager() *ServiceManager {
 	indexFile := filepath.Join(htdocsDir, "index.html")
 	if _, err := os.Stat(indexFile); os.IsNotExist(err) {
 		defaultHtml := `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Welcome to Stacker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wellcome to Stacker</title>
     <style>
-        body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f5f5f7; color: #1a1a1a; }
-        .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
-        h1 { margin: 0 0 16px; font-size: 24px; }
-        p { color: #666; line-height: 1.5; margin-bottom: 24px; }
-        .logo { width: 64px; height: 64px; margin-bottom: 24px; }
-        code { background: #eee; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            background: #0a0a0a;
+            overflow-x: hidden;
+        }
+        .container { 
+            display: flex; 
+            max-width: 900px; 
+            width: 90%; 
+            height: 400px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .left { 
+            background: linear-gradient(135deg, #00fa9a 0%, #00d97e 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
+        }
+        .right { 
+            background: linear-gradient(135deg, #ff1493 0%, #d91270 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            text-align: center; 
+            padding: 40px; 
+        }
+        .divider { 
+            position: absolute; 
+            right: 0; 
+            top: 10%; 
+            bottom: 10%; 
+            width: 3px; 
+            background: rgba(0,0,0,0.2); 
+            border-radius: 2px;
+        }
+        h1.big-text { 
+            font-size: 4rem; 
+            font-weight: 900; 
+            color: #000; 
+            line-height: 0.9; 
+            text-transform: uppercase; 
+            letter-spacing: -2px; 
+        }
+        .right-content { max-width: 100%; }
+        h2 { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            color: white; 
+            margin: 0 0 20px 0; 
+            line-height: 1.2; 
+        }
+        .btn { 
+            display: inline-block; 
+            background: #000; 
+            color: #00fa9a; 
+            padding: 12px 28px; 
+            font-size: 0.9rem; 
+            font-weight: 700; 
+            text-decoration: none; 
+            text-transform: uppercase; 
+            margin-top: 20px; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #1a1a1a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,250,154,0.3);
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <img src="/logo.png" class="logo" onerror="this.style.display='none'">
-        <h1>It Works!</h1>
-        <p>Your Stacker server is up and running.</p>
-        <p>This file is located at:<br><code>stacker/htdocs/index.html</code></p>
+    <div class="container">
+        <div class="left">
+            <h1 class="big-text">STACKER<br>READY</h1>
+            <div class="divider"></div>
+        </div>
+        <div class="right">
+            <div class="right-content">
+                <h2>Local Environment<br>Running</h2>
+                <a href="http://localhost:9999" class="btn">Open Dashboard</a>
+            </div>
+        </div>
     </div>
 </body>
 </html>`
@@ -1113,6 +1197,34 @@ func (sm *ServiceManager) createNginxConfig(configDir string, port int, version 
 	vhostDir := filepath.Join(sm.baseDir, "conf", "nginx")
 	os.MkdirAll(vhostDir, 0755)
 
+	// Create fastcgi_params for PHP-FPM
+	fastcgiParams := `fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  REQUEST_SCHEME     $scheme;
+fastcgi_param  HTTPS              $https if_not_empty;
+
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
+
+# PHP only, required if PHP was built with --enable-force-cgi-redirect
+fastcgi_param  REDIRECT_STATUS    200;
+`
+	os.WriteFile(filepath.Join(configDir, "fastcgi_params"), []byte(fastcgiParams), 0644)
+
 	// Create mime.types for Nginx
 	mimeContent := `types {
     text/html                             html htm shtml;
@@ -1205,6 +1317,7 @@ func (sm *ServiceManager) createNginxConfig(configDir string, port int, version 
 }`
 	os.WriteFile(filepath.Join(configDir, "mime.types"), []byte(mimeContent), 0644)
 
+	htdocsDir := filepath.Join(sm.baseDir, "htdocs")
 	conf := fmt.Sprintf(`worker_processes  1;
 pid "%s/pids/nginx-%s.pid";
 
@@ -1219,18 +1332,20 @@ http {
     server {
         listen       %d;
         server_name  localhost;
+        root         "%s";
+        index        index.html index.htm index.php;
+        
         location / {
-            root   html;
-            index  index.html index.htm;
+            try_files $uri $uri/ =404;
         }
         error_page   500 502 503 504  /50x.html;
         location = /50x.html {
-            root   html;
+            root   "%s";
         }
     }
     include "%s/*.conf";
 }
-`, sm.baseDir, version, port, vhostDir)
+`, sm.baseDir, version, port, htdocsDir, htdocsDir, vhostDir)
 	return os.WriteFile(filepath.Join(configDir, "nginx.conf"), []byte(conf), 0644)
 }
 
