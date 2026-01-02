@@ -1039,12 +1039,29 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 }
 
 func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir string) error {
-	// Get Stacker base directory for vhost configs
+	// Get Stacker base directory for vhost configs and shared htdocs
 	stackerDir := filepath.Dir(filepath.Dir(configDir)) // Go up from conf/apache/version to Stacker root
 	vhostDir := filepath.Join(stackerDir, "conf", "apache")
+	sharedHtdocs := filepath.Join(stackerDir, "htdocs")
+
+	// Create shared htdocs directory with default index.html
+	if err := os.MkdirAll(sharedHtdocs, 0755); err != nil {
+		return err
+	}
+
+	// Write default index.html to shared htdocs (will be used as fallback)
+	defaultIndexPath := filepath.Join(sharedHtdocs, "index.html")
+	if _, err := os.Stat(defaultIndexPath); os.IsNotExist(err) {
+		// Get default HTML from web package constant
+		defaultHTML := getDefaultIndexHTML()
+		if err := os.WriteFile(defaultIndexPath, []byte(defaultHTML), 0644); err != nil {
+			return err
+		}
+	}
 
 	conf := fmt.Sprintf(`ServerRoot "%s"
 Listen 8080
+Listen 443
 LoadModule mpm_event_module modules/mod_mpm_event.so
 LoadModule authn_core_module modules/mod_authn_core.so
 LoadModule authz_core_module modules/mod_authz_core.so
@@ -1053,9 +1070,18 @@ LoadModule mime_module modules/mod_mime.so
 LoadModule unixd_module modules/mod_unixd.so
 LoadModule proxy_module modules/mod_proxy.so
 LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
+LoadModule ssl_module modules/mod_ssl.so
+LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
 
-DocumentRoot "%s/htdocs"
-<Directory "%s/htdocs">
+# SSL Configuration
+SSLRandomSeed startup builtin
+SSLRandomSeed connect builtin
+SSLSessionCache "shmcb:/tmp/ssl_scache(512000)"
+SSLSessionCacheTimeout 300
+
+# Default DocumentRoot for localhost and fallback
+DocumentRoot "%s"
+<Directory "%s">
     Options Indexes FollowSymLinks
     AllowOverride None
     Require all granted
@@ -1063,9 +1089,120 @@ DocumentRoot "%s/htdocs"
 
 # Include vhost configurations
 Include "%s/*.conf"
-`, installDir, installDir, installDir, vhostDir)
+`, installDir, sharedHtdocs, sharedHtdocs, vhostDir)
 
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)
+}
+
+// getDefaultIndexHTML returns the default index.html content
+// This is a copy of the constant from web package to avoid circular dependency
+func getDefaultIndexHTML() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            background: #0a0a0a;
+            overflow-x: hidden;
+        }
+        .container { 
+            display: flex; 
+            max-width: 900px; 
+            width: 90%; 
+            height: 400px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .left { 
+            background: linear-gradient(135deg, #00fa9a 0%, #00d97e 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
+        }
+        .right { 
+            background: linear-gradient(135deg, #ff1493 0%, #d91270 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            text-align: center; 
+            padding: 40px; 
+        }
+        .divider { 
+            position: absolute; 
+            right: 0; 
+            top: 10%; 
+            bottom: 10%; 
+            width: 3px; 
+            background: rgba(0,0,0,0.2); 
+            border-radius: 2px;
+        }
+        h1.big-text { 
+            font-size: 4rem; 
+            font-weight: 900; 
+            color: #000; 
+            line-height: 0.9; 
+            text-transform: uppercase; 
+            letter-spacing: -2px; 
+        }
+        .right-content { max-width: 100%; }
+        h2 { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            color: white; 
+            margin: 0 0 20px 0; 
+            line-height: 1.2; 
+        }
+        .btn { 
+            display: inline-block; 
+            background: #000; 
+            color: #00fa9a; 
+            padding: 12px 28px; 
+            font-size: 0.9rem; 
+            font-weight: 700; 
+            text-decoration: none; 
+            text-transform: uppercase; 
+            margin-top: 20px; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #1a1a1a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,250,154,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left">
+            <h1 class="big-text">STACKER<br>READY</h1>
+            <div class="divider"></div>
+        </div>
+        <div class="right">
+            <div class="right-content">
+                <h2>Local Environment<br>Running</h2>
+                <a href="http://localhost:9999" class="btn">Open Dashboard</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
 }
 
 func (sm *ServiceManager) installRedis(version, installDir, configDir, dataDir string) error {

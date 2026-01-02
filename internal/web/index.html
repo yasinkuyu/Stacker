@@ -4013,10 +4013,12 @@
                             ${s.php ? `<span class="site-badge php">PHP ${s.php}</span>` : ''}
                             ${s.ssl ? '<span class="site-badge ssl">SSL</span>' : ''}
                         </div>
-                        <div class="site-actions">
-                            <button class="icon-btn" onclick="window.open('${s.url}', '_blank')" title="Open"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
-                            <button class="icon-btn" onclick="openSiteFolder('${s.path}')" title="Folder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>
-                            <button class="icon-btn danger" onclick="deleteSite('${s.name}')" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        <div class="site-actions" style="gap: 4px;">
+                            <button class="icon-btn" style="width: 28px; height: 28px; padding: 6px;" onclick="window.open('${s.url}', '_blank')" title="Open"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
+                            <button class="icon-btn" style="width: 28px; height: 28px; padding: 6px;" onclick="openSiteFolder('${s.path}')" title="Folder"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>
+                            <button class="icon-btn" style="width: 28px; height: 28px; padding: 6px;" onclick="openSiteTerminal('${s.path}')" title="Terminal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></button>
+                            <button class="icon-btn" style="width: 28px; height: 28px; padding: 6px;" onclick="openConfigFolder('${s.name}')" title="Config"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/></svg></button>
+                            <button class="icon-btn danger" style="width: 28px; height: 28px; padding: 6px;" onclick="deleteSite('${s.name}')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                         </div>
                     </div>
                 `).join('');
@@ -4169,6 +4171,15 @@
 
         async function openSiteFolder(path) {
             await api('/open-folder', 'POST', { path });
+        }
+
+        async function openSiteTerminal(path) {
+            await api('/open-site-terminal', 'POST', { path });
+        }
+
+        async function openConfigFolder(siteName) {
+            // Open conf/nginx or conf/apache folder (we'll open nginx by default)
+            await api('/open-config-folder', 'POST', { siteName });
         }
 
         async function browsePath() {

@@ -23,6 +23,7 @@ import (
 	"github.com/yasinkuyu/Stacker/internal/mail"
 	"github.com/yasinkuyu/Stacker/internal/php"
 	"github.com/yasinkuyu/Stacker/internal/services"
+	"github.com/yasinkuyu/Stacker/internal/ssl"
 	"github.com/yasinkuyu/Stacker/internal/utils"
 )
 
@@ -168,7 +169,9 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/preferences", ws.handlePreferences)
 	http.HandleFunc("/api/locales/", ws.handleLocales)
 	http.HandleFunc("/api/open-folder", ws.handleOpenFolder)
+	http.HandleFunc("/api/open-config-folder", ws.handleOpenConfigFolder)
 	http.HandleFunc("/api/open-terminal", ws.handleOpenTerminal)
+	http.HandleFunc("/api/open-site-terminal", ws.handleOpenSiteTerminal)
 	http.HandleFunc("/api/browse-folder", ws.handleBrowseFolder)
 	http.HandleFunc("/api/dumps/ingest", ws.handleDumpIngest)
 
@@ -266,9 +269,10 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		// Create a copy to inject dynamic URLs without modifying stored data
 		displaySites := make([]Site, len(sites))
 		for i, s := range sites {
-			s.Url = "http://" + s.Name + domainExt
+			// s.Name already includes domain extension (e.g., "mysite.local")
+			s.Url = "http://" + s.Name
 			if s.SSL {
-				s.Url = "https://" + s.Name + domainExt
+				s.Url = "https://" + s.Name
 			}
 			displaySites[i] = s
 		}
@@ -312,8 +316,8 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 			site.Path = filepath.Join(ws.stackerDir, "sites", siteName)
 		}
 
-		// Create site directory if needed
-		sitePath := filepath.Join(ws.stackerDir, "sites", site.Name)
+		// Create site directory if needed (use full domain name with extension)
+		sitePath := filepath.Join(ws.stackerDir, "sites", siteName)
 		os.MkdirAll(sitePath, 0755)
 
 		// Pin site to PHP version if specified
@@ -322,6 +326,15 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 			// Start PHP-FPM pool for this version
 			if err := ws.fpmManager.EnsureRunning(site.PHP); err != nil {
 				fmt.Printf("⚠️ Failed to start PHP-FPM %s: %v\n", site.PHP, err)
+			}
+		}
+
+		// Generate SSL certificate if SSL is enabled
+		if site.SSL {
+			if err := ws.ensureSSLCertificate(site.Name); err != nil {
+				fmt.Printf("⚠️ Failed to generate SSL certificate: %v\n", err)
+				// Don't fail the request, just disable SSL
+				site.SSL = false
 			}
 		}
 
@@ -482,6 +495,61 @@ func (ws *WebServer) handleOpenTerminal(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
+func (ws *WebServer) handleOpenConfigFolder(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SiteName string `json:"siteName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	configPath := filepath.Join(ws.stackerDir, "conf", "nginx")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "darwin" {
+		cmd = exec.Command("open", configPath)
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command("explorer", configPath)
+	} else {
+		cmd = exec.Command("xdg-open", configPath)
+	}
+	cmd.Run()
+	w.WriteHeader(http.StatusOK)
+}
+
+func (ws *WebServer) handleOpenSiteTerminal(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		script := fmt.Sprintf(`tell application "Terminal"
+			activate
+			do script "cd '%s'"
+		end tell`, req.Path)
+		cmd = exec.Command("osascript", "-e", script)
+	case "linux":
+		if _, err := exec.LookPath("gnome-terminal"); err == nil {
+			cmd = exec.Command("gnome-terminal", "--working-directory", req.Path)
+		} else {
+			cmd = exec.Command("xterm", "-e", fmt.Sprintf("cd '%s'; exec bash", req.Path))
+		}
+	case "windows":
+		cmd = exec.Command("cmd", "/k", "cd", "/d", req.Path)
+	default:
+		http.Error(w, "unsupported OS", http.StatusInternalServerError)
+		return
+	}
+	cmd.Start()
+	w.WriteHeader(http.StatusOK)
+}
+
 func (ws *WebServer) handleBrowseFolder(w http.ResponseWriter, r *http.Request) {
 	if runtime.GOOS != "darwin" {
 		http.Error(w, "Only supported on macOS", http.StatusNotImplemented)
@@ -507,25 +575,101 @@ const defaultIndexHTML = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stacker Site</title>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
-        .left { background-color: #00fa9a; width: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
-        .right { background-color: #ff1493; width: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: left; padding: 40px; }
-        .divider { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; background: black; }
-        h1.big-text { font-size: 8vw; font-weight: 900; color: black; line-height: 0.9; margin: 0; text-transform: uppercase; letter-spacing: -2px; }
-        .right-content { max-width: 600px; }
-        h2 { font-size: 3rem; font-weight: 700; color: white; margin: 0 0 20px 0; line-height: 1.1; }
-        .btn { display: inline-block; background: black; color: #00fa9a; padding: 16px 32px; font-size: 1.2rem; font-weight: 700; text-decoration: none; text-transform: uppercase; margin-top: 30px; border: none; cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            background: #0a0a0a;
+            overflow-x: hidden;
+        }
+        .container { 
+            display: flex; 
+            max-width: 900px; 
+            width: 90%; 
+            height: 400px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .left { 
+            background: linear-gradient(135deg, #00fa9a 0%, #00d97e 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
+        }
+        .right { 
+            background: linear-gradient(135deg, #ff1493 0%, #d91270 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            text-align: center; 
+            padding: 40px; 
+        }
+        .divider { 
+            position: absolute; 
+            right: 0; 
+            top: 10%; 
+            bottom: 10%; 
+            width: 3px; 
+            background: rgba(0,0,0,0.2); 
+            border-radius: 2px;
+        }
+        h1.big-text { 
+            font-size: 4rem; 
+            font-weight: 900; 
+            color: #000; 
+            line-height: 0.9; 
+            text-transform: uppercase; 
+            letter-spacing: -2px; 
+        }
+        .right-content { max-width: 100%; }
+        h2 { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            color: white; 
+            margin: 0 0 20px 0; 
+            line-height: 1.2; 
+        }
+        .btn { 
+            display: inline-block; 
+            background: #000; 
+            color: #00fa9a; 
+            padding: 12px 28px; 
+            font-size: 0.9rem; 
+            font-weight: 700; 
+            text-decoration: none; 
+            text-transform: uppercase; 
+            margin-top: 20px; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #1a1a1a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,250,154,0.3);
+        }
     </style>
 </head>
 <body>
-    <div class="left">
-        <h1 class="big-text">STACKER<br>READY</h1>
-        <div class="divider"></div>
-    </div>
-    <div class="right">
-        <div class="right-content">
-            <h2>Local<br>Environment<br>Running.</h2>
-            <a href="#" class="btn">DASHBOARD</a>
+    <div class="container">
+        <div class="left">
+            <h1 class="big-text">STACKER<br>READY</h1>
+            <div class="divider"></div>
+        </div>
+        <div class="right">
+            <div class="right-content">
+                <h2>Local Environment<br>Running</h2>
+                <a href="http://localhost:9999" class="btn">Open Dashboard</a>
+            </div>
         </div>
     </div>
 </body>
@@ -548,20 +692,21 @@ func (ws *WebServer) createNginxSiteConfig(site Site) error {
 		return err
 	}
 
-	configPath := filepath.Join(confDir, site.Name+".conf")
+	// Use base name without extension for config file
+	baseName := ws.getBaseSiteName(site.Name)
+	configPath := filepath.Join(confDir, baseName+".conf")
 
 	phpPort := ws.getPHPPort(site.PHP)
 
 	// Detect document root
 	docRoot := site.Path
-	// If path doesn't exist, create it inside sites/name/public_html
+	// If path doesn't exist, create directory structure only (no index.html)
 	if _, err := os.Stat(site.Path); os.IsNotExist(err) {
-		docRoot = filepath.Join(ws.stackerDir, "sites", site.Name, "public_html")
+		docRoot = filepath.Join(ws.stackerDir, "sites", baseName, "public_html")
 		if err := os.MkdirAll(docRoot, 0755); err != nil {
 			return err
 		}
-		// Write default index.html
-		os.WriteFile(filepath.Join(docRoot, "index.html"), []byte(defaultIndexHTML), 0644)
+		// Don't create index.html - will use global fallback
 	} else {
 		// If path exists, check for public folder
 		if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
@@ -605,6 +750,45 @@ server {
 }
 `, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
 
+	// Add SSL server block if SSL is enabled
+	if site.SSL {
+		certPath := filepath.Join(ws.stackerDir, "certs", site.Name, "cert.pem")
+		keyPath := filepath.Join(ws.stackerDir, "certs", site.Name, "key.pem")
+
+		sslConfig := fmt.Sprintf(`
+server {
+    listen 443 ssl;
+    server_name %[1]s%[6]s;
+    root "%[2]s";
+    index index.php index.html index.htm;
+
+    ssl_certificate "%[3]s";
+    ssl_certificate_key "%[4]s";
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    client_max_body_size 100M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:%[5]d;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+`, site.Name, docRoot, certPath, keyPath, phpPort, domainExt)
+
+		config += sslConfig
+	}
+
 	return os.WriteFile(configPath, []byte(config), 0644)
 }
 
@@ -614,7 +798,9 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
 		return err
 	}
 
-	configPath := filepath.Join(confDir, site.Name+".conf")
+	// Use base name without extension for config file
+	baseName := ws.getBaseSiteName(site.Name)
+	configPath := filepath.Join(confDir, baseName+".conf")
 
 	phpPort := ws.getPHPPort(site.PHP)
 
@@ -657,6 +843,38 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
     CustomLog "${APACHE_LOG_DIR}/%[1]s-access.log" combined
 </VirtualHost>
 `, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
+
+	// Add SSL VirtualHost if SSL is enabled
+	if site.SSL {
+		certPath := filepath.Join(ws.stackerDir, "certs", site.Name, "cert.pem")
+		keyPath := filepath.Join(ws.stackerDir, "certs", site.Name, "key.pem")
+
+		sslConfig := fmt.Sprintf(`
+<VirtualHost *:443>
+    ServerName %[1]s%[6]s
+    DocumentRoot "%[2]s"
+    
+    SSLEngine on
+    SSLCertificateFile "%[3]s"
+    SSLCertificateKeyFile "%[4]s"
+    
+    <Directory "%[2]s">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:fcgi://127.0.0.1:%[5]d"
+    </FilesMatch>
+
+    ErrorLog "${APACHE_LOG_DIR}/%[1]s-ssl-error.log"
+    CustomLog "${APACHE_LOG_DIR}/%[1]s-ssl-access.log" combined
+</VirtualHost>
+`, site.Name, docRoot, certPath, keyPath, phpPort, domainExt)
+
+		config += sslConfig
+	}
 
 	return os.WriteFile(configPath, []byte(config), 0644)
 }
@@ -811,6 +1029,32 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 	fmt.Printf("\nAfter installation, Stacker will detect it automatically.\n")
 
 	return lastErr
+}
+
+// ensureSSLCertificate ensures mkcert is installed and generates certificate for domain
+func (ws *WebServer) ensureSSLCertificate(domain string) error {
+	// Ensure mkcert is downloaded
+	mkcertPath, err := ssl.EnsureMkcert(ws.stackerDir)
+	if err != nil {
+		return fmt.Errorf("failed to ensure mkcert: %w", err)
+	}
+
+	// Install root CA (first time only)
+	if err := ssl.InstallRootCA(mkcertPath); err != nil {
+		fmt.Printf("⚠️  Root CA installation failed: %v\n", err)
+		fmt.Printf("💡 You may need to run: sudo %s -install\n", mkcertPath)
+		// Continue anyway, certificate generation might still work
+	}
+
+	// Generate certificate for this domain
+	certPath, keyPath, err := ssl.GenerateCertificate(mkcertPath, ws.stackerDir, domain)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("✅ SSL certificate ready: %s\n", certPath)
+	fmt.Printf("   Key: %s\n", keyPath)
+	return nil
 }
 
 func (ws *WebServer) getPHPPort(version string) int {
