@@ -60,6 +60,8 @@ type WebServer struct {
 	dumpManager     *dumps.DumpManager
 	mailManager     *mail.MailManager
 	serviceManager  *services.ServiceManager
+	fpmManager      *php.FPMManager
+	phpManager      *php.PHPManager
 	stackerDir      string
 	installProgress map[string]int
 	progressMu      sync.RWMutex
@@ -73,11 +75,18 @@ func NewWebServer(cfg *config.Config) *WebServer {
 	loadSites(stackerDir)
 	loadPreferences(stackerDir)
 
+	// Initialize PHP managers
+	pm := php.NewPHPManager()
+	pm.DetectPHPVersions()
+	fm := php.NewFPMManager()
+
 	return &WebServer{
 		config:          cfg,
 		dumpManager:     dumps.NewDumpManager(cfg),
 		mailManager:     mail.NewMailManager(cfg),
 		serviceManager:  sm,
+		fpmManager:      fm,
+		phpManager:      pm,
 		stackerDir:      stackerDir,
 		installProgress: make(map[string]int),
 	}
@@ -149,7 +158,10 @@ func (ws *WebServer) Start() error {
 
 	ws.mailManager.Start()
 
-	// Start background service status worker (checks every 10 seconds)
+	// Auto-start PHP-FPM pools for configured sites
+	ws.startRequiredFPMPools()
+
+	// Start background service status worker (checks every 3 seconds)
 	ws.serviceManager.StartStatusWorker(3 * time.Second)
 
 	prefMutex.RLock()
@@ -243,6 +255,15 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		sitePath := filepath.Join(ws.stackerDir, "sites", site.Name)
 		os.MkdirAll(sitePath, 0755)
 
+		// Pin site to PHP version if specified
+		if site.PHP != "" {
+			ws.phpManager.PinSite(site.Name, site.PHP)
+			// Start PHP-FPM pool for this version
+			if err := ws.fpmManager.EnsureRunning(site.PHP); err != nil {
+				fmt.Printf("⚠️ Failed to start PHP-FPM %s: %v\n", site.PHP, err)
+			}
+		}
+
 		// Add to hosts file simulation - create a config file
 		ws.createSiteConfig(site)
 
@@ -275,6 +296,16 @@ func (ws *WebServer) handleSiteByName(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&updatedSite); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
+		}
+
+		// Handle PHP version change
+		if updatedSite.PHP != "" {
+			ws.phpManager.PinSite(updatedSite.Name, updatedSite.PHP)
+			if err := ws.fpmManager.EnsureRunning(updatedSite.PHP); err != nil {
+				fmt.Printf("⚠️ Failed to start PHP-FPM %s: %v\n", updatedSite.PHP, err)
+			}
+		} else {
+			ws.phpManager.UnpinSite(updatedSite.Name)
 		}
 
 		sitesMu.Lock()
@@ -1270,4 +1301,25 @@ func (ws *WebServer) handleServiceHealthSSE(w http.ResponseWriter, r *http.Reque
 func toJSON(v interface{}) string {
 	data, _ := json.Marshal(v)
 	return string(data)
+}
+
+// startRequiredFPMPools starts PHP-FPM pools for sites with pinned PHP versions
+func (ws *WebServer) startRequiredFPMPools() {
+	sitesMu.RLock()
+	defer sitesMu.RUnlock()
+
+	// Collect unique PHP versions used by sites
+	versions := make(map[string]bool)
+	for _, site := range sites {
+		if site.PHP != "" {
+			versions[site.PHP] = true
+		}
+	}
+
+	// Start FPM pool for each unique version
+	for version := range versions {
+		if err := ws.fpmManager.EnsureRunning(version); err != nil {
+			fmt.Printf("⚠️ Failed to start PHP-FPM %s: %v\n", version, err)
+		}
+	}
 }
