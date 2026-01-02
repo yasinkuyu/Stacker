@@ -1039,6 +1039,10 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 }
 
 func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir string) error {
+	// Get Stacker base directory for vhost configs
+	stackerDir := filepath.Dir(filepath.Dir(configDir)) // Go up from conf/apache/version to Stacker root
+	vhostDir := filepath.Join(stackerDir, "conf", "apache")
+
 	conf := fmt.Sprintf(`ServerRoot "%s"
 Listen 8080
 LoadModule mpm_event_module modules/mod_mpm_event.so
@@ -1047,6 +1051,8 @@ LoadModule authz_core_module modules/mod_authz_core.so
 LoadModule dir_module modules/mod_dir.so
 LoadModule mime_module modules/mod_mime.so
 LoadModule unixd_module modules/mod_unixd.so
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 
 DocumentRoot "%s/htdocs"
 <Directory "%s/htdocs">
@@ -1054,7 +1060,10 @@ DocumentRoot "%s/htdocs"
     AllowOverride None
     Require all granted
 </Directory>
-`, installDir, installDir, installDir)
+
+# Include vhost configurations
+Include "%s/*.conf"
+`, installDir, installDir, installDir, vhostDir)
 
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)
 }
