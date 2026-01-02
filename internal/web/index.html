@@ -4118,6 +4118,8 @@
             const list = document.getElementById('sites-list');
             try {
                 const sites = await api('/sites');
+                const phpData = await api('/php').catch(() => ({ versions: [] }));
+                const defaultPhp = phpData?.versions?.find(v => v.default)?.version;
 
                 // Cache sites for panel
                 cachedSites = sites || [];
@@ -4138,7 +4140,7 @@
                         </div>
                         <div class="site-badges">
                             ${s.server === 'nginx' ? '<span class="site-badge nginx">nginx</span>' : '<span class="site-badge apache">apache</span>'}
-                            ${s.php ? `<span class="site-badge php">php ${s.php}</span>` : ''}
+                            <span class="site-badge php">php ${s.php || defaultPhp || '?'}</span>
                             ${s.ssl ? '<span class="site-badge ssl">ssl</span>' : ''}
                         </div>
                         <div class="site-actions" style="gap: 4px;">
