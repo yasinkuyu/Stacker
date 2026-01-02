@@ -3039,43 +3039,85 @@
         // Service Management
         // ==========================================
 
+        let operationModal = null;
+
+        function showOperationProgress(message) {
+            operationModal = document.createElement('div');
+            operationModal.className = 'modal-overlay';
+            operationModal.style.display = 'flex';
+            operationModal.innerHTML = `
+                <div class="modal" style="max-width: 300px; text-align: center;">
+                    <div style="margin-bottom: 16px;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" style="animation: spin 1s linear infinite;">
+                            <circle cx="12" cy="12" r="10" stroke-opacity="0.2"/>
+                            <path d="M12 2a10 10 0 0 1 10 10"/>
+                        </svg>
+                    </div>
+                    <div style="font-weight: 500;">${message}</div>
+                </div>
+            `;
+            document.body.appendChild(operationModal);
+        }
+
+        function hideOperationProgress() {
+            if (operationModal) {
+                operationModal.remove();
+                operationModal = null;
+            }
+        }
+
         async function startService(name) {
+            showOperationProgress(`Starting ${name}...`);
             try {
-                // Get svc info for progress key
                 const data = await api('/services');
                 const svc = data.installed.find(s => s.name === name);
 
                 await api(`/services/start/${name}`, 'POST');
-                showToast(`${name} starting...`);
+                hideOperationProgress();
+                showToast(`${name} started`);
 
                 if (svc) {
                     showActionProgress(`Starting ${name}`, svc.type, svc.version);
                 } else {
                     loadServices();
                 }
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                hideOperationProgress();
+                showToast(err.message, 'error');
+            }
         }
 
         async function stopService(name) {
+            showOperationProgress(`Stopping ${name}...`);
             try {
                 await api(`/services/stop/${name}`, 'POST');
-                showToast(`${name} stopping...`);
+                hideOperationProgress();
+                showToast(`${name} stopped`);
                 loadServices();
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                hideOperationProgress();
+                showToast(err.message, 'error');
+            }
         }
 
         async function restartService(name) {
+            showOperationProgress(`Restarting ${name}...`);
             try {
-                showToast(`Restarting ${name}...`);
                 await api(`/services/restart/${name}`, 'POST');
-                showToast(`${name} restarted successfully`);
+                hideOperationProgress();
+                showToast(`${name} restarted`);
                 loadServices();
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                hideOperationProgress();
+                showToast(err.message, 'error');
+            }
         }
 
         async function editServiceConfig(name) {
+            showOperationProgress(`Loading config...`);
             try {
                 const config = await api(`/services/config/${name}`);
+                hideOperationProgress();
                 if (!config || !config.content) {
                     showToast('Config not available', 'error');
                     return;
@@ -3089,7 +3131,7 @@
                         <textarea id="config-editor" style="flex: 1; width: 100%; min-height: 400px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; line-height: 1.5; background: var(--bg-tertiary); color: var(--text); border: 1px solid var(--border); border-radius: 8px; resize: none;">${config.content}</textarea>
                         <div style="margin-top: 12px; display: flex; gap: 12px; justify-content: flex-end;">
                             <button class="btn" onclick="closeDrawPanel()">Cancel</button>
-                            <button class="btn btn-primary" onclick="saveServiceConfig('${name}')">
+                            <button class="btn btn-primary" id="save-config-btn" onclick="saveServiceConfig('${name}')">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                                     <polyline points="17 21 17 13 7 13 7 21"/>
@@ -3100,17 +3142,31 @@
                         </div>
                     </div>
                 `, null, null);
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                hideOperationProgress();
+                showToast(err.message, 'error');
+            }
         }
 
         async function saveServiceConfig(name) {
             const content = document.getElementById('config-editor').value;
+            const btn = document.getElementById('save-config-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"/></svg> Saving...';
+            }
             try {
                 await api(`/services/config/${name}`, 'POST', { content });
-                showToast('Config saved');
+                showToast('Config saved & service restarted');
                 closeDrawPanel();
                 loadServices();
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save & Restart';
+                }
+                showToast(err.message, 'error');
+            }
         }
 
         async function uninstallService(name) {

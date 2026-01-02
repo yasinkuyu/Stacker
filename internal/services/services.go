@@ -1832,12 +1832,58 @@ func (sm *ServiceManager) GetServiceConfig(name string) (string, string, error) 
 		return "", "", fmt.Errorf("config not available for %s", svc.Type)
 	}
 
+	// Create default config if it doesn't exist
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		if err := sm.createDefaultConfig(svc); err != nil {
+			return configFile, "", fmt.Errorf("failed to create default config: %w", err)
+		}
+		// Update HasConfig
+		svc.HasConfig = true
+	}
+
 	content, err := os.ReadFile(configFile)
 	if err != nil {
 		return configFile, "", fmt.Errorf("failed to read config: %w", err)
 	}
 
 	return configFile, string(content), nil
+}
+
+func (sm *ServiceManager) createDefaultConfig(svc *Service) error {
+	os.MkdirAll(svc.ConfigDir, 0755)
+
+	switch svc.Type {
+	case "mysql":
+		return sm.createMySQLConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mysql"))
+	case "mariadb":
+		return sm.createMariaDBConfig(svc.ConfigDir, svc.DataDir, sm.getDefaultPort("mariadb"))
+	case "nginx":
+		return sm.createNginxConfig(svc.ConfigDir)
+	case "apache":
+		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir)
+	case "redis":
+		return sm.createRedisConfig(svc.ConfigDir, svc.DataDir)
+	case "php":
+		return sm.createPHPConfig(svc.ConfigDir)
+	}
+	return fmt.Errorf("config creation not supported for %s", svc.Type)
+}
+
+func (sm *ServiceManager) createPHPConfig(configDir string) error {
+	phpIni := `[PHP]
+engine = On
+short_open_tag = Off
+display_errors = On
+log_errors = On
+error_reporting = E_ALL
+memory_limit = 256M
+max_execution_time = 300
+upload_max_filesize = 64M
+post_max_size = 64M
+date.timezone = UTC
+`
+	os.MkdirAll(configDir, 0755)
+	return os.WriteFile(filepath.Join(configDir, "php.ini"), []byte(phpIni), 0644)
 }
 
 func (sm *ServiceManager) SaveServiceConfig(name, content string) error {
