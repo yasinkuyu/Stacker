@@ -1206,7 +1206,6 @@ func (sm *ServiceManager) createNginxConfig(configDir string, port int, version 
 	os.WriteFile(filepath.Join(configDir, "mime.types"), []byte(mimeContent), 0644)
 
 	conf := fmt.Sprintf(`worker_processes  1;
-daemon off;
 pid "%s/pids/nginx-%s.pid";
 
 events {
@@ -2176,12 +2175,11 @@ func (sm *ServiceManager) StartService(name string) error {
 
 	sm.updateInstallProgress(svc.Type, svc.Version, 90)
 
-	sm.mu.Lock()
+	// Already holding sm.mu.Lock() from function start - no need to lock again
 	svc.Status = "running"
 	svc.PID = cmd.Process.Pid
 	svc.StartTime = time.Now()
 	sm.processes[name] = cmd
-	sm.mu.Unlock()
 
 	sm.saveServiceStatus(svc)
 	sm.savePID(name, cmd.Process.Pid)
