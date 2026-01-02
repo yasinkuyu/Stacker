@@ -505,6 +505,15 @@
             height: 16px;
         }
 
+        .btn.btn-icon-only {
+            padding: 8px;
+            min-width: auto;
+        }
+
+        .btn.btn-icon-only svg {
+            margin: 0;
+        }
+
         /* Settings */
         .settings-section {
             margin-bottom: 24px;
@@ -3055,6 +3064,55 @@
             } catch (err) { showToast(err.message, 'error'); }
         }
 
+        async function restartService(name) {
+            try {
+                showToast(`Restarting ${name}...`);
+                await api(`/services/restart/${name}`, 'POST');
+                showToast(`${name} restarted successfully`);
+                loadServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        async function editServiceConfig(name) {
+            try {
+                const config = await api(`/services/config/${name}`);
+                if (!config || !config.content) {
+                    showToast('Config not available', 'error');
+                    return;
+                }
+
+                openDrawPanel(`Config: ${name}`, `
+                    <div style="display: flex; flex-direction: column; height: 100%;">
+                        <div style="margin-bottom: 12px; color: var(--text-muted); font-size: 12px;">
+                            📄 ${config.path}
+                        </div>
+                        <textarea id="config-editor" style="flex: 1; width: 100%; min-height: 400px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; line-height: 1.5; background: var(--bg-tertiary); color: var(--text); border: 1px solid var(--border); border-radius: 8px; resize: none;">${config.content}</textarea>
+                        <div style="margin-top: 12px; display: flex; gap: 12px; justify-content: flex-end;">
+                            <button class="btn" onclick="closeDrawPanel()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveServiceConfig('${name}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                Save & Restart
+                            </button>
+                        </div>
+                    </div>
+                `, null, null);
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        async function saveServiceConfig(name) {
+            const content = document.getElementById('config-editor').value;
+            try {
+                await api(`/services/config/${name}`, 'POST', { content });
+                showToast('Config saved');
+                closeDrawPanel();
+                loadServices();
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
         async function uninstallService(name) {
             if (await ui.confirm(`Uninstall ${name}? All data will be lost.`, { type: 'danger' })) {
                 try {
@@ -3167,7 +3225,24 @@
                                             </svg>
                                             ${s.status === 'running' ? 'Stop' : 'Start'}
                                         </button>
-                                        <button class="btn btn-danger" onclick="uninstallService('${s.name}')" title="Uninstall">Uninstall</button>
+                                        ${s.status === 'running' ? `<button class="btn" onclick="restartService('${s.name}')" title="Restart">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M23 4v6h-6M1 20v-6h6"/>
+                                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                                            </svg>
+                                        </button>` : ''}
+                                        <button class="btn" onclick="editServiceConfig('${s.name}')" title="Config">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="3"/>
+                                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                            </svg>
+                                        </button>
+                                        ${s.status !== 'running' ? `<button class="btn btn-icon-only btn-danger" onclick="uninstallService('${s.name}')" title="Uninstall">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="3 6 5 6 21 6"/>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                            </svg>
+                                        </button>` : ''}
                                     </div>
                                 </div>
                             `).join('')}

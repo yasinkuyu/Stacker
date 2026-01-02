@@ -131,6 +131,8 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/services/uninstall", ws.handleServiceUninstall)
 	http.HandleFunc("/api/services/start/", ws.handleServiceStart)
 	http.HandleFunc("/api/services/stop/", ws.handleServiceStop)
+	http.HandleFunc("/api/services/restart/", ws.handleServiceRestart)
+	http.HandleFunc("/api/services/config/", ws.handleServiceConfig)
 	http.HandleFunc("/api/dumps", ws.handleDumps)
 	http.HandleFunc("/api/mail", ws.handleMail)
 	http.HandleFunc("/api/logs", ws.handleLogs)
@@ -784,6 +786,73 @@ func (ws *WebServer) handleServiceStop(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "stopped", "name": serviceName})
+}
+
+func (ws *WebServer) handleServiceRestart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Service name required", http.StatusBadRequest)
+		return
+	}
+	serviceName := parts[4]
+
+	if err := ws.serviceManager.RestartService(serviceName); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "restarted", "name": serviceName})
+}
+
+func (ws *WebServer) handleServiceConfig(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Service name required", http.StatusBadRequest)
+		return
+	}
+	serviceName := parts[4]
+
+	if r.Method == "GET" {
+		configPath, content, err := ws.serviceManager.GetServiceConfig(serviceName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"name":    serviceName,
+			"path":    configPath,
+			"content": content,
+		})
+		return
+	}
+
+	if r.Method == "POST" {
+		var req struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		if err := ws.serviceManager.SaveServiceConfig(serviceName, req.Content); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "saved", "name": serviceName})
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
 func (ws *WebServer) handleDumps(w http.ResponseWriter, r *http.Request) {

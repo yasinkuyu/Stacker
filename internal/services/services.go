@@ -37,6 +37,7 @@ type Service struct {
 	LastCheck   string    `json:"last_check,omitempty"`
 	StartTime   time.Time `json:"start_time,omitempty"`
 	AutoRestart bool      `json:"auto_restart"`
+	HasConfig   bool      `json:"has_config"`
 }
 
 type ServiceVersion = config.ServiceVersion
@@ -181,7 +182,24 @@ func (sm *ServiceManager) loadInstalledServices() {
 						Installed: time.Now().Format(time.RFC3339),
 					}
 
-					// Try to load any saved status
+					// Check if service is running by PID file
+					pidFile := filepath.Join(baseDir, "pids", svcName+".pid")
+					if pidData, err := os.ReadFile(pidFile); err == nil {
+						var pid int
+						if _, err := fmt.Sscanf(string(pidData), "%d", &pid); err == nil && pid > 0 {
+							// Verify process is actually running
+							if process, err := os.FindProcess(pid); err == nil {
+								if err := process.Signal(syscall.Signal(0)); err == nil {
+									svc.Status = "running"
+									svc.PID = pid
+								}
+							}
+						}
+					}
+
+					// Check if config file exists
+					svc.HasConfig = sm.checkConfigExists(svc)
+
 					sm.services[svcName] = svc
 				}
 			}
@@ -287,10 +305,35 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 				return err
 			}
 
-			sm.updateInstallProgress("mysql", version, 80)
+			sm.updateInstallProgress("mysql", version, 70)
 			sm.createMySQLConfig(configDir, dataDir, 3306)
+
+			// Initialize MySQL data directory
+			sm.updateInstallProgress("mysql", version, 80)
+			binaryPath := sm.findMySQLBinary(installDir)
+			if binaryPath != "" {
+				fmt.Printf("📦 Initializing MySQL data directory...\n")
+				mysqldPath := filepath.Join(binaryPath, "bin", "mysqld")
+				initCmd := exec.Command(mysqldPath,
+					"--initialize-insecure",
+					"--datadir="+dataDir,
+					"--basedir="+binaryPath,
+				)
+				initCmd.Env = append(os.Environ(),
+					"DYLD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
+					"LD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
+				)
+				output, err := initCmd.CombinedOutput()
+				if err != nil {
+					fmt.Printf("⚠️ MySQL init error: %v\nOutput: %s\n", err, string(output))
+					// Don't fail, user can initialize manually
+				} else {
+					fmt.Printf("✅ MySQL data directory initialized\n")
+				}
+			}
+
 			sm.updateInstallProgress("mysql", version, 100)
-			fmt.Printf("✅ MySQL %s source downloaded\n", version)
+			fmt.Printf("✅ MySQL %s installed and initialized\n", version)
 			return nil
 		}
 	}
@@ -1715,6 +1758,115 @@ func (sm *ServiceManager) StopService(name string) error {
 	return nil
 }
 
+func (sm *ServiceManager) RestartService(name string) error {
+	utils.LogService(name, "restart", "request")
+
+	sm.mu.RLock()
+	svc, ok := sm.services[name]
+	sm.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("service %s not found", name)
+	}
+
+	// Stop if running
+	if svc.Status == "running" {
+		if err := sm.StopService(name); err != nil {
+			fmt.Printf("⚠️ Warning during stop: %v\n", err)
+		}
+		time.Sleep(1 * time.Second) // Wait for clean shutdown
+	}
+
+	// Start
+	if err := sm.StartService(name); err != nil {
+		return fmt.Errorf("restart failed: %w", err)
+	}
+
+	utils.LogService(name, "restart", "success")
+	fmt.Printf("🔄 Service %s restarted\n", name)
+	return nil
+}
+
+func (sm *ServiceManager) GetServiceConfig(name string) (string, string, error) {
+	sm.mu.RLock()
+	svc, ok := sm.services[name]
+	sm.mu.RUnlock()
+
+	if !ok {
+		return "", "", fmt.Errorf("service %s not found", name)
+	}
+
+	var configFile string
+	switch svc.Type {
+	case "mysql", "mariadb":
+		configFile = filepath.Join(svc.ConfigDir, "my.cnf")
+	case "nginx":
+		configFile = filepath.Join(svc.ConfigDir, "nginx.conf")
+	case "apache":
+		configFile = filepath.Join(svc.ConfigDir, "httpd.conf")
+	case "redis":
+		configFile = filepath.Join(svc.ConfigDir, "redis.conf")
+	case "php":
+		configFile = filepath.Join(svc.ConfigDir, "php.ini")
+	default:
+		return "", "", fmt.Errorf("config not available for %s", svc.Type)
+	}
+
+	content, err := os.ReadFile(configFile)
+	if err != nil {
+		return configFile, "", fmt.Errorf("failed to read config: %w", err)
+	}
+
+	return configFile, string(content), nil
+}
+
+func (sm *ServiceManager) SaveServiceConfig(name, content string) error {
+	sm.mu.RLock()
+	svc, ok := sm.services[name]
+	sm.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("service %s not found", name)
+	}
+
+	var configFile string
+	switch svc.Type {
+	case "mysql", "mariadb":
+		configFile = filepath.Join(svc.ConfigDir, "my.cnf")
+	case "nginx":
+		configFile = filepath.Join(svc.ConfigDir, "nginx.conf")
+	case "apache":
+		configFile = filepath.Join(svc.ConfigDir, "httpd.conf")
+	case "redis":
+		configFile = filepath.Join(svc.ConfigDir, "redis.conf")
+	case "php":
+		configFile = filepath.Join(svc.ConfigDir, "php.ini")
+	default:
+		return fmt.Errorf("config not available for %s", svc.Type)
+	}
+
+	// Backup old config
+	if _, err := os.Stat(configFile); err == nil {
+		backupFile := configFile + ".bak"
+		os.Rename(configFile, backupFile)
+	}
+
+	if err := os.WriteFile(configFile, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	utils.LogService(name, "config", "saved")
+	fmt.Printf("💾 Config saved for %s\n", name)
+
+	// Auto-restart if running
+	if svc.Status == "running" {
+		fmt.Printf("🔄 Auto-restarting %s after config change...\n", name)
+		return sm.RestartService(name)
+	}
+
+	return nil
+}
+
 func (sm *ServiceManager) stopServiceInternal(svc *Service) error {
 	pid := svc.PID
 	if pid == 0 {
@@ -1842,14 +1994,6 @@ func (sm *ServiceManager) FormatStatus() string {
 	}
 
 	return strings.Join(output, "\n")
-}
-
-func (sm *ServiceManager) RestartService(name string) error {
-	if err := sm.StopService(name); err != nil {
-		return err
-	}
-	time.Sleep(1 * time.Second)
-	return sm.StartService(name)
 }
 
 func (sm *ServiceManager) startMariaDB(svc *Service, binaryPath string) *exec.Cmd {
