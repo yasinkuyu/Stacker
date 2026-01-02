@@ -434,6 +434,37 @@ func (ws *WebServer) handleBrowseFolder(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]string{"path": path})
 }
 
+const defaultIndexHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacker Site</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        .left { background-color: #00fa9a; width: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
+        .right { background-color: #ff1493; width: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: left; padding: 40px; }
+        .divider { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; background: black; }
+        h1.big-text { font-size: 8vw; font-weight: 900; color: black; line-height: 0.9; margin: 0; text-transform: uppercase; letter-spacing: -2px; }
+        .right-content { max-width: 600px; }
+        h2 { font-size: 3rem; font-weight: 700; color: white; margin: 0 0 20px 0; line-height: 1.1; }
+        .btn { display: inline-block; background: black; color: #00fa9a; padding: 16px 32px; font-size: 1.2rem; font-weight: 700; text-decoration: none; text-transform: uppercase; margin-top: 30px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="left">
+        <h1 class="big-text">STACKER<br>READY</h1>
+        <div class="divider"></div>
+    </div>
+    <div class="right">
+        <div class="right-content">
+            <h2>Local<br>Environment<br>Running.</h2>
+            <a href="#" class="btn">DASHBOARD</a>
+        </div>
+    </div>
+</body>
+</html>`
+
 func (ws *WebServer) createSiteConfig(site Site) error {
 	confDir := filepath.Join(ws.stackerDir, "conf", "nginx")
 	if err := os.MkdirAll(confDir, 0755); err != nil {
@@ -446,8 +477,21 @@ func (ws *WebServer) createSiteConfig(site Site) error {
 
 	// Detect document root
 	docRoot := site.Path
-	if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
-		docRoot = filepath.Join(site.Path, "public")
+	// If path doesn't exist, create it inside sites/name/public_html
+	if _, err := os.Stat(site.Path); os.IsNotExist(err) {
+		docRoot = filepath.Join(ws.stackerDir, "sites", site.Name, "public_html")
+		if err := os.MkdirAll(docRoot, 0755); err != nil {
+			return err
+		}
+		// Write default index.html
+		os.WriteFile(filepath.Join(docRoot, "index.html"), []byte(defaultIndexHTML), 0644)
+	} else {
+		// If path exists, check for public folder
+		if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
+			docRoot = filepath.Join(site.Path, "public")
+		} else if _, err := os.Stat(filepath.Join(site.Path, "public_html")); err == nil {
+			docRoot = filepath.Join(site.Path, "public_html")
+		}
 	}
 
 	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
