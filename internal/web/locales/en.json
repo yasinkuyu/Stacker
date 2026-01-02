@@ -1,0 +1,68 @@
+{
+    "common": {
+        "start": "Start",
+        "stop": "Stop",
+        "restart": "Restart",
+        "install": "Install",
+        "uninstall": "Uninstall",
+        "config": "Config",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "loading": "Loading...",
+        "search": "Search...",
+        "status": "Status",
+        "version": "Version",
+        "port": "Port",
+        "actions": "Actions"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "sites": "Sites",
+        "services": "Services",
+        "php": "PHP",
+        "logs": "Logs",
+        "mail": "Mail",
+        "tools": "Tools",
+        "settings": "Settings",
+        "about": "About"
+    },
+    "dashboard": {
+        "title": "Dashboard",
+        "stats_sites": "Sites",
+        "stats_services": "Running Services",
+        "stats_dumps": "Dumps",
+        "stats_php": "PHP Version",
+        "recent_sites": "Recent Sites",
+        "quick_services": "Quick Services",
+        "quick_actions": "Quick Actions",
+        "add_new_site": "Add New Site",
+        "open_terminal": "Open Terminal",
+        "refresh": "Refresh"
+    },
+    "settings": {
+        "title": "Settings",
+        "general": "General",
+        "appearance": "Appearance",
+        "language": "Language",
+        "theme": "Theme",
+        "dark_mode": "Dark Mode",
+        "light_mode": "Light Mode",
+        "system_mode": "System Mode",
+        "slim_mode": "Slim Mode Sidebar",
+        "notifications": "Notifications",
+        "updates": "Updates"
+    },
+    "services": {
+        "title": "Services",
+        "installed": "Installed Services",
+        "available": "Available Services",
+        "no_services": "No services installed",
+        "install_success": "Service installed successfully",
+        "uninstall_confirm": "Are you sure you want to uninstall this service?"
+    },
+    "footer": {
+        "start_all": "Start All",
+        "stop_all": "Stop All"
+    }
+}
