@@ -315,7 +315,6 @@ func (sm *ServiceManager) loadInstalledServices() {
 						Runnable:  isRunnable,
 					}
 
-
 					// Check if service is running by PID file
 					pidFile := filepath.Join(baseDir, "pids", svcName+".pid")
 					if pidData, err := os.ReadFile(pidFile); err == nil {
@@ -332,9 +331,7 @@ func (sm *ServiceManager) loadInstalledServices() {
 					}
 
 					// Check if config file exists
-					fmt.Printf("🔍 Checking config for %s...\n", svcName)
 					svc.HasConfig = sm.checkConfigExists(svc)
-					fmt.Printf("🔍 Service %s (Type: %s, Version: %s) HasConfig: %v (Dir: %s)\n", svc.Name, svc.Type, svc.Version, svc.HasConfig, svc.ConfigDir)
 
 					// Check if port is in use (by another program)
 					if svc.Status != "running" {
@@ -496,9 +493,6 @@ func (sm *ServiceManager) InstallService(svcType, version string) error {
 }
 
 func (sm *ServiceManager) getDefaultPort(svcType string) int {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-
 	switch svcType {
 	case "mysql", "mariadb":
 		if sm.mysqlPort > 0 {
@@ -1263,8 +1257,6 @@ DocumentRoot "%s"
 Include "%s/*.conf"
 `, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir)
 
-	fmt.Printf("📝 Generating Apache config for %s at %s\n", version, filepath.Join(configDir, "httpd.conf"))
-	fmt.Printf("📄 Config content sample: %s...\n", conf[:100])
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)
 }
 
@@ -1863,18 +1855,15 @@ func (sm *ServiceManager) downloadFromMirrors(mirrors []string, target string, o
 		if err := sm.downloadWithRetry(url, target, onProgress); err == nil {
 			return nil
 		}
-```
 	}
 	return fmt.Errorf("all mirrors failed")
 }
 
 func (sm *ServiceManager) StartService(name string) error {
-	fmt.Printf("🚀 StartService called for: %s\n", name)
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
 	svc, exists := sm.services[name]
-	fmt.Printf("🔍 Service %s exists in map? %v\n", name, exists)
 	if !exists {
 		return fmt.Errorf("service %s not found", name)
 	}
@@ -1920,14 +1909,11 @@ func (sm *ServiceManager) StartService(name string) error {
 		sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort(svc.Type))
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
-		fmt.Printf("🚀 Starting Apache: Version=%s, BinaryDir=%s\n", svc.Version, svc.BinaryDir)
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 		binaryPath = sm.findApacheBinary(svc.BinaryDir)
-		fmt.Printf("🔍 Apache Binary Path: %s\n", binaryPath)
 		if binaryPath == "" {
 			// Fallback to old path just in case
 			binaryPath = filepath.Join(svc.BinaryDir, "apache-bin", "bin", "httpd")
-			fmt.Printf("⚠️ Apache binary fallback: %s\n", binaryPath)
 		}
 
 		if _, err := os.Stat(binaryPath); err != nil {
