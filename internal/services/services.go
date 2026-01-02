@@ -142,6 +142,7 @@ func NewServiceManager() *ServiceManager {
 		shutdown:      make(chan struct{}),
 	}
 
+	fmt.Printf("📂 Stacker Base Directory: %s\n", baseDir)
 	sm.loadInstalledServices()
 	return sm
 }
@@ -172,11 +173,14 @@ func (sm *ServiceManager) loadInstalledServices() {
 	// Load services from config/status files
 	baseDir := sm.baseDir
 	binDir := filepath.Join(baseDir, "bin")
+	fmt.Printf("🔍 Loading services from: %s\n", binDir)
 
 	entries, err := os.ReadDir(binDir)
 	if err != nil {
+		fmt.Printf("❌ Error reading bin dir: %v\n", err)
 		return
 	}
+	fmt.Printf("🔍 Found %d service types in bin\n", len(entries))
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -219,7 +223,10 @@ func (sm *ServiceManager) loadInstalledServices() {
 						fmt.Printf("📂 Found nested install root for %s: %s\n", svcName, installDir)
 					}
 
-					// If nested structure found, try to move it up to the original version directory
+					configDir := filepath.Join(baseDir, "conf", svcType, vEntry.Name())
+					dataDir := filepath.Join(baseDir, "data", svcType, vEntry.Name())
+
+					// If nested structure found, try to move it up to the original directory and rename to real version
 					if foundNested && originalInstallDir != installDir {
 						fmt.Printf("🔄 Flattening nested directory: %s -> %s\n", installDir, originalInstallDir)
 						// Moving contents of installDir to originalInstallDir
@@ -230,13 +237,52 @@ func (sm *ServiceManager) loadInstalledServices() {
 								newPath := filepath.Join(originalInstallDir, item.Name())
 								os.Rename(oldPath, newPath)
 							}
-							// Update variables to reflect flat structure
-							installDir = originalInstallDir
+							os.Remove(installDir) // Remove the now-empty nested directory
+
+							// Now rename the original install directory to the new version name
+							newBaseInstallDir := filepath.Join(binDir, svcType, version)
+							if originalInstallDir != newBaseInstallDir {
+								if _, err := os.Stat(newBaseInstallDir); os.IsNotExist(err) {
+									fmt.Printf("🏷️ Renaming bin directory: %s -> %s\n", originalInstallDir, newBaseInstallDir)
+									if err := os.Rename(originalInstallDir, newBaseInstallDir); err == nil {
+										installDir = newBaseInstallDir
+
+										// Sync Rename for conf
+										newConfDir := filepath.Join(baseDir, "conf", svcType, version)
+										if _, err := os.Stat(configDir); err == nil && configDir != newConfDir {
+											fmt.Printf("🏷️ Renaming conf directory: %s -> %s\n", configDir, newConfDir)
+											if err := os.Rename(configDir, newConfDir); err == nil {
+												configDir = newConfDir
+											}
+										}
+
+										// Sync Rename for data
+										newDataDir := filepath.Join(baseDir, "data", svcType, version)
+										if _, err := os.Stat(dataDir); err == nil && dataDir != newDataDir {
+											fmt.Printf("🏷️ Renaming data directory: %s -> %s\n", dataDir, newDataDir)
+											if err := os.Rename(dataDir, newDataDir); err == nil {
+												dataDir = newDataDir
+											}
+										}
+									}
+								} else {
+									installDir = originalInstallDir
+								}
+							}
 						}
 					}
 
-					configDir := filepath.Join(baseDir, "conf", svcType, version)
-					dataDir := filepath.Join(baseDir, "data", svcType, version)
+					// Final sync if directory already matched version but we want to ensure configDir matches
+					if version != vEntry.Name() {
+						resolvedConfigDir := filepath.Join(baseDir, "conf", svcType, version)
+						if _, err := os.Stat(resolvedConfigDir); err == nil {
+							configDir = resolvedConfigDir
+						}
+						resolvedDataDir := filepath.Join(baseDir, "data", svcType, version)
+						if _, err := os.Stat(resolvedDataDir); err == nil {
+							dataDir = resolvedDataDir
+						}
+					}
 
 					// Tools are not "runnable"
 					isRunnable := true
@@ -274,6 +320,7 @@ func (sm *ServiceManager) loadInstalledServices() {
 
 					// Check if config file exists
 					svc.HasConfig = sm.checkConfigExists(svc)
+					fmt.Printf("🔍 Service %s (Type: %s, Version: %s) HasConfig: %v (Dir: %s)\n", svc.Name, svc.Type, svc.Version, svc.HasConfig, svc.ConfigDir)
 
 					// Check if port is in use (by another program)
 					if svc.Status != "running" {
@@ -333,7 +380,25 @@ func (sm *ServiceManager) checkConfigExists(svc *Service) bool {
 		return false
 	}
 	_, err := os.Stat(configFile)
-	return err == nil
+	if err == nil {
+		return true
+	}
+
+	// Fallback check: if version is full (2.4.66), try minor (2.4)
+	dir := filepath.Dir(svc.ConfigDir)
+	base := filepath.Base(svc.ConfigDir)
+	parts := strings.Split(base, ".")
+	if len(parts) > 2 {
+		minorBase := strings.Join(parts[:2], ".")
+		fallbackFile := filepath.Join(dir, minorBase, filepath.Base(configFile))
+		if _, err := os.Stat(fallbackFile); err == nil {
+			fmt.Printf("💡 Found config in fallback location: %s\n", fallbackFile)
+			svc.ConfigDir = filepath.Join(dir, minorBase) // Update to real location
+			return true
+		}
+	}
+
+	return false
 }
 
 func (sm *ServiceManager) GetAvailableVersions(svcType string) []ServiceVersion {
@@ -976,9 +1041,10 @@ func (sm *ServiceManager) compileNginx(version, installDir, configDir string) er
 }
 
 func (sm *ServiceManager) createNginxConfig(configDir string, port int) error {
-	if port == 0 {
-		port = 80
-	}
+	// Use absolute path for includes to be safe
+	vhostDir := filepath.Join(sm.baseDir, "conf", "nginx")
+	os.MkdirAll(vhostDir, 0755)
+
 	conf := fmt.Sprintf(`worker_processes  1;
 events {
     worker_connections  1024;
@@ -1000,9 +1066,9 @@ http {
             root   html;
         }
     }
-    include ../../conf/nginx/*.conf;
+    include "%s/*.conf";
 }
-`, port)
+`, port, vhostDir)
 	return os.WriteFile(filepath.Join(configDir, "nginx.conf"), []byte(conf), 0644)
 }
 
@@ -1026,7 +1092,7 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 			}
 
 			// If no configure script, assume binary build and finalize
-			sm.createApacheConfig(configDir, dataDir, installDir, 80) // Default port for auto detection
+			sm.createApacheConfig(configDir, dataDir, installDir, version, 80) // Default port for auto detection
 			sm.updateInstallProgress("apache", version, 100)
 			fmt.Printf("✅ Apache %s binary installed to %s\n", version, installDir)
 			return nil
@@ -1123,38 +1189,30 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 		return fmt.Errorf("apache make install failed: %w", err)
 	}
 
-	sm.createApacheConfig(configDir, dataDir, installDir, 80)
+	sm.createApacheConfig(configDir, dataDir, installDir, version, 80)
 	sm.updateInstallProgress("apache", version, 100)
 	fmt.Printf("✅ Apache %s compiled and installed successfully\n", version)
 	return nil
 }
 
-func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir string, port int) error {
-	// Get Stacker base directory for vhost configs and shared htdocs
-	stackerDir := filepath.Dir(filepath.Dir(configDir)) // Go up from conf/apache/version to Stacker root
-	vhostDir := filepath.Join(stackerDir, "conf", "apache", version)
+func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir, version string, port int) error {
+	// Use sm.baseDir as the reliable Stacker root
+	stackerDir := sm.baseDir
+	vhostDir := filepath.Join(stackerDir, "conf", "apache") // Shared site configs
 	sharedHtdocs := filepath.Join(stackerDir, "htdocs")
+	logDir := filepath.Join(stackerDir, "logs", "apache")
 
-	// Create shared htdocs directory with default index.html
-	if err := os.MkdirAll(sharedHtdocs, 0755); err != nil {
-		return err
-	}
-
-	// Write default index.html to shared htdocs (will be used as fallback)
-	defaultIndexPath := filepath.Join(sharedHtdocs, "index.html")
-	if _, err := os.Stat(defaultIndexPath); os.IsNotExist(err) {
-		// Get default HTML from web package constant
-		defaultHTML := getDefaultIndexHTML()
-		if err := os.WriteFile(defaultIndexPath, []byte(defaultHTML), 0644); err != nil {
-			return err
-		}
-	}
+	// Ensure directories exist
+	os.MkdirAll(vhostDir, 0755)
+	os.MkdirAll(sharedHtdocs, 0755)
+	os.MkdirAll(logDir, 0755)
 
 	if port == 0 {
 		port = 80 // Default
 	}
 
 	conf := fmt.Sprintf(`ServerRoot "%s"
+Define APACHE_LOG_DIR "%s"
 Listen %d
 Listen 443
 LoadModule mpm_event_module modules/mod_mpm_event.so
@@ -1167,6 +1225,10 @@ LoadModule proxy_module modules/mod_proxy.so
 LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 LoadModule ssl_module modules/mod_ssl.so
 LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
+
+# Logs
+ErrorLog "${APACHE_LOG_DIR}/error_log"
+CustomLog "${APACHE_LOG_DIR}/access_log" combined
 
 # SSL Configuration
 SSLRandomSeed startup builtin
@@ -1184,8 +1246,10 @@ DocumentRoot "%s"
 
 # Include vhost configurations
 Include "%s/*.conf"
-`, installDir, port, sharedHtdocs, sharedHtdocs, vhostDir)
+`, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir)
 
+	fmt.Printf("📝 Generating Apache config for %s at %s\n", version, filepath.Join(configDir, "httpd.conf"))
+	fmt.Printf("📄 Config content sample: %s...\n", conf[:100])
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)
 }
 
@@ -1838,11 +1902,14 @@ func (sm *ServiceManager) StartService(name string) error {
 		sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort(svc.Type))
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
+		fmt.Printf("🚀 Starting Apache: Version=%s, BinaryDir=%s\n", svc.Version, svc.BinaryDir)
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 		binaryPath = sm.findApacheBinary(svc.BinaryDir)
+		fmt.Printf("🔍 Apache Binary Path: %s\n", binaryPath)
 		if binaryPath == "" {
 			// Fallback to old path just in case
 			binaryPath = filepath.Join(svc.BinaryDir, "apache-bin", "bin", "httpd")
+			fmt.Printf("⚠️ Apache binary fallback: %s\n", binaryPath)
 		}
 
 		if _, err := os.Stat(binaryPath); err != nil {
@@ -1850,7 +1917,7 @@ func (sm *ServiceManager) StartService(name string) error {
 		}
 
 		// Regenerate config
-		sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, sm.getDefaultPort(svc.Type))
+		sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, svc.Version, sm.getDefaultPort(svc.Type))
 		cmd = sm.startApache(svc, binaryPath)
 	case "redis":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -2210,7 +2277,7 @@ func (sm *ServiceManager) createDefaultConfig(svc *Service) error {
 	case "nginx":
 		return sm.createNginxConfig(svc.ConfigDir, sm.getDefaultPort("nginx"))
 	case "apache":
-		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, sm.getDefaultPort("apache"))
+		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, svc.Version, sm.getDefaultPort("apache"))
 	case "redis":
 		return sm.createRedisConfig(svc.ConfigDir, svc.DataDir)
 	case "php":
@@ -2471,6 +2538,24 @@ func (sm *ServiceManager) startApache(svc *Service, binaryPath string) *exec.Cmd
 		"-k", "start",
 		"-D", "FOREGROUND",
 	)
+
+	// Add dynamic library paths for macOS dependencies (often from Homebrew)
+	libPaths := []string{
+		filepath.Join(svc.BinaryDir, "lib"),
+		"/opt/homebrew/opt/apr/lib",
+		"/opt/homebrew/opt/apr-util/lib",
+		"/opt/homebrew/opt/pcre2/lib",
+		"/usr/local/opt/apr/lib",
+		"/usr/local/opt/apr-util/lib",
+		"/usr/local/opt/pcre2/lib",
+	}
+
+	path := strings.Join(libPaths, ":")
+	cmd.Env = append(os.Environ(),
+		"DYLD_LIBRARY_PATH="+path,
+		"LD_LIBRARY_PATH="+path,
+	)
+
 	return cmd
 }
 
