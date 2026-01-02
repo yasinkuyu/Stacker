@@ -44,11 +44,12 @@ var changelogMD string
 
 // Site represents a local development site
 type Site struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	PHP  string `json:"php,omitempty"`
-	SSL  bool   `json:"ssl"`
-	Url  string `json:"url"` // Dynamic URL based on settings
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	PHP    string `json:"php,omitempty"`
+	SSL    bool   `json:"ssl"`
+	Server string `json:"server,omitempty"` // "apache" or "nginx", defaults to "apache"
+	Url    string `json:"url"`              // Dynamic URL based on settings
 }
 
 // Preferences holds user settings
@@ -285,17 +286,26 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		// Create a copy to inject dynamic URLs without modifying stored data
 		displaySites := make([]Site, len(sites))
 		for i, s := range sites {
-			// s.Name already includes domain extension (e.g., "mysite.local")
-			apachePort := prefs.ApachePort
+			// Determine which server port to use based on site's server setting
+			server := s.Server
+			if server == "" {
+				server = "apache" // Default to apache
+			}
 
-			// Default URL using Apache port (most common in MAMP-like setups)
-			// But if Nginx is preferred or running, this might need more complexity
-			// For now, let's use ApachePort for URL generation if it's not standard
+			var port int
+			if server == "nginx" {
+				port = prefs.NginxPort
+			} else {
+				port = prefs.ApachePort
+			}
+
+			// Generate URL with port if not standard (80 for HTTP, 443 for HTTPS)
 			s.Url = "http://" + s.Name
 			if s.SSL {
 				s.Url = "https://" + s.Name
-			} else if apachePort != 80 && apachePort != 0 {
-				s.Url = fmt.Sprintf("http://%s:%d", s.Name, apachePort)
+				// SSL uses 443 by default, no port needed in URL
+			} else if port != 80 && port != 0 {
+				s.Url = fmt.Sprintf("http://%s:%d", s.Name, port)
 			}
 			displaySites[i] = s
 		}
