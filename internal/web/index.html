@@ -4608,50 +4608,42 @@
             }
         }
 
-        async function startService(name) {
-            showOperationProgress(`Starting ${name}...`);
+        async function startService(name, btn) {
+            if (btn) setButtonLoading(btn, true);
             try {
-                const data = await api('/services');
-                const svc = data.installed.find(s => s.name === name);
-
                 await api(`/services/start/${name}`, 'POST');
-                hideOperationProgress();
                 showToast(`${name} started`);
-
-                if (svc) {
-                    showActionProgress(`Starting ${name}`, svc.type, svc.version);
-                } else {
-                    loadServices();
-                }
+                loadServices();
             } catch (err) {
-                hideOperationProgress();
                 showToast(err.message, 'error');
+            } finally {
+                if (btn) setButtonLoading(btn, false);
             }
         }
 
-        async function stopService(name) {
-            showOperationProgress(`Stopping ${name}...`);
+        async function stopService(name, btn) {
+            if (btn) setButtonLoading(btn, true);
             try {
                 await api(`/services/stop/${name}`, 'POST');
-                hideOperationProgress();
                 showToast(`${name} stopped`);
                 loadServices();
             } catch (err) {
-                hideOperationProgress();
                 showToast(err.message, 'error');
+            } finally {
+                if (btn) setButtonLoading(btn, false);
             }
         }
 
-        async function restartService(name) {
-            showOperationProgress(`Restarting ${name}...`);
+        async function restartService(name, btn) {
+            if (btn) setButtonLoading(btn, true);
             try {
                 await api(`/services/restart/${name}`, 'POST');
-                hideOperationProgress();
                 showToast(`${name} restarted`);
                 loadServices();
             } catch (err) {
-                hideOperationProgress();
                 showToast(err.message, 'error');
+            } finally {
+                if (btn) setButtonLoading(btn, false);
             }
         }
 
@@ -4916,13 +4908,13 @@
                                     <div class="service-actions">
                                         <span class="status-badge status-${s.status}"><span class="status-dot"></span>${s.status}${s.port_in_use && s.status !== 'running' ? ' (conflict)' : ''}</span>
                                         ${s.runnable !== false ? `
-                                        <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" title="${s.status === 'running' ? 'Stop' : 'Start'}">
+                                        <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}', this)` : `startService('${s.name}', this)`}" title="${s.status === 'running' ? 'Stop' : 'Start'}">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 ${s.status === 'running' ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}
                                             </svg>
-                                            ${s.status === 'running' ? 'Stop' : 'Start'}
+                                            <span>${s.status === 'running' ? 'Stop' : 'Start'}</span>
                                         </button>
-                                        ${s.status === 'running' ? `<button class="btn" onclick="restartService('${s.name}')" title="Restart">
+                                        ${s.status === 'running' ? `<button class="btn" onclick="restartService('${s.name}', this)" title="Restart">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M23 4v6h-6M1 20v-6h6"/>
                                                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -4935,7 +4927,7 @@
                                                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                                             </svg>
                                         </button>` : ''}
-                                        ${s.status !== 'running' ? `<button class="btn btn-icon-only btn-danger" onclick="uninstallService('${s.name}')" title="Uninstall">
+                                        ${s.status !== 'running' ? `<button class="btn btn-icon-only btn-danger" onclick="uninstallService('${s.name}', this)" title="Uninstall">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <polyline points="3 6 5 6 21 6"/>
                                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -4975,7 +4967,7 @@
                         return `<option value="${v.version}" ${v.installed ? 'disabled' : ''}>${v.version}${suffix}</option>`;
                     }).join('')}
                                             </select>
-                                            <button class="btn btn-primary" onclick="installService('${type}')" style="padding: 8px 20px;" ${systemVersions[type] ? 'disabled' : ''}>
+                                            <button class="btn btn-primary" onclick="installService('${type}', this)" style="padding: 8px 20px;" ${systemVersions[type] ? 'disabled' : ''}>
                                                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                                                 </svg>
@@ -4996,10 +4988,12 @@
             // Placeholder for future validation logic
         }
 
-        async function installService(type) {
+        async function installService(type, btn) {
             const version = document.getElementById(`version-${type}`).value;
+            if (btn) setButtonLoading(btn, true);
             try {
                 await api('/services/install', 'POST', { type, version });
+                if (btn) setButtonLoading(btn, false);
                 showToast(`Starting installation of ${type} ${version}...`);
 
                 // Show progress in a panel
@@ -5043,7 +5037,10 @@
                     }
                 }, 1000);
 
-            } catch (err) { showToast(err.message, 'error'); }
+            } catch (err) {
+                if (btn) setButtonLoading(btn, false);
+                showToast(err.message, 'error');
+            }
         }
 
         // ==========================================

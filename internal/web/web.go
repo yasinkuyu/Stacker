@@ -108,7 +108,7 @@ func NewWebServer(cfg *config.Config) *WebServer {
 
 	// Initialize PHP managers
 	pm := php.NewPHPManager()
-	pm.DetectPHPVersions()
+	go pm.DetectPHPVersions()
 	fm := php.NewFPMManager()
 
 	return &WebServer{
@@ -230,9 +230,7 @@ func (ws *WebServer) handleLogo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ws *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
-	pm := php.NewPHPManager()
-	pm.DetectPHPVersions()
-	defaultPHP := pm.GetDefault()
+	defaultPHP := ws.phpManager.GetDefault()
 	phpVersion := "-"
 	if defaultPHP != nil {
 		phpVersion = defaultPHP.Version

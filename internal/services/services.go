@@ -144,6 +144,35 @@ func NewServiceManager() *ServiceManager {
 		shutdown:      make(chan struct{}),
 	}
 
+	// Create default index.html if not exists
+	htdocsDir := filepath.Join(baseDir, "htdocs")
+	indexFile := filepath.Join(htdocsDir, "index.html")
+	if _, err := os.Stat(indexFile); os.IsNotExist(err) {
+		defaultHtml := `<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Stacker</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f5f5f7; color: #1a1a1a; }
+        .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+        h1 { margin: 0 0 16px; font-size: 24px; }
+        p { color: #666; line-height: 1.5; margin-bottom: 24px; }
+        .logo { width: 64px; height: 64px; margin-bottom: 24px; }
+        code { background: #eee; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="/logo.png" class="logo" onerror="this.style.display='none'">
+        <h1>It Works!</h1>
+        <p>Your Stacker server is up and running.</p>
+        <p>This file is located at:<br><code>stacker/htdocs/index.html</code></p>
+    </div>
+</body>
+</html>`
+		os.WriteFile(indexFile, []byte(defaultHtml), 0644)
+	}
+
 	fmt.Printf("📂 Stacker Base Directory: %s\n", baseDir)
 	sm.loadInstalledServices()
 	return sm
@@ -1296,7 +1325,47 @@ DocumentRoot "%s"
 
 # Include vhost configurations
 IncludeOptional "%s/*.conf"
-`, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir)
+
+# Mime Types
+TypesConfig "%s/mime.types"
+`, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir, configDir)
+
+	// Create a basic mime.types file
+	mimeContent := `application/javascript js
+application/json json
+application/x-www-form-urlencoded
+application/xml xml
+application/zip zip
+application/pdf pdf
+application/sql sql
+application/graphql graphql
+application/ld+json jsonld
+application/wasm wasm
+audio/mpeg mp3
+audio/ogg oga
+audio/wav wav
+audio/x-m4a m4a
+image/bmp bmp
+image/gif gif
+image/jpeg jpeg jpg
+image/png png
+image/svg+xml svg
+image/webp webp
+image/x-icon ico
+text/css css
+text/csv csv
+text/html html htm
+text/plain txt text conf def list log ini
+text/xml xml
+video/mp4 mp4
+video/mpeg mpeg mpg
+video/webm webm
+video/x-flv flv
+font/woff woff
+font/woff2 woff2
+font/ttf ttf
+font/otf otf`
+	os.WriteFile(filepath.Join(configDir, "mime.types"), []byte(mimeContent), 0644)
 
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)
 }
