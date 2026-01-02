@@ -2845,6 +2845,46 @@
                     </div>
 
                     <div class="settings-section">
+                        <div class="settings-section-title">Ports</div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Apache Port</div>
+                                <div class="settings-desc">Port used by Apache server</div>
+                            </div>
+                            <input type="number" class="input" id="apache-port-input" style="width: 100px;"
+                                onblur="savePorts()">
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Nginx Port</div>
+                                <div class="settings-desc">Port used by Nginx server</div>
+                            </div>
+                            <input type="number" class="input" id="nginx-port-input" style="width: 100px;"
+                                onblur="savePorts()">
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">MySQL Port</div>
+                                <div class="settings-desc">Port used by MySQL server</div>
+                            </div>
+                            <input type="number" class="input" id="mysql-port-input" style="width: 100px;"
+                                onblur="savePorts()">
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label">Presets</div>
+                                <div class="settings-desc">Set ports to common defaults</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn" style="padding: 6px 12px; font-size: 11px;"
+                                    onclick="setPortPreset('stacker')">Stacker default</button>
+                                <button class="btn" style="padding: 6px 12px; font-size: 11px;"
+                                    onclick="setPortPreset('common')">80 & 3306</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <div class="settings-section-title" data-i18n="nav.logs">Navigation</div>
                         <div class="settings-row">
                             <div class="settings-info">
@@ -3801,6 +3841,9 @@
                     document.getElementById('auto-start-toggle').classList.toggle('active', prefs.autoStart);
                     document.getElementById('tray-toggle').classList.toggle('active', prefs.showTray);
                     document.getElementById('port-input').value = prefs.port || 9999;
+                    document.getElementById('apache-port-input').value = prefs.apachePort || 80;
+                    document.getElementById('nginx-port-input').value = prefs.nginxPort || 80;
+                    document.getElementById('mysql-port-input').value = prefs.mysqlPort || 3306;
                     if (document.getElementById('slim-mode-toggle')) {
                         document.getElementById('slim-mode-toggle').classList.toggle('active', prefs.slimMode);
                         setSlimMode(prefs.slimMode);
@@ -3849,6 +3892,36 @@
                 setSlimMode(newState);
                 showToast(newState ? 'Slim mode enabled' : 'Slim mode disabled');
             } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        async function savePorts() {
+            const apachePort = parseInt(document.getElementById('apache-port-input').value);
+            const nginxPort = parseInt(document.getElementById('nginx-port-input').value);
+            const mysqlPort = parseInt(document.getElementById('mysql-port-input').value);
+
+            try {
+                await api('/preferences', 'PUT', { apachePort, nginxPort, mysqlPort });
+                showToast('Port settings updated (requires service restart)');
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        async function setPortPreset(type) {
+            let apache, nginx, mysql;
+            if (type === 'stacker') {
+                apache = 8888;
+                nginx = 7888;
+                mysql = 8889;
+            } else {
+                apache = 80;
+                nginx = 80;
+                mysql = 3306;
+            }
+
+            document.getElementById('apache-port-input').value = apache;
+            document.getElementById('nginx-port-input').value = nginx;
+            document.getElementById('mysql-port-input').value = mysql;
+
+            await savePorts();
         }
 
         function setSlimMode(enabled) {

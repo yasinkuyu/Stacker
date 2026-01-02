@@ -935,7 +935,7 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 			}
 
 			// If no configure script, assume binary build and finalize
-			sm.createApacheConfig(configDir, dataDir, installDir)
+			sm.createApacheConfig(configDir, dataDir, installDir, 80) // Default port for auto detection
 			sm.updateInstallProgress("apache", version, 100)
 			fmt.Printf("✅ Apache %s binary installed to %s\n", version, installDir)
 			return nil
@@ -1032,13 +1032,13 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 		return fmt.Errorf("apache make install failed: %w", err)
 	}
 
-	sm.createApacheConfig(configDir, dataDir, installDir)
+	sm.createApacheConfig(configDir, dataDir, installDir, 80)
 	sm.updateInstallProgress("apache", version, 100)
 	fmt.Printf("✅ Apache %s compiled and installed successfully\n", version)
 	return nil
 }
 
-func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir string) error {
+func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir string, port int) error {
 	// Get Stacker base directory for vhost configs and shared htdocs
 	stackerDir := filepath.Dir(filepath.Dir(configDir)) // Go up from conf/apache/version to Stacker root
 	vhostDir := filepath.Join(stackerDir, "conf", "apache")
@@ -1059,8 +1059,12 @@ func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir stri
 		}
 	}
 
+	if port == 0 {
+		port = 80 // Default
+	}
+
 	conf := fmt.Sprintf(`ServerRoot "%s"
-Listen 8080
+Listen %d
 Listen 443
 LoadModule mpm_event_module modules/mod_mpm_event.so
 LoadModule authn_core_module modules/mod_authn_core.so
@@ -1089,7 +1093,7 @@ DocumentRoot "%s"
 
 # Include vhost configurations
 Include "%s/*.conf"
-`, installDir, sharedHtdocs, sharedHtdocs, vhostDir)
+`, installDir, port, sharedHtdocs, sharedHtdocs, vhostDir)
 
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)
 }
@@ -2095,7 +2099,9 @@ func (sm *ServiceManager) createDefaultConfig(svc *Service) error {
 	case "nginx":
 		return sm.createNginxConfig(svc.ConfigDir)
 	case "apache":
-		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir)
+		// We'll need a way to pass the port here. For now, use a default or handle it in the caller.
+		// Since svc.Port is not yet available in the struct, we might need to add it or use a global.
+		return sm.createApacheConfig(svc.ConfigDir, svc.DataDir, svc.BinaryDir, 80)
 	case "redis":
 		return sm.createRedisConfig(svc.ConfigDir, svc.DataDir)
 	case "php":

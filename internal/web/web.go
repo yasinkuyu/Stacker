@@ -59,10 +59,23 @@ type Preferences struct {
 	Port            int    `json:"port"`
 	SlimMode        bool   `json:"slimMode"`
 	DomainExtension string `json:"domainExtension"`
+	ApachePort      int    `json:"apachePort"`
+	NginxPort       int    `json:"nginxPort"`
+	MySQLPort       int    `json:"mysqlPort"`
 }
 
 var (
-	prefs     = Preferences{Theme: "light", AutoStart: false, ShowTray: true, Port: 9999, SlimMode: false, DomainExtension: ".local"}
+	prefs = Preferences{
+		Theme:           "light",
+		AutoStart:       false,
+		ShowTray:        true,
+		Port:            9999,
+		SlimMode:        false,
+		DomainExtension: ".local",
+		ApachePort:      80,
+		NginxPort:       80,
+		MySQLPort:       3306,
+	}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
 	sitesMu   sync.RWMutex
@@ -692,21 +705,19 @@ func (ws *WebServer) createNginxSiteConfig(site Site) error {
 		return err
 	}
 
-	// Use base name without extension for config file
-	baseName := ws.getBaseSiteName(site.Name)
-	configPath := filepath.Join(confDir, baseName+".conf")
+	// Use full domain name for config file and directory naming
+	configPath := filepath.Join(confDir, site.Name+".conf")
 
 	phpPort := ws.getPHPPort(site.PHP)
 
 	// Detect document root
 	docRoot := site.Path
-	// If path doesn't exist, create directory structure only (no index.html)
+	// If path doesn't exist, create it within sites folder
 	if _, err := os.Stat(site.Path); os.IsNotExist(err) {
-		docRoot = filepath.Join(ws.stackerDir, "sites", baseName, "public_html")
+		docRoot = filepath.Join(ws.stackerDir, "sites", site.Name, "public_html")
 		if err := os.MkdirAll(docRoot, 0755); err != nil {
 			return err
 		}
-		// Don't create index.html - will use global fallback
 	} else {
 		// If path exists, check for public folder
 		if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
@@ -718,7 +729,13 @@ func (ws *WebServer) createNginxSiteConfig(site Site) error {
 
 	prefMutex.RLock()
 	domainExt := prefs.DomainExtension
+	nginxPort := prefs.NginxPort
 	prefMutex.RUnlock()
+
+	if nginxPort == 0 {
+		nginxPort = 80
+	}
+
 	if domainExt == "" {
 		domainExt = ".local" // Default fallback if empty
 	}
@@ -726,7 +743,7 @@ func (ws *WebServer) createNginxSiteConfig(site Site) error {
 	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
 # Generated: %[2]s
 server {
-    listen 80;
+    listen %[6]d;
     server_name %[1]s%[5]s;
     root "%[3]s";
     index index.php index.html index.htm;
@@ -748,7 +765,7 @@ server {
         deny all;
     }
 }
-`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
+`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt, nginxPort)
 
 	// Add SSL server block if SSL is enabled
 	if site.SSL {
@@ -798,16 +815,19 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
 		return err
 	}
 
-	// Use base name without extension for config file
-	baseName := ws.getBaseSiteName(site.Name)
-	configPath := filepath.Join(confDir, baseName+".conf")
+	// Use full domain name for config file and directory naming
+	configPath := filepath.Join(confDir, site.Name+".conf")
 
 	phpPort := ws.getPHPPort(site.PHP)
 
 	// Detect document root (same logic as Nginx)
 	docRoot := site.Path
+	// If path doesn't exist, create it within sites folder
 	if _, err := os.Stat(site.Path); os.IsNotExist(err) {
 		docRoot = filepath.Join(ws.stackerDir, "sites", site.Name, "public_html")
+		if err := os.MkdirAll(docRoot, 0755); err != nil {
+			return err
+		}
 	} else {
 		if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
 			docRoot = filepath.Join(site.Path, "public")
@@ -818,15 +838,21 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
 
 	prefMutex.RLock()
 	domainExt := prefs.DomainExtension
+	apachePort := prefs.ApachePort
 	prefMutex.RUnlock()
+
+	if apachePort == 0 {
+		apachePort = 80
+	}
+
 	if domainExt == "" {
 		domainExt = ".local"
 	}
 
 	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
 # Generated: %[2]s
-<VirtualHost *:80>
-    ServerName %[1]s%[5]s
+<VirtualHost *:%[5]d>
+    ServerName %[1]s%[6]s
     DocumentRoot "%[3]s"
     
     <Directory "%[3]s">
@@ -842,7 +868,7 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
     ErrorLog "${APACHE_LOG_DIR}/%[1]s-error.log"
     CustomLog "${APACHE_LOG_DIR}/%[1]s-access.log" combined
 </VirtualHost>
-`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
+`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, apachePort, domainExt)
 
 	// Add SSL VirtualHost if SSL is enabled
 	if site.SSL {
@@ -1691,6 +1717,15 @@ func (ws *WebServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
 		}
 		if port, ok := updates["port"].(float64); ok {
 			prefs.Port = int(port)
+		}
+		if apachePort, ok := updates["apachePort"].(float64); ok {
+			prefs.ApachePort = int(apachePort)
+		}
+		if nginxPort, ok := updates["nginxPort"].(float64); ok {
+			prefs.NginxPort = int(nginxPort)
+		}
+		if mysqlPort, ok := updates["mysqlPort"].(float64); ok {
+			prefs.MySQLPort = int(mysqlPort)
 		}
 
 		savePreferences(ws.stackerDir)
