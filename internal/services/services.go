@@ -215,12 +215,32 @@ func (sm *ServiceManager) loadInstalledServices() {
 }
 
 func (sm *ServiceManager) checkPortInUse(port int) (bool, string) {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 1*time.Second)
+	// First try lsof to get process name - this is more reliable
+	cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port), "-sTCP:LISTEN", "-t")
+	output, err := cmd.Output()
+	if err == nil && len(output) > 0 {
+		// Get PID from output
+		pidStr := strings.TrimSpace(string(output))
+		pids := strings.Split(pidStr, "\n")
+		if len(pids) > 0 {
+			// Get process name for first PID
+			psCmd := exec.Command("ps", "-p", pids[0], "-o", "comm=")
+			psOutput, psErr := psCmd.Output()
+			if psErr == nil {
+				processName := strings.TrimSpace(string(psOutput))
+				return true, fmt.Sprintf("%s (PID: %s)", processName, pids[0])
+			}
+		}
+		return true, fmt.Sprintf("Process PID: %s", pidStr)
+	}
+
+	// Fallback: try TCP connection
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", port), 500*time.Millisecond)
 	if err != nil {
 		return false, ""
 	}
 	conn.Close()
-	return true, fmt.Sprintf("Port %d is already in use by another application", port)
+	return true, "Unknown process"
 }
 
 func (sm *ServiceManager) checkConfigExists(svc *Service) bool {
