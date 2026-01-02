@@ -742,7 +742,7 @@
         .footer-left {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
         }
 
         .footer-btn {
@@ -1799,6 +1799,18 @@
             background: rgba(52, 211, 153, 0.12);
             color: var(--success);
             border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .site-badge.apache {
+            background: rgba(207, 66, 95, 0.12);
+            color: #cf425f;
+            border: 1px solid rgba(207, 66, 95, 0.2);
+        }
+
+        .site-badge.nginx {
+            background: rgba(0, 150, 57, 0.12);
+            color: #009639;
+            border: 1px solid rgba(0, 150, 57, 0.2);
         }
 
         .site-actions {
@@ -4125,9 +4137,9 @@
                             <div class="site-path">${s.path}</div>
                         </div>
                         <div class="site-badges">
-                            ${s.server === 'nginx' ? '<span class="site-badge" style="background:#009639;">Nginx</span>' : '<span class="site-badge" style="background:#c73838;">Apache</span>'}
-                            ${s.php ? `<span class="site-badge php">PHP ${s.php}</span>` : ''}
-                            ${s.ssl ? '<span class="site-badge ssl">SSL</span>' : ''}
+                            ${s.server === 'nginx' ? '<span class="site-badge nginx">nginx</span>' : '<span class="site-badge apache">apache</span>'}
+                            ${s.php ? `<span class="site-badge php">php ${s.php}</span>` : ''}
+                            ${s.ssl ? '<span class="site-badge ssl">ssl</span>' : ''}
                         </div>
                         <div class="site-actions" style="gap: 4px;">
                             <button class="icon-btn" style="width: 28px; height: 28px; padding: 6px;" onclick="window.open('${s.url}', '_blank')" title="Open"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button>
@@ -4186,7 +4198,7 @@
                             <div class="settings-label">Enable SSL</div>
                             <div class="settings-desc">Serve site over HTTPS</div>
                         </div>
-                        <button class="toggle-switch active" id="siteSsl" onclick="this.classList.toggle('active')"></button>
+                        <button class="toggle-switch" id="siteSsl" onclick="this.classList.toggle('active')"></button>
                     </div>
                 </div>
             `;
@@ -4213,7 +4225,10 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Project Path</label>
-                    <input type="text" class="form-input" id="sitePath" value="${site.path}">
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" class="form-input" id="sitePath" value="${site.path}" style="flex:1;">
+                        <button class="btn" onclick="browsePath()">Browse</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">PHP Version</label>
@@ -4926,6 +4941,7 @@
                                         <div>
                                             <div class="service-name">${s.name} ${s.version}</div>
                                             <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
+                                            ${(s.type === 'mysql' || s.type === 'mariadb') ? `<div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">👤 root:root • 📁 data/${s.type}</div>` : ''}
                                             ${s.port_in_use && s.status !== 'running' ? `<div style="color: var(--warning); font-size: 11px; margin-top: 4px;">⚠️ Port ${s.port} used by: ${s.port_conflict || 'another app'}</div>` : ''}
                                         </div>
                                     </div>
@@ -4986,12 +5002,12 @@
                                             <select class="form-select" id="version-${type}" style="padding: 6px 12px; font-size: 13px; width: 140px;" onchange="checkInstalled('${type}')">
                                                 ${availableVersions.map(v => {
                         let suffix = '';
-                        if (v.installed) suffix = ' (Installed)';
+                        if (v.installed) suffix = ' ✓ Installed';
                         else if (v.system_installed) suffix = ' (System)';
-                        return `<option value="${v.version}" ${v.installed ? 'disabled' : ''}>${v.version}${suffix}</option>`;
+                        return `<option value="${v.version}" data-installed="${v.installed ? 'true' : 'false'}">${v.version}${suffix}</option>`;
                     }).join('')}
                                             </select>
-                                            <button class="btn btn-primary" onclick="installService('${type}', this)" style="padding: 8px 20px;" ${systemVersions[type] ? 'disabled' : ''}>
+                                            <button class="btn btn-primary" id="install-btn-${type}" onclick="installService('${type}', this)" style="padding: 8px 20px;" ${availableVersions[0]?.installed || systemVersions[type] ? 'disabled' : ''}>
                                                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                                                 </svg>
@@ -5009,7 +5025,19 @@
         }
 
         function checkInstalled(type) {
-            // Placeholder for future validation logic
+            const select = document.getElementById(`version-${type}`);
+            const btn = document.getElementById(`install-btn-${type}`);
+            if (!select || !btn) return;
+
+            const selectedOption = select.options[select.selectedIndex];
+            const isInstalled = selectedOption.getAttribute('data-installed') === 'true';
+
+            btn.disabled = isInstalled;
+            if (isInstalled) {
+                btn.title = 'This version is already installed';
+            } else {
+                btn.title = 'Install this version';
+            }
         }
 
         async function installService(type, btn) {
