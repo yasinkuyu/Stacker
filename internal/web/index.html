@@ -31,7 +31,11 @@
             --shadow-lg: rgba(0, 0, 0, 0.15);
             --gradient-start: #6366f1;
             --gradient-end: #8b5cf6;
-            --sidebar-width: 240px;
+            /* New 3-column layout */
+            --icon-nav-width: 64px;
+            --sites-panel-width: 260px;
+            --sidebar-width: calc(var(--icon-nav-width) + var(--sites-panel-width));
+            --statusbar-height: 48px;
         }
 
         [data-theme="dark"] {
@@ -101,20 +105,236 @@
             }
         }
 
-        .sidebar {
-            width: var(--sidebar-width);
+        /* ==========================================
+           3-COLUMN LAYOUT: Icon Nav + Sites Panel + Content
+           ========================================== */
+
+        /* Icon Navigation (leftmost, always visible) */
+        .icon-nav {
+            width: var(--icon-nav-width);
+            background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: calc(100vh - var(--statusbar-height));
+            z-index: 1100;
+            gap: 8px;
+        }
+
+        .icon-nav-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-nav-logo img {
+            width: 28px;
+            height: 28px;
+        }
+
+        .icon-nav-item {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            background: transparent;
+            position: relative;
+        }
+
+        .icon-nav-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .icon-nav-item.active {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+
+        .icon-nav-item svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .icon-nav-spacer {
+            flex: 1;
+        }
+
+        .icon-nav-toggle {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .icon-nav-toggle:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        /* Sites Panel (collapsible middle) */
+        .sites-panel {
+            width: var(--sites-panel-width);
             background: var(--bg-secondary);
             border-right: 1px solid var(--border);
-            padding: 20px 16px;
             display: flex;
             flex-direction: column;
             position: fixed;
             top: 0;
-            left: 0;
-            height: calc(100vh - 32px);
-            overflow-y: auto;
+            left: var(--icon-nav-width);
+            height: calc(100vh - var(--statusbar-height));
             z-index: 1000;
-            transition: width 0.3s ease;
+            transition: width 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+            overflow: hidden;
+        }
+
+        .sites-panel.collapsed {
+            width: 0;
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        .sites-panel-header {
+            padding: 20px 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sites-panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .sites-panel-search {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .sites-panel-search:focus {
+            border-color: var(--accent);
+        }
+
+        .sites-panel-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .site-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 2px;
+        }
+
+        .site-list-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .site-list-item.active {
+            background: var(--accent-light);
+        }
+
+        .site-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .site-status-dot.running {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .site-status-dot.stopped {
+            background: var(--text-muted);
+        }
+
+        .site-list-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sites-panel-footer {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .add-site-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px var(--shadow-lg);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: fixed;
+            bottom: calc(var(--statusbar-height) + 20px);
+            left: calc(var(--icon-nav-width) + 16px);
+            z-index: 1050;
+        }
+
+        .add-site-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px var(--shadow-lg);
+        }
+
+        body[data-panel-collapsed="true"] .add-site-btn {
+            left: calc(var(--icon-nav-width) + 16px);
+        }
+
+        /* Legacy sidebar - now hidden */
+        .sidebar {
+            display: none;
         }
 
         .logo {
@@ -204,16 +424,96 @@
         /* Main Content */
         .main-content {
             flex: 1;
-            padding: 80px 40px 40px;
-            /* Increased top padding to avoid overlap with any window headers */
-            margin-left: var(--sidebar-width);
-            min-height: calc(100vh - 32px);
-            margin-bottom: 32px;
+            padding: 32px 40px 40px;
+            margin-left: calc(var(--icon-nav-width) + var(--sites-panel-width));
+            min-height: calc(100vh - var(--statusbar-height));
+            margin-bottom: var(--statusbar-height);
             background: var(--bg-primary);
             position: relative;
             z-index: 1;
             overflow-x: hidden;
             transition: margin-left 0.3s ease, padding 0.3s ease;
+        }
+
+        body[data-panel-collapsed="true"] .main-content {
+            margin-left: var(--icon-nav-width);
+        }
+
+        body[data-panel-collapsed="true"] .sites-panel {
+            width: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Bottom Status Bar */
+        .status-bar-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--statusbar-height);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px 0 calc(var(--icon-nav-width) + 20px);
+            z-index: 900;
+            transition: padding-left 0.3s ease;
+        }
+
+        body[data-panel-collapsed="true"] .status-bar-bottom {
+            padding-left: calc(var(--icon-nav-width) + 20px);
+        }
+
+        .status-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-bar-sites {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .status-bar-sites span {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-bar-stop-all {
+            font-size: 12px;
+            color: var(--danger);
+            cursor: pointer;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--danger-bg);
+            transition: background 0.2s;
+        }
+
+        .status-bar-stop-all:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .status-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .live-link-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
         }
 
         body[data-slim="true"] .main-content {
@@ -1579,6 +1879,78 @@
 
 <body>
     <div class="app-container">
+        <!-- Icon Navigation (always visible) -->
+        <nav class="icon-nav">
+            <div class="icon-nav-logo">
+                <img src="/logo.png" alt="S" onerror="this.parentElement.innerHTML='S'">
+            </div>
+
+            <button class="icon-nav-item active" data-page="sites" title="Sites">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M2 12h20" />
+                    <path
+                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+            </button>
+
+            <button class="icon-nav-item" data-page="services" title="Services">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+            </button>
+
+            <button class="icon-nav-item" data-page="php" title="PHP">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <ellipse cx="12" cy="12" rx="10" ry="6" />
+                </svg>
+            </button>
+
+            <button class="icon-nav-item" data-page="dumps" title="Dumps">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+            </button>
+
+            <button class="icon-nav-item" data-page="mail" title="Mail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                </svg>
+            </button>
+
+            <div class="icon-nav-spacer"></div>
+
+            <button class="icon-nav-item" data-page="settings" title="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                </svg>
+            </button>
+
+            <button class="icon-nav-toggle" onclick="toggleSitesPanel()" title="Toggle Panel">
+                «
+            </button>
+        </nav>
+
+        <!-- Dynamic Panel (changes based on selected section) -->
+        <aside class="sites-panel" id="sitesPanel">
+            <div class="sites-panel-header">
+                <div class="sites-panel-title" id="panelTitle">Local Sites</div>
+                <input type="text" class="sites-panel-search" placeholder="Search..." id="panelSearch"
+                    oninput="filterPanelList()">
+            </div>
+            <div class="sites-panel-list" id="panelList">
+                <!-- Dynamic content will be rendered here -->
+            </div>
+        </aside>
+
+        <!-- Floating Add Site Button -->
+        <button class="add-site-btn" onclick="addSite()" title="Add New Site">+</button>
+
+        <!-- Legacy sidebar (hidden) -->
         <aside class="sidebar">
             <div class="logo">
                 <img src="/logo.png" class="logo-img" alt="Stacker" onerror="this.style.display='none'">
@@ -2190,6 +2562,21 @@
                 </div>
             </div>
         </main>
+
+        <!-- Bottom Status Bar -->
+        <div class="status-bar-bottom">
+            <div class="status-bar-left">
+                <div class="status-bar-sites">
+                    <span id="runningSitesCount">0</span> sites running
+                </div>
+                <button class="status-bar-stop-all" onclick="stopAllSites()">STOP ALL</button>
+            </div>
+            <div class="status-bar-right">
+                <div class="live-link-toggle">
+                    Live Link: <button class="btn" style="padding:4px 12px;font-size:11px;" disabled>Enable</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->
@@ -2243,11 +2630,189 @@
 
     <script>
         // ==========================================
-        // UI & Navigation
+        // UI & Navigation (New 3-Column Layout)
         // ==========================================
 
+        // Icon Nav click handlers
+        document.querySelectorAll('.icon-nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.icon-nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                const page = item.dataset.page;
+                showPage(page);
+                updatePanelForSection(page);
+            });
+        });
+
+        // Legacy nav-item handlers (kept for compatibility)
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => showPage(item.dataset.page));
+        });
+
+        // Toggle Sites Panel
+        function toggleSitesPanel() {
+            const body = document.body;
+            const toggle = document.querySelector('.icon-nav-toggle');
+            const isCollapsed = body.getAttribute('data-panel-collapsed') === 'true';
+
+            body.setAttribute('data-panel-collapsed', !isCollapsed);
+            toggle.textContent = isCollapsed ? '«' : '»';
+
+            // Save preference
+            localStorage.setItem('panelCollapsed', !isCollapsed);
+        }
+
+        // Restore panel state
+        if (localStorage.getItem('panelCollapsed') === 'true') {
+            document.body.setAttribute('data-panel-collapsed', 'true');
+            document.querySelector('.icon-nav-toggle').textContent = '»';
+        }
+
+        // Current active panel section
+        let currentPanelSection = 'sites';
+
+        // Panel section configurations
+        const panelConfig = {
+            sites: { title: 'Local Sites', placeholder: 'Search sites...' },
+            services: { title: 'Services', placeholder: 'Search services...' },
+            php: { title: 'PHP Versions', placeholder: 'Search PHP...' },
+            dumps: { title: 'Dumps', placeholder: 'Search dumps...' },
+            mail: { title: 'Inbox', placeholder: 'Search mail...' },
+            settings: { title: 'Settings', placeholder: '' },
+            logs: { title: 'Log Files', placeholder: 'Search logs...' }
+        };
+
+        // Update panel for active section
+        function updatePanelForSection(section) {
+            currentPanelSection = section;
+            const config = panelConfig[section] || { title: section, placeholder: 'Search...' };
+
+            document.getElementById('panelTitle').textContent = config.title;
+            document.getElementById('panelSearch').placeholder = config.placeholder;
+            document.getElementById('panelSearch').style.display = config.placeholder ? 'block' : 'none';
+
+            // Render appropriate content
+            switch (section) {
+                case 'sites': renderSitesPanelList(cachedSites); break;
+                case 'services': renderServicesPanelList(); break;
+                case 'php': renderPHPPanelList(); break;
+                case 'dumps': renderDumpsPanelList(); break;
+                case 'mail': renderMailPanelList(); break;
+                default: renderDefaultPanelList(section);
+            }
+        }
+
+        // Render sites panel list
+        function renderSitesPanelList(sites) {
+            const list = document.getElementById('panelList');
+            if (!sites || !sites.length) {
+                list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No sites yet</div>';
+                return;
+            }
+
+            list.innerHTML = sites.map(s => `
+                <div class="site-list-item" onclick="selectSite('${s.name}')">
+                    <span class="site-status-dot ${s.status || 'stopped'}"></span>
+                    <span class="site-list-name">${s.name.toUpperCase()}</span>
+                </div>
+            `).join('');
+        }
+
+        // Render services panel list
+        function renderServicesPanelList() {
+            const list = document.getElementById('panelList');
+            if (!cachedServices || !cachedServices.length) {
+                list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No services installed</div>';
+                return;
+            }
+            list.innerHTML = cachedServices.map(s => `
+                <div class="site-list-item" onclick="showPage('services')">
+                    <span class="site-status-dot ${s.status === 'running' ? 'running' : 'stopped'}"></span>
+                    <span class="site-list-name">${s.name.toUpperCase()}</span>
+                </div>
+            `).join('');
+        }
+
+        // Render PHP panel list
+        function renderPHPPanelList() {
+            const list = document.getElementById('panelList');
+            if (!cachedPHP || !cachedPHP.length) {
+                list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No PHP versions</div>';
+                return;
+            }
+            list.innerHTML = cachedPHP.map(p => `
+                <div class="site-list-item" onclick="showPage('php')">
+                    <span class="site-status-dot ${p.default ? 'running' : 'stopped'}"></span>
+                    <span class="site-list-name">PHP ${p.version}</span>
+                </div>
+            `).join('');
+        }
+
+        // Render dumps panel list
+        function renderDumpsPanelList() {
+            const list = document.getElementById('panelList');
+            list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">View dumps in main area</div>';
+        }
+
+        // Render mail panel list
+        function renderMailPanelList() {
+            const list = document.getElementById('panelList');
+            list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">View mail in main area</div>';
+        }
+
+        // Render default panel list
+        function renderDefaultPanelList(section) {
+            const list = document.getElementById('panelList');
+            list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">${section} content</div>`;
+        }
+
+        // Filter panel list
+        function filterPanelList() {
+            const query = document.getElementById('panelSearch').value.toLowerCase();
+            const items = document.querySelectorAll('.site-list-item');
+            items.forEach(item => {
+                const name = item.querySelector('.site-list-name').textContent.toLowerCase();
+                item.style.display = name.includes(query) ? 'flex' : 'none';
+            });
+        }
+
+        // Select a site (show detail view)
+        let selectedSite = null;
+        function selectSite(name) {
+            selectedSite = name;
+            document.querySelectorAll('.site-list-item').forEach(item => {
+                item.classList.toggle('active', item.querySelector('.site-list-name').textContent.toLowerCase() === name.toLowerCase());
+            });
+            // Navigate to sites page and trigger edit
+            showPage('sites');
+            setTimeout(() => {
+                const site = cachedSites.find(s => s.name === name);
+                if (site) editSite(site);
+            }, 100);
+        }
+
+        // Stop all sites (placeholder)
+        function stopAllSites() {
+            showToast('Stopping all sites...', 'warning');
+            // This would call the backend to stop all services
+        }
+
+        // Update running sites count
+        function updateRunningSitesCount() {
+            // For now, just show site count
+            const count = cachedSites ? cachedSites.length : 0;
+            const el = document.getElementById('runningSitesCount');
+            if (el) el.textContent = count;
+        }
+
+        // Cache data for panel
+        let cachedSites = [];
+        let cachedServices = [];
+        let cachedPHP = [];
+
+        // Initialize panel on load
+        document.addEventListener('DOMContentLoaded', () => {
+            updatePanelForSection('sites');
         });
 
         // Custom Modal UI
@@ -2684,6 +3249,14 @@
             const list = document.getElementById('sites-list');
             try {
                 const sites = await api('/sites');
+
+                // Cache sites for panel
+                cachedSites = sites || [];
+
+                // Update sites panel
+                renderSitesPanelList(cachedSites);
+                updateRunningSitesCount();
+
                 if (!sites || !sites.length) {
                     list.innerHTML = '<div class="empty-state"><p>No sites configured</p></div>';
                     return;
