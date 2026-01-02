@@ -25,10 +25,10 @@
             --warning-bg: rgba(217, 119, 6, 0.15);
             --danger: #dc2626;
             --danger-bg: rgba(220, 38, 38, 0.15);
-            --border: #d4d4d9;
-            --border-light: #e5e5ea;
-            --shadow: rgba(0, 0, 0, 0.08);
-            --shadow-lg: rgba(0, 0, 0, 0.15);
+            --border: #e0e0e5;
+            --border-light: #efefef;
+            --shadow: rgba(0, 0, 0, 0.04);
+            --shadow-lg: rgba(0, 0, 0, 0.08);
             --gradient-start: #6366f1;
             --gradient-end: #8b5cf6;
             /* New 3-column layout */
@@ -56,10 +56,10 @@
             --warning-bg: rgba(251, 191, 36, 0.15);
             --danger: #f87171;
             --danger-bg: rgba(248, 113, 113, 0.15);
-            --border: #2a2a3a;
-            --border-light: #3a3a4a;
-            --shadow: rgba(0, 0, 0, 0.4);
-            --shadow-lg: rgba(0, 0, 0, 0.6);
+            --border: #252535;
+            --border-light: #353545;
+            --shadow: rgba(0, 0, 0, 0.25);
+            --shadow-lg: rgba(0, 0, 0, 0.35);
             --gradient-start: #818cf8;
             --gradient-end: #a78bfa;
         }
@@ -120,25 +120,48 @@
             position: fixed;
             top: 0;
             left: 0;
-            height: calc(100vh - var(--statusbar-height));
+            height: 100vh;
             z-index: 1100;
             gap: 8px;
         }
 
         .icon-nav-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            margin-bottom: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            margin-bottom: 24px;
             background: rgba(255, 255, 255, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
         .icon-nav-logo img {
             width: 28px;
             height: 28px;
+            flex-shrink: 0;
+        }
+
+        .icon-nav-title {
+            display: none;
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            white-space: nowrap;
+            margin-left: 12px;
+        }
+
+        body[data-navbar-expanded="true"] .icon-nav-logo {
+            width: 140px;
+            justify-content: flex-start;
+            padding-left: 8px;
+        }
+
+        body[data-navbar-expanded="true"] .icon-nav-title {
+            display: block;
         }
 
         .icon-nav-item {
@@ -200,7 +223,6 @@
             white-space: nowrap;
         }
 
-        /* Expanded Navbar Mode */
         body[data-navbar-expanded="true"] .icon-nav {
             width: 160px;
         }
@@ -214,14 +236,42 @@
 
         body[data-navbar-expanded="true"] .icon-nav-label {
             display: block;
+            position: static;
+            transform: none;
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            z-index: auto;
+            pointer-events: auto;
+        }
+
+        body[data-navbar-expanded="true"] .icon-nav-item:hover .icon-nav-label {
+            position: static;
+            transform: none;
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            box-shadow: none;
+            left: auto;
+            top: auto;
         }
 
         body[data-navbar-expanded="true"] .main-content {
             margin-left: calc(160px + var(--sites-panel-width));
         }
 
+        body[data-navbar-expanded="true"] .footer-bar {
+            left: 160px;
+        }
+
         body[data-navbar-expanded="true"][data-panel-collapsed="true"] .main-content {
             margin-left: 160px;
+        }
+
+        body[data-panel-collapsed="true"] .footer-bar {
+            left: var(--icon-nav-width);
         }
 
         body[data-navbar-expanded="true"] .sites-panel {
@@ -317,6 +367,131 @@
             flex: 1;
             overflow-y: auto;
             padding: 8px;
+        }
+
+        /* Panel Components */
+        .panel-empty {
+            padding: 24px 16px;
+            text-align: center;
+        }
+
+        .panel-empty-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: var(--accent);
+            display: flex;
+            justify-content: center;
+        }
+
+        .panel-empty-icon svg {
+            color: var(--accent);
+            opacity: 0.6;
+        }
+
+        .panel-empty-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .panel-empty-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .panel-empty-desc code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .panel-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 16px 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 8px;
+        }
+
+        .panel-stat {
+            text-align: center;
+        }
+
+        .panel-stat-value {
+            display: block;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .panel-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .panel-info-box {
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            margin: 8px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .panel-info-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .panel-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .panel-tip {
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            margin: 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .panel-tip code {
+            background: var(--bg-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .panel-quick-links {
+            padding: 8px;
+        }
+
+        .panel-quick-link {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .panel-quick-link:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
         }
 
         .site-list-item {
@@ -489,7 +664,7 @@
         /* Main Content */
         .main-content {
             flex: 1;
-            padding: 32px 40px 40px;
+            padding: 24px 28px 28px;
             margin-left: calc(var(--icon-nav-width) + var(--sites-panel-width));
             min-height: 100vh;
             margin-bottom: 0;
@@ -520,6 +695,83 @@
 
         .page.active {
             display: block;
+        }
+
+        /* Footer Bar */
+        .footer-bar {
+            position: fixed;
+            bottom: 0;
+            left: var(--icon-nav-width);
+            right: 0;
+            height: 40px;
+            transition: left 0.3s ease;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 1050;
+            font-size: 12px;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .footer-btn-start {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .footer-btn-start:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        .footer-btn-stop {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .footer-btn-stop:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+        }
+
+        .footer-brand {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .footer-version {
+            opacity: 0.7;
+        }
+
+        .footer-copyright {
+            opacity: 0.5;
         }
 
         .page-header {
@@ -1877,6 +2129,7 @@
         <nav class="icon-nav">
             <div class="icon-nav-logo">
                 <img src="/logo.png" alt="S" onerror="this.parentElement.innerHTML='S'">
+                <span class="icon-nav-title">Stacker</span>
             </div>
 
             <button class="icon-nav-item active" data-page="sites" title="Sites">
@@ -2593,6 +2846,29 @@
                 </div>
             </div>
         </main>
+
+        <!-- Footer Bar -->
+        <footer class="footer-bar">
+            <div class="footer-left">
+                <button class="footer-btn footer-btn-start" onclick="startAllServers()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                    Start All
+                </button>
+                <button class="footer-btn footer-btn-stop" onclick="stopAllServers()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="6" width="12" height="12" />
+                    </svg>
+                    Stop All
+                </button>
+            </div>
+            <div class="footer-right">
+                <span class="footer-brand" onclick="showPage('about')" style="cursor:pointer">Stacker</span>
+                <span class="footer-version" onclick="showChangeLog()" style="cursor:pointer">v1.0.0</span>
+                <span class="footer-copyright">© 2026 Insya, Yasin Kuyu</span>
+            </div>
+        </footer>
     </div>
 
     <!-- Toast Notification -->
@@ -2738,10 +3014,34 @@
         function renderServicesPanelList() {
             const list = document.getElementById('panelList');
             if (!cachedServices || !cachedServices.length) {
-                list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No services installed</div>';
+                list.innerHTML = `
+                    <div class="panel-empty">
+                        <div class="panel-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                        </div>
+                        <div class="panel-empty-title">Get Started</div>
+                        <div class="panel-empty-desc">Install MySQL, Redis, or Apache to power your sites.</div>
+                        <button class="btn btn-primary btn-sm" onclick="showPage('services')">Browse Services</button>
+                    </div>
+                `;
                 return;
             }
-            list.innerHTML = cachedServices.map(s => `
+            const running = cachedServices.filter(s => s.status === 'running').length;
+            list.innerHTML = `
+                <div class="panel-stats">
+                    <div class="panel-stat">
+                        <span class="panel-stat-value">${running}</span>
+                        <span class="panel-stat-label">Running</span>
+                    </div>
+                    <div class="panel-stat">
+                        <span class="panel-stat-value">${cachedServices.length}</span>
+                        <span class="panel-stat-label">Installed</span>
+                    </div>
+                </div>
+            ` + cachedServices.map(s => `
                 <div class="site-list-item" onclick="showPage('services')">
                     <span class="site-status-dot ${s.status === 'running' ? 'running' : 'stopped'}"></span>
                     <span class="site-list-name">${s.name.toUpperCase()}</span>
@@ -2753,10 +3053,30 @@
         function renderPHPPanelList() {
             const list = document.getElementById('panelList');
             if (!cachedPHP || !cachedPHP.length) {
-                list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No PHP versions</div>';
+                list.innerHTML = `
+                    <div class="panel-empty">
+                        <div class="panel-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 20h20"></path>
+                                <path d="M5 20V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12"></path>
+                                <path d="M9 10h6"></path>
+                                <path d="M9 14h6"></path>
+                            </svg>
+                        </div>
+                        <div class="panel-empty-title">PHP Versions</div>
+                        <div class="panel-empty-desc">Install multiple PHP versions and switch between them.</div>
+                        <button class="btn btn-primary btn-sm" onclick="showPage('php')">Install PHP</button>
+                    </div>
+                `;
                 return;
             }
-            list.innerHTML = cachedPHP.map(p => `
+            const defaultPHP = cachedPHP.find(p => p.default);
+            list.innerHTML = `
+                <div class="panel-info-box">
+                    <div class="panel-info-label">Default Version</div>
+                    <div class="panel-info-value">PHP ${defaultPHP ? defaultPHP.version : '-'}</div>
+                </div>
+            ` + cachedPHP.map(p => `
                 <div class="site-list-item" onclick="showPage('php')">
                     <span class="site-status-dot ${p.default ? 'running' : 'stopped'}"></span>
                     <span class="site-list-name">PHP ${p.version}</span>
@@ -2767,19 +3087,99 @@
         // Render dumps panel list
         function renderDumpsPanelList() {
             const list = document.getElementById('panelList');
-            list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">View dumps in main area</div>';
+            list.innerHTML = `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </div>
+                    <div class="panel-empty-title">Dumps</div>
+                    <div class="panel-empty-desc">Use <code>dump()</code> in your PHP code to see output here.</div>
+                </div>
+                <div class="panel-tip">
+                    <strong>Tip:</strong> Add <code>require 'stacker.php'</code> to your project.
+                </div>
+            `;
         }
 
         // Render mail panel list
         function renderMailPanelList() {
             const list = document.getElementById('panelList');
-            list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">View mail in main area</div>';
+            list.innerHTML = `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                    </div>
+                    <div class="panel-empty-title">Mail Catcher</div>
+                    <div class="panel-empty-desc">SMTP on port 1015 catches all outgoing mail.</div>
+                </div>
+                <div class="panel-tip">
+                    <strong>Config:</strong> Set SMTP to <code>localhost:1025</code>
+                </div>
+            `;
         }
 
         // Render default panel list
         function renderDefaultPanelList(section) {
             const list = document.getElementById('panelList');
-            list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">${section} content</div>`;
+            const content = {
+                'about': `
+                    <div class="panel-empty">
+                        <div class="panel-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                        </div>
+                        <div class="panel-empty-title">Stacker</div>
+                        <div class="panel-empty-desc">Local development environment for macOS.</div>
+                    </div>
+                    <div class="panel-tip">Version 1.0.0</div>
+                `,
+                'settings': `
+                    <div class="panel-quick-links">
+                        <div class="panel-quick-link" onclick="setTheme('dark')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                            Dark Theme
+                        </div>
+                        <div class="panel-quick-link" onclick="setTheme('light')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:middle;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                            Light Theme
+                        </div>
+                        <div class="panel-quick-link" onclick="toggleExpandedNav()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:middle;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                            Toggle Nav Size
+                        </div>
+                    </div>
+                `,
+                'logs': `
+                    <div class="panel-empty">
+                        <div class="panel-empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="panel-empty-title">Logs</div>
+                        <div class="panel-empty-desc">View Nginx, PHP, and service logs.</div>
+                    </div>
+                `
+            };
+            list.innerHTML = content[section] || `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">📁</div>
+                    <div class="panel-empty-title">${section}</div>
+                </div>
+            `;
         }
 
         // Filter panel list
@@ -2810,7 +3210,40 @@
         // Stop all sites (placeholder)
         function stopAllSites() {
             showToast('Stopping all sites...', 'warning');
-            // This would call the backend to stop all services
+        }
+
+        // Start all servers
+        async function startAllServers() {
+            showToast('Starting all servers...', 'info');
+            try {
+                // Start all installed services
+                for (const service of cachedServices) {
+                    if (service.status !== 'running') {
+                        await api(`/services/${service.type}-${service.version}/start`, 'POST');
+                    }
+                }
+                showToast('All servers started!', 'success');
+                loadServices();
+            } catch (err) {
+                showToast('Error starting servers: ' + err.message, 'error');
+            }
+        }
+
+        // Stop all servers
+        async function stopAllServers() {
+            showToast('Stopping all servers...', 'warning');
+            try {
+                // Stop all running services
+                for (const service of cachedServices) {
+                    if (service.status === 'running') {
+                        await api(`/services/${service.type}-${service.version}/stop`, 'POST');
+                    }
+                }
+                showToast('All servers stopped!', 'success');
+                loadServices();
+            } catch (err) {
+                showToast('Error stopping servers: ' + err.message, 'error');
+            }
         }
 
         // Update running sites count
@@ -3896,12 +4329,23 @@
             }, 800);
         }
 
+        // Show Change Log
+        function showChangeLog() {
+            // Show a simple modal or redirect to about with a tab
+            showPage('about');
+            setTimeout(() => {
+                // Assuming we'll add a changelog section to about
+                const el = document.getElementById('about-content');
+                if (el) el.innerHTML += '<div style="margin-top:20px;padding:16px;background:var(--bg-tertiary);border-radius:8px;"><h4>Change Log v1.0.0</h4><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">+ Added 3-column layout<br>+ Added footer bar with Start/Stop All<br>+ Fixed PHP-FPM lifecycle management<br>+ Improved UI aesthetics</p></div>';
+            }, 100);
+        }
+
         async function loadServices() {
             const list = document.getElementById('services-list');
 
             // Show loading spinner
             list.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 16px;">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px;">
                     <div class="spinner"></div>
                     <span style="color: var(--text-muted); font-size: 13px;">Loading services...</span>
                 </div>
@@ -3918,19 +4362,24 @@
                 // Cache for panel
                 cachedServices = installed;
 
-                // Group available by type
+                // Group available by type and deduplicate
                 const availableByType = {};
+                const seen = new Set();
                 available.forEach(v => {
+                    const id = v.type + '-' + v.version;
+                    if (seen.has(id)) return;
+                    seen.add(id);
+
                     if (!availableByType[v.type]) availableByType[v.type] = [];
-                    const isInstalled = installedVersions.includes(v.type + '-' + v.version);
+                    const isInstalled = installedVersions.includes(id);
                     availableByType[v.type].push({ version: v.version, installed: isInstalled });
                 });
 
                 let html = `
-                    <div style="padding: 24px;">
-                        <div style="margin-bottom: 32px;">
-                            <h3 style="margin-bottom: 16px; font-size: 14px; text-transform: uppercase; color: var(--text-muted);">Installed Services</h3>
-                            ${installed.length === 0 ? '<div class="empty-state" style="padding: 20px;"><p>No services installed</p></div>' : installed.map(s => `
+                    <div style="padding: 16px;">
+                        <div style="margin-bottom: 24px;">
+                            <h3 style="margin-bottom: 12px; font-size: 12px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Installed Services</h3>
+                            ${installed.length === 0 ? '<div class="empty-state" style="padding: 16px;"><p>No services installed</p></div>' : installed.map(s => `
                                 <div class="service-card">
                                     <div class="service-info">
                                         <div class="service-icon ${s.type}">
