@@ -838,8 +838,8 @@
         .stat-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 24px;
+            border-radius: 12px;
+            padding: 16px 20px;
             box-shadow: 0 2px 8px var(--shadow);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -850,13 +850,13 @@
         }
 
         .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .stat-icon.sites {
@@ -1648,9 +1648,14 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 1px 3px var(--shadow);
-            transition: all 0.2s;
+            transition: background 0.15s, border-color 0.15s;
             flex-wrap: wrap;
             gap: 12px;
+        }
+
+        .service-card:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border);
         }
 
         @media (max-width: 600px) {
@@ -1780,12 +1785,12 @@
         }
 
         .site-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 9px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.2px;
             white-space: nowrap;
         }
 
@@ -2489,7 +2494,7 @@
                 </div>
 
                 <!-- Quick Access Grid -->
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <!-- Recent Sites -->
                     <div class="card">
                         <div class="card-header">
@@ -3799,75 +3804,79 @@
 
                     // Load recent sites
                     const recentSitesEl = document.getElementById('recent-sites');
-                    recentSitesEl.innerHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
-                            <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
-                            <span style="color: var(--text-muted); font-size: 11px;">Loading sites...</span>
-                        </div>
-                    `;
-                    const sites = await api('/sites');
-                    if (sites && sites.length) {
-                        recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
-                            <div class="list-item" style="padding: 12px 16px;">
-                                <div class="item-info">
-                                <div class="item-primary" style="display: flex; align-items: center; gap: 8px;">
-                                        ${s.url.replace(/^https?:\/\//, '')}
-                                        ${s.php ? `<span class="site-badge php" style="font-size: 9px; padding: 2px 6px;">PHP ${s.php}</span>` : ''}
-                                    </div>
-                                    <div class="item-secondary" style="font-size: 12px;">${s.path}</div>
-                                </div>
-                                <button class="icon-btn" onclick="window.open('${s.url}', '_blank')" title="Open in browser">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                        <polyline points="15 3 21 3 21 9"/>
-                                        <line x1="10" y1="14" x2="21" y2="3"/>
-                                    </svg>
-                                </button>
+                    if (recentSitesEl) {
+                        recentSitesEl.innerHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
+                                <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
+                                <span style="color: var(--text-muted); font-size: 11px;">Loading sites...</span>
                             </div>
-                        `).join('');
-                    } else {
-                        recentSitesEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No sites configured</div>';
-                    }
-
-                    // Load quick services
-                    const quickServicesEl = document.getElementById('quick-services');
-                    quickServicesEl.innerHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
-                            <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
-                            <span style="color: var(--text-muted); font-size: 11px;">Loading services...</span>
-                        </div>
-                    `;
-                    const servicesData = await api('/services');
-                    if (servicesData && servicesData.installed) {
-                        const installed = servicesData.installed;
-                        if (installed.length) {
-                            quickServicesEl.innerHTML = installed.slice(0, 5).map(s => `
-                                <div class="list-item" style="padding: 12px 0; border-bottom: none;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="service-icon ${s.type}" style="width: 24px; height: 24px;">
-                                            ${getServiceIcon(s.type)}
+                        `;
+                        const sites = await api('/sites');
+                        if (sites && sites.length) {
+                            recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
+                                <div class="list-item" style="padding: 12px 16px;">
+                                    <div class="item-info">
+                                    <div class="item-primary" style="display: flex; align-items: center; gap: 8px;">
+                                            ${s.url.replace(/^https?:\/\//, '')}
+                                            ${s.php ? `<span class="site-badge php" style="font-size: 9px; padding: 2px 6px;">PHP ${s.php}</span>` : ''}
                                         </div>
-                                        <div class="item-info">
-                                            <div class="item-primary" style="font-size: 13px; font-weight: 600;">${s.type.toUpperCase()} ${s.version}</div>
-                                            <div class="item-secondary" style="font-size: 11px; color: var(--text-muted);">Port: ${s.port || 'Default'}</div>
-                                        </div>
+                                        <div class="item-secondary" style="font-size: 12px;">${s.path}</div>
                                     </div>
-                                    <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 10px; margin-right: 8px;">
-                                        <span class="status-dot"></span>${s.status}
-                                    </span>
-                                    <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" 
-                                        style="width: 32px; height: 32px; padding: 0; justify-content: center;" 
-                                        title="${s.status === 'running' ? 'Stop' : 'Start'}">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                            ${s.status === 'running'
-                                    ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
-                                    : '<polygon points="5 3 19 12 5 21 5 3"/>'}
+                                    <button class="icon-btn" onclick="window.open('${s.url}', '_blank')" title="Open in browser">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                            <polyline points="15 3 21 3 21 9"/>
+                                            <line x1="10" y1="14" x2="21" y2="3"/>
                                         </svg>
                                     </button>
                                 </div>
                             `).join('');
                         } else {
-                            quickServicesEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No services installed yet.</div>';
+                            recentSitesEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No sites configured</div>';
+                        }
+                    }
+
+                    // Load quick services
+                    const quickServicesEl = document.getElementById('quick-services');
+                    if (quickServicesEl) {
+                        quickServicesEl.innerHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
+                                <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
+                                <span style="color: var(--text-muted); font-size: 11px;">Loading services...</span>
+                            </div>
+                        `;
+                        const servicesData = await api('/services');
+                        if (servicesData && servicesData.installed) {
+                            const installed = servicesData.installed;
+                            if (installed.length) {
+                                quickServicesEl.innerHTML = installed.slice(0, 5).map(s => `
+                                    <div class="list-item" style="padding: 12px 0; border-bottom: none;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div class="service-icon ${s.type}" style="width: 24px; height: 24px;">
+                                                ${getServiceIcon(s.type)}
+                                            </div>
+                                            <div class="item-info">
+                                                <div class="item-primary" style="font-size: 13px; font-weight: 600;">${s.type.toUpperCase()} ${s.version}</div>
+                                                <div class="item-secondary" style="font-size: 11px; color: var(--text-muted);">Port: ${s.port || 'Default'}</div>
+                                            </div>
+                                        </div>
+                                        <span class="status-badge status-${s.status}" style="padding: 4px 8px; font-size: 10px; margin-right: 8px;">
+                                            <span class="status-dot"></span>${s.status}
+                                        </span>
+                                        <button class="btn" onclick="${s.status === 'running' ? `stopService('${s.name}')` : `startService('${s.name}')`}" 
+                                            style="width: 32px; height: 32px; padding: 0; justify-content: center;" 
+                                            title="${s.status === 'running' ? 'Stop' : 'Start'}">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                                ${s.status === 'running'
+                                        ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+                                        : '<polygon points="5 3 19 12 5 21 5 3"/>'}
+                                            </svg>
+                                        </button>
+                                    </div>
+                                `).join('');
+                            } else {
+                                quickServicesEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted);">No services installed yet.</div>';
+                            }
                         }
                     }
                 }
@@ -4502,6 +4511,8 @@
                         <option value="8.2">PHP 8.2 (LTS)</option>
                         <option value="8.1">PHP 8.1</option>
                         <option value="8.0">PHP 8.0</option>
+                        <option value="7.4">PHP 7.4 (Legacy)</option>
+                        <option value="5.6">PHP 5.6 (Legacy)</option>
                     </select>
                     <div class="form-hint">PHP will be downloaded from static-php.dev (no external dependencies)</div>
                 </div>
@@ -4524,7 +4535,7 @@
                         </svg>
                         <span style="font-weight: 600;">100% Standalone</span>
                     </div>
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">No Homebrew, apt, or any package manager needed</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Run multiple PHP versions simultaneously with Apache or Nginx</div>
                 </div>
             `;
 
