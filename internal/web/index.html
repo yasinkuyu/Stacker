@@ -4125,8 +4125,8 @@
             const php = document.getElementById('sitePhp').value;
             const ssl = document.getElementById('siteSsl').classList.contains('active');
 
-            if (!name || !path) {
-                showToast('Please fill in all required fields', 'error');
+            if (!name) {
+                showToast('Site name is required', 'error');
                 return;
             }
 

@@ -283,9 +283,33 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Validate
-		if site.Name == "" || site.Path == "" {
-			http.Error(w, "Name and path required", http.StatusBadRequest)
+		if site.Name == "" {
+			http.Error(w, "Site name is required", http.StatusBadRequest)
 			return
+		}
+
+		// Smart domain extension handling
+		// If site name doesn't contain a dot, append default extension
+		// If it contains a dot (e.g., "mysite.dev"), use as-is
+		prefMutex.RLock()
+		domainExt := prefs.DomainExtension
+		prefMutex.RUnlock()
+		if domainExt == "" {
+			domainExt = ".local"
+		}
+
+		siteName := site.Name
+		if !strings.Contains(siteName, ".") {
+			// No extension provided, append default
+			siteName = siteName + domainExt
+		}
+		// Update site name with proper extension
+		site.Name = siteName
+
+		// If path is empty, auto-create in Stacker data folder
+		if site.Path == "" {
+			// Create path as sites/{name} (e.g., sites/myproject.local)
+			site.Path = filepath.Join(ws.stackerDir, "sites", siteName)
 		}
 
 		// Create site directory if needed
@@ -308,18 +332,23 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add to system hosts file
-		prefMutex.RLock()
-		domainExt := prefs.DomainExtension
-		if domainExt == "" {
-			domainExt = ".local"
-		}
-		prefMutex.RUnlock()
-
-		fullDomain := site.Name + domainExt
-		// Only run if not already exists (utils checks, but good to know)
-		// We catch error but don't fail request entirely, just warn
+		// site.Name now already includes the domain extension
+		fullDomain := site.Name
+		// Try to add to hosts file directly
 		if err := utils.AddToHosts(fullDomain); err != nil {
-			fmt.Printf("⚠️ Failed to add to hosts file: %v (try running as admin/root)\n", err)
+			// Permission denied - open terminal with sudo command
+			fmt.Printf("⚠️  Failed to add to hosts file: %v\n", err)
+			fmt.Printf("🔧 Opening terminal with privileged command...\n")
+
+			// Generate the sudo command with proper formatting (space between IP and domain)
+			hostsPath := utils.GetHostsPath()
+			sudoCmd := fmt.Sprintf("echo '127.0.0.1 %s # stacker-app' | sudo tee -a %s", fullDomain, hostsPath)
+
+			// Open terminal with pre-filled command based on OS
+			if err := ws.openTerminalWithCommand(sudoCmd); err != nil {
+				fmt.Printf("⚠️  Could not open terminal: %v\n", err)
+				fmt.Printf("💡 Please run manually: %s\n", sudoCmd)
+			}
 		} else {
 			fmt.Printf("✅ Added %s to hosts file\n", fullDomain)
 		}
@@ -503,6 +532,17 @@ const defaultIndexHTML = `<!DOCTYPE html>
 </html>`
 
 func (ws *WebServer) createSiteConfig(site Site) error {
+	// Create both Nginx and Apache configs
+	if err := ws.createNginxSiteConfig(site); err != nil {
+		return fmt.Errorf("nginx config: %w", err)
+	}
+	if err := ws.createApacheSiteConfig(site); err != nil {
+		return fmt.Errorf("apache config: %w", err)
+	}
+	return nil
+}
+
+func (ws *WebServer) createNginxSiteConfig(site Site) error {
 	confDir := filepath.Join(ws.stackerDir, "conf", "nginx")
 	if err := os.MkdirAll(confDir, 0755); err != nil {
 		return err
@@ -563,6 +603,59 @@ server {
         deny all;
     }
 }
+`, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
+
+	return os.WriteFile(configPath, []byte(config), 0644)
+}
+
+func (ws *WebServer) createApacheSiteConfig(site Site) error {
+	confDir := filepath.Join(ws.stackerDir, "conf", "apache")
+	if err := os.MkdirAll(confDir, 0755); err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(confDir, site.Name+".conf")
+
+	phpPort := ws.getPHPPort(site.PHP)
+
+	// Detect document root (same logic as Nginx)
+	docRoot := site.Path
+	if _, err := os.Stat(site.Path); os.IsNotExist(err) {
+		docRoot = filepath.Join(ws.stackerDir, "sites", site.Name, "public_html")
+	} else {
+		if _, err := os.Stat(filepath.Join(site.Path, "public")); err == nil {
+			docRoot = filepath.Join(site.Path, "public")
+		} else if _, err := os.Stat(filepath.Join(site.Path, "public_html")); err == nil {
+			docRoot = filepath.Join(site.Path, "public_html")
+		}
+	}
+
+	prefMutex.RLock()
+	domainExt := prefs.DomainExtension
+	prefMutex.RUnlock()
+	if domainExt == "" {
+		domainExt = ".local"
+	}
+
+	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
+# Generated: %[2]s
+<VirtualHost *:80>
+    ServerName %[1]s%[5]s
+    DocumentRoot "%[3]s"
+    
+    <Directory "%[3]s">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:fcgi://127.0.0.1:%[4]d"
+    </FilesMatch>
+
+    ErrorLog "${APACHE_LOG_DIR}/%[1]s-error.log"
+    CustomLog "${APACHE_LOG_DIR}/%[1]s-access.log" combined
+</VirtualHost>
 `, site.Name, time.Now().Format(time.RFC3339), docRoot, phpPort, domainExt)
 
 	return os.WriteFile(configPath, []byte(config), 0644)
@@ -1407,6 +1500,33 @@ func OpenFolder(path string) error {
 		cmd = exec.Command("explorer", path)
 	default:
 		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start()
+}
+
+// openTerminalWithCommand opens a terminal with a pre-filled command
+func (ws *WebServer) openTerminalWithCommand(command string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		// macOS: Use osascript to open Terminal.app with command
+		script := fmt.Sprintf(`tell application "Terminal"
+			activate
+			do script "%s"
+		end tell`, command)
+		cmd = exec.Command("osascript", "-e", script)
+	case "linux":
+		// Linux: Try gnome-terminal, then xterm as fallback
+		if _, err := exec.LookPath("gnome-terminal"); err == nil {
+			cmd = exec.Command("gnome-terminal", "--", "bash", "-c", command+"; exec bash")
+		} else {
+			cmd = exec.Command("xterm", "-e", command+"; exec bash")
+		}
+	case "windows":
+		// Windows: Use cmd.exe
+		cmd = exec.Command("cmd", "/k", command)
+	default:
+		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 	return cmd.Start()
 }
