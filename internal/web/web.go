@@ -1213,6 +1213,9 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 			if req.Type != "composer" && req.Type != "nodejs" {
 				svcName := req.Type + "-" + req.Version
 				fmt.Printf("🚀 Auto-starting %s after install...\n", svcName)
+				// Wait a bit to let the frontend receive the "install complete" event (100%)
+				// otherwise StartService immediately resets progress to 10%
+				time.Sleep(2 * time.Second)
 				if err := ws.serviceManager.StartService(svcName); err != nil {
 					fmt.Printf("⚠️ Failed to auto-start %s: %v\n", svcName, err)
 				}
@@ -1266,10 +1269,13 @@ func (ws *WebServer) handleServiceInstallStatus(w http.ResponseWriter, r *http.R
 	}
 
 	progress, errMsg := ws.serviceManager.GetInstallStatus(svcType, version)
+	logMsg := ws.serviceManager.GetInstallLog(svcType, version)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"progress": progress,
 		"error":    errMsg,
+		"log":      logMsg,
 	})
 }
 

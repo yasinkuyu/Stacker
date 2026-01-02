@@ -66,6 +66,7 @@ type ServiceManager struct {
 	baseDir        string
 	installStatus  map[string]int
 	installErrors  map[string]string // Key: svcType-version
+	installLogs    map[string]string // Key: svcType-version (Last log message)
 	statusMu       sync.RWMutex
 	processes      map[string]*exec.Cmd
 	wg             sync.WaitGroup
@@ -138,6 +139,7 @@ func NewServiceManager() *ServiceManager {
 		baseDir:       baseDir,
 		installStatus: make(map[string]int),
 		installErrors: make(map[string]string),
+		installLogs:   make(map[string]string),
 		processes:     make(map[string]*exec.Cmd),
 		shutdown:      make(chan struct{}),
 	}
@@ -635,6 +637,14 @@ func (sm *ServiceManager) installMariaDB(version, installDir, configDir, dataDir
 		if v.Type == "mariadb" && v.Version == version {
 			err := sm.downloadAndExtract(v.URL, installDir, func(progress int) {
 				sm.updateInstallProgress("mariadb", version, 10+progress/2)
+				// Track progress
+				// Update log only every 10% to avoid spamming
+				if progress%10 == 0 {
+					downloadedMB := float64(progress) * float64(v.Size) / 100 / 1024 / 1024
+					totalMB := float64(v.Size) / 1024 / 1024
+					logMsg := fmt.Sprintf("Downloading MariaDB %s: %.1fMB / %.1fMB (%d%%)", version, downloadedMB, totalMB, progress)
+					sm.UpdateInstallLog("mariadb", version, logMsg)
+				}
 			})
 			if err != nil {
 				return err
@@ -977,6 +987,13 @@ func (sm *ServiceManager) installNginx(version, installDir, configDir string) er
 		if v.Type == "nginx" && v.Version == version {
 			err := sm.downloadAndExtract(v.URL, installDir, func(progress int) {
 				sm.updateInstallProgress("nginx", version, 10+progress/2)
+				// Track progress
+				if progress%10 == 0 {
+					downloadedMB := float64(progress) * float64(v.Size) / 100 / 1024 / 1024
+					totalMB := float64(v.Size) / 1024 / 1024
+					logMsg := fmt.Sprintf("Downloading Nginx %s: %.1fMB / %.1fMB (%d%%)", version, downloadedMB, totalMB, progress)
+					sm.UpdateInstallLog("nginx", version, logMsg)
+				}
 			})
 			if err != nil {
 				return err
@@ -990,6 +1007,14 @@ func (sm *ServiceManager) installNginx(version, installDir, configDir string) er
 			}
 
 			// If no configure script, assume binary build and finalize
+
+			// Patch Homebrew bottle if on macOS
+			sm.UpdateInstallLog("nginx", version, "Patching binaries for macOS...")
+			if err := sm.patchHomebrewBottle(installDir); err != nil {
+				sm.UpdateInstallLog("nginx", version, "Warning: Patching failed")
+				fmt.Printf("⚠️ Warning: Failed to patch Nginx binaries: %v\n", err)
+			}
+
 			sm.updateInstallProgress("nginx", version, 100)
 			fmt.Printf("✅ Nginx %s binary installed to %s\n", version, installDir)
 			return nil
@@ -1088,6 +1113,13 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 		if v.Type == "apache" && v.Version == version {
 			err := sm.downloadAndExtract(v.URL, installDir, func(progress int) {
 				sm.updateInstallProgress("apache", version, 10+progress/2)
+				// Track progress
+				if progress%10 == 0 {
+					downloadedMB := float64(progress) * float64(v.Size) / 100 / 1024 / 1024
+					totalMB := float64(v.Size) / 1024 / 1024
+					logMsg := fmt.Sprintf("Downloading Apache %s: %.1fMB / %.1fMB (%d%%)", version, downloadedMB, totalMB, progress)
+					sm.UpdateInstallLog("apache", version, logMsg)
+				}
 			})
 			if err != nil {
 				return err
@@ -1102,6 +1134,14 @@ func (sm *ServiceManager) installApache(version, installDir, configDir, dataDir 
 
 			// If no configure script, assume binary build and finalize
 			sm.createApacheConfig(configDir, dataDir, installDir, version, 80) // Default port for auto detection
+
+			// Patch Homebrew bottle if on macOS
+			sm.UpdateInstallLog("apache", version, "Patching binaries for macOS...")
+			if err := sm.patchHomebrewBottle(installDir); err != nil {
+				sm.UpdateInstallLog("apache", version, "Warning: Patching failed")
+				fmt.Printf("⚠️ Warning: Failed to patch Apache binaries: %v\n", err)
+			}
+
 			sm.updateInstallProgress("apache", version, 100)
 			fmt.Printf("✅ Apache %s binary installed to %s\n", version, installDir)
 			return nil
@@ -1234,6 +1274,7 @@ LoadModule proxy_module lib/httpd/modules/mod_proxy.so
 LoadModule proxy_fcgi_module lib/httpd/modules/mod_proxy_fcgi.so
 LoadModule ssl_module lib/httpd/modules/mod_ssl.so
 LoadModule socache_shmcb_module lib/httpd/modules/mod_socache_shmcb.so
+LoadModule log_config_module lib/httpd/modules/mod_log_config.so
 
 # Logs
 ErrorLog "${APACHE_LOG_DIR}/error_log"
@@ -1254,7 +1295,7 @@ DocumentRoot "%s"
 </Directory>
 
 # Include vhost configurations
-Include "%s/*.conf"
+IncludeOptional "%s/*.conf"
 `, installDir, logDir, port, sharedHtdocs, sharedHtdocs, vhostDir)
 
 	return os.WriteFile(filepath.Join(configDir, "httpd.conf"), []byte(conf), 0644)

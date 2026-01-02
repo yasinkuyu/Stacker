@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -260,7 +259,7 @@ func GetAvailableVersions(serviceType string, platform string) []ServiceVersion 
 
 		for shortVer, versionDef := range service.Versions {
 			for artifactKey, artifact := range versionDef.Artifacts {
-				if artifactKey == "all" || artifactKey == platform || strings.HasPrefix(artifactKey, osName) {
+				if artifactKey == "all" || artifactKey == platform || artifactKey == osName {
 					versions = append(versions, ServiceVersion{
 						Type:      st,
 						Version:   shortVer,

@@ -1028,6 +1028,29 @@
             color: var(--text-primary);
         }
 
+        .btn-loading {
+            cursor: not-allowed;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        .spinner-sm {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        /* Adjust spinner color based on button type */
+        .btn-white .spinner-sm,
+        .btn:not(.btn-primary):not(.btn-danger):not(.btn-warning) .spinner-sm {
+            border-color: rgba(0, 0, 0, 0.1);
+            border-top-color: var(--accent);
+        }
+
         .btn:hover {
             background: var(--accent-light);
             color: var(--accent-hover);
@@ -3455,12 +3478,7 @@
         // Start all servers
         async function startAllServers() {
             const btn = document.getElementById('btn-start-all');
-            let originalHtml = '';
-            if (btn) {
-                originalHtml = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Starting...</span>`;
-            }
+            if (btn) setButtonLoading(btn, true, 'Starting...');
 
             try {
                 showToast('Starting all servers...', 'info');
@@ -3488,22 +3506,14 @@
                 hideGlobalProgress();
                 showToast('Error starting servers: ' + err.message, 'error');
             } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                }
+                if (btn) setButtonLoading(btn, false);
             }
         }
 
         // Stop all servers
         async function stopAllServers() {
             const btn = document.getElementById('btn-stop-all');
-            let originalHtml = '';
-            if (btn) {
-                originalHtml = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = `<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; border-color: white; border-top-color: transparent;"></div> <span>Stopping...</span>`;
-            }
+            if (btn) setButtonLoading(btn, true, 'Stopping...');
 
             try {
                 showToast('Stopping all servers...', 'warning');
@@ -3531,10 +3541,7 @@
                 hideGlobalProgress();
                 showToast('Error stopping servers: ' + err.message, 'error');
             } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                }
+                if (btn) setButtonLoading(btn, false);
             }
         }
 
@@ -3664,6 +3671,33 @@
             toast.className = 'toast show ' + type;
             toastMessage.textContent = message;
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Standardized Button Loading State
+        function setButtonLoading(btn, isLoading, loadingText = '') {
+            if (!btn) return;
+
+            if (isLoading) {
+                // If already loading, do nothing
+                if (btn.classList.contains('btn-loading')) return;
+
+                // Store original HTML if not already stored
+                if (!btn.dataset.originalHtml) {
+                    btn.dataset.originalHtml = btn.innerHTML;
+                }
+
+                const text = loadingText || btn.innerText.trim();
+                btn.style.width = getComputedStyle(btn).width; // Lock width
+                btn.classList.add('btn-loading');
+                btn.innerHTML = `<span class="spinner-sm"></span> <span>${text}</span>`;
+            } else {
+                btn.classList.remove('btn-loading');
+                // Restore original HTML
+                if (btn.dataset.originalHtml) {
+                    btn.innerHTML = btn.dataset.originalHtml;
+                }
+                btn.style.width = ''; // Release width
+            }
         }
 
         // ==========================================
@@ -4486,7 +4520,15 @@
             `;
 
             // Start installation
-            api('/php/install', 'POST', { version, xdebug });
+            const btn = document.getElementById('drawPanelSave');
+            setButtonLoading(btn, true, 'Installing...');
+            try {
+                await api('/php/install', 'POST', { version, xdebug });
+            } catch (err) {
+                setButtonLoading(btn, false);
+                showToast(err.message, 'error');
+                return;
+            }
 
             // Poll progress
             const log = document.getElementById('installLog');
@@ -4522,8 +4564,12 @@
 
                         setTimeout(() => {
                             showToast('PHP ' + version + ' installed successfully');
-                            closeDrawPanel();
-                            loadPHP();
+
+                            setTimeout(() => {
+                                setButtonLoading(btn, false);
+                                closeDrawPanel();
+                                loadPHP();
+                            }, 1000);
                         }, 1000);
                     }
                 }
@@ -4703,6 +4749,12 @@
                 if (status) {
                     const progress = status.progress;
                     const error = status.error;
+                    const log = status.log;
+
+                    if (log) {
+                        document.getElementById('action-log').textContent = log;
+                    }
+
                     if (progress === -1) {
                         clearInterval(interval);
                         document.getElementById('action-log').innerHTML = `<span style="color: var(--danger);">Operation failed: ${error || 'Unknown error'}</span>`;
@@ -4712,7 +4764,14 @@
                     document.getElementById('action-percent').textContent = progress + '%';
                     if (progress === 100) {
                         clearInterval(interval);
-                        document.getElementById('action-log').textContent = 'Completed!';
+                        // If we have a final log message, keep it, otherwise show Completed
+                        if (!log) {
+                            document.getElementById('action-log').textContent = 'Completed!';
+                        } else {
+                            // Append Completed to the log or just show log
+                            document.getElementById('action-log').textContent = 'Completed! ' + log;
+                        }
+
                         setTimeout(() => {
                             closeDrawPanel();
                             loadServices();
