@@ -3,6 +3,8 @@
 
 package tray
 
+import (
+	"fmt"
 	"os/exec"
 	"runtime"
 

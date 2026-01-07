@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
 // GetStackerDir returns the Stacker application data directory
@@ -23,10 +22,8 @@ func GetStackerDir() string {
 
 			// Check if we can write to this directory
 			// In App Translocation (quarantine), this will be read-only
-			if runtime.GOOS == "darwin" {
-				if err := syscall.Access(filepath.Dir(resourcesPath), 2); err == nil { // 2 is W_OK
-					return resourcesPath
-				}
+			if isWritable(resourcesPath) {
+				return resourcesPath
 			}
 		}
 	}
