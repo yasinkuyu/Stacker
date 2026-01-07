@@ -1627,6 +1627,9 @@ Listen 443
 LoadModule mpm_event_module lib/httpd/modules/mod_mpm_event.so
 LoadModule authn_core_module lib/httpd/modules/mod_authn_core.so
 LoadModule authz_core_module lib/httpd/modules/mod_authz_core.so
+LoadModule authz_host_module lib/httpd/modules/mod_authz_host.so
+LoadModule authz_user_module lib/httpd/modules/mod_authz_user.so
+LoadModule autoindex_module lib/httpd/modules/mod_autoindex.so
 LoadModule dir_module lib/httpd/modules/mod_dir.so
 LoadModule mime_module lib/httpd/modules/mod_mime.so
 LoadModule unixd_module lib/httpd/modules/mod_unixd.so
