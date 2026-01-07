@@ -43,7 +43,7 @@ func Load(cfgFile string) *Config {
 	}
 
 	cfg := &Config{
-		Domain:  "*.test",
+		Domain:  "*.local",
 		Port:    443,
 		PHPPath: "/usr/bin/php",
 		Sites:   []Site{},

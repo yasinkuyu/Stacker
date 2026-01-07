@@ -764,7 +764,7 @@ func (ws *WebServer) createNginxSiteConfig(site Site) error {
 # Generated: %[2]s
 server {
     listen %[6]d;
-    server_name %[1]s%[5]s;
+    server_name %[1]s;
     root "%[3]s";
     index index.php index.html index.htm;
 
@@ -795,7 +795,7 @@ server {
 		sslConfig := fmt.Sprintf(`
 server {
     listen 443 ssl;
-    server_name %[1]s%[6]s;
+    server_name %[1]s;
     root "%[2]s";
     index index.php index.html index.htm;
 
@@ -872,7 +872,7 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
 	config := fmt.Sprintf(`# Stacker Site Config: %[1]s
 # Generated: %[2]s
 <VirtualHost *:%[5]d>
-    ServerName %[1]s%[6]s
+    ServerName %[1]s
     DocumentRoot "%[3]s"
     
     <Directory "%[3]s">
@@ -897,7 +897,7 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
 
 		sslConfig := fmt.Sprintf(`
 <VirtualHost *:443>
-    ServerName %[1]s%[6]s
+    ServerName %[1]s
     DocumentRoot "%[2]s"
     
     SSLEngine on

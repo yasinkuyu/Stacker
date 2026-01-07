@@ -4218,7 +4218,11 @@
         }
 
         function updateSiteHint(val, ext) {
-            document.getElementById('siteHint').textContent = 'Will be accessible at ' + (val || 'my-project') + ext;
+            let site = val || 'my-project';
+            if (!site.includes('.')) {
+                site += ext;
+            }
+            document.getElementById('siteHint').textContent = 'Will be accessible at ' + site;
         }
 
         async function editSite(site) {
@@ -4352,8 +4356,12 @@
             }
         }
 
-        function openSiteInBrowser(name) {
-            window.open('https://' + name + '.test', '_blank');
+        function openSiteInBrowser(site) {
+            if (site.url) {
+                window.open(site.url, '_blank');
+            } else {
+                window.open('http://' + site.name, '_blank');
+            }
         }
 
         async function openSiteFolder(path) {
