@@ -236,6 +236,48 @@
             flex-shrink: 0;
         }
 
+        /* Status dot for nav items */
+        .nav-status-dot {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            border: 1.5px solid rgba(0, 0, 0, 0.3);
+            transition: background 0.3s ease;
+        }
+
+        .nav-status-dot.status-all {
+            background: #22c55e;
+        }
+
+        .nav-status-dot.status-some {
+            background: #f59e0b;
+        }
+
+        .nav-status-dot.status-none {
+            background: #ef4444;
+        }
+
+        .nav-status-dot.status-disconnected {
+            background: #6b7280;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
         /* Icon Nav Labels (hidden by default, shown when expanded) */
         .icon-nav-label {
             display: none;
@@ -2274,6 +2316,7 @@
             </button>
 
             <button class="icon-nav-item" data-page="services" title="Services">
+                <span id="services-status-dot" class="nav-status-dot status-none"></span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                 </svg>
@@ -3175,6 +3218,38 @@
         <span id="toast-message"></span>
     </div>
 
+    <!-- Connection Lost Modal -->
+    <div class="modal-overlay" id="connectionLostModal">
+        <div class="modal-content" style="text-align: center; padding: 40px;">
+            <div style="margin-bottom: 20px;">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="1.5"
+                    style="opacity: 0.9;">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+            </div>
+            <h2 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;"
+                data-i18n="connection.lost_title">Connection Lost</h2>
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;"
+                data-i18n="connection.lost_message">Unable to connect to Stacker server.</p>
+            <p
+                style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+                <span data-i18n="connection.launch_hint">Please open Stacker.app from Applications folder.</span>
+            </p>
+            <button class="btn btn-primary" onclick="retryConnection()" id="retryConnectionBtn"
+                style="min-width: 180px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="margin-right: 6px;">
+                    <path d="M23 4v6h-6" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+                <span data-i18n="connection.retry">Retry Connection</span>
+            </button>
+            <p id="retryStatus" style="font-size: 12px; color: var(--text-muted); margin-top: 16px;"></p>
+        </div>
+    </div>
+
     <!-- Draw Panel Overlay -->
     <div class="draw-panel-overlay" id="drawPanelOverlay" onclick="closeDrawPanel()"></div>
 
@@ -3332,12 +3407,15 @@
         // UI & Navigation (New 3-Column Layout)
         // ==========================================
 
+        let currentPage = 'dashboard';
+
         // Icon Nav click handlers
         document.querySelectorAll('.icon-nav-item').forEach(item => {
             item.addEventListener('click', () => {
                 document.querySelectorAll('.icon-nav-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
                 const page = item.dataset.page;
+                currentPage = page; // Update global state
                 showPage(page);
                 updatePanelForSection(page);
             });
@@ -3806,6 +3884,7 @@
         }
 
         function showPage(pageId) {
+            currentPage = pageId; // Update global state
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelectorAll('.icon-nav-item').forEach(n => n.classList.remove('active'));
@@ -3962,9 +4041,14 @@
                             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; gap: 12px;">
                                 <div class="spinner" style="width: 24px; height: 24px; border-width: 2px;"></div>
                                 <span style="color: var(--text-muted); font-size: 11px;">Loading sites...</span>
-                            </div>
                         `;
                         const sites = await api('/sites');
+                        // Cache sites for panel and other uses
+                        cachedSites = sites || [];
+                        // Re-render panel list now that sites are loaded
+                        if (currentPage === 'dashboard') {
+                            renderDashboardPanelList();
+                        }
                         if (sites && sites.length) {
                             recentSitesEl.innerHTML = sites.slice(0, 5).map(s => `
                                 <div class="list-item" style="padding: 12px 16px;">
@@ -4444,7 +4528,16 @@
                         <button class="toggle-switch ${site.ssl ? 'active' : ''}" id="siteSsl" onclick="this.classList.toggle('active')"></button>
                     </div>
                 </div>
-                <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+                <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                    <button class="btn" onclick="editSiteConfig('${site.name}', '${site.server || 'apache'}')">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                        Edit Config
+                    </button>
                     <button class="btn btn-danger" onclick="deleteSite('${site.name}')">
                         <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"/>
@@ -4518,6 +4611,65 @@
                 btn.disabled = false;
                 btn.style.minWidth = '';
                 btn.innerHTML = originalText;
+            }
+        }
+
+        async function editSiteConfig(siteName, serverType) {
+            showOperationProgress('Loading config...');
+            try {
+                const res = await api(`/sites/${siteName}/config`);
+                hideOperationProgress();
+                if (!res || !res.content) {
+                    showToast('Config file not found. Try saving the site first.', 'error');
+                    return;
+                }
+
+                const content = `
+                    <div style="display: flex; flex-direction: column; height: 100%;">
+                        <div style="margin-bottom: 12px; color: var(--text-muted); font-size: 12px;">
+                            📄 ${res.path}
+                        </div>
+                        <textarea id="site-config-editor" style="flex: 1; width: 100%; min-height: 400px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; line-height: 1.5; background: var(--bg-tertiary); color: var(--text); border: 1px solid var(--border); border-radius: 8px; resize: none;">${res.content}</textarea>
+                        <div style="margin-top: 12px; display: flex; gap: 12px; justify-content: flex-end;">
+                            <button class="btn" onclick="closeDrawPanel()">Cancel</button>
+                            <button class="btn btn-primary" id="save-site-config-btn" onclick="saveSiteConfig('${siteName}', '${serverType}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                Save & Restart ${serverType === 'nginx' ? 'Nginx' : 'Apache'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                closeDrawPanel();
+                setTimeout(() => openDrawPanel('Edit Config: ' + siteName, content, null, null, true), 100);
+            } catch (err) {
+                hideOperationProgress();
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function saveSiteConfig(siteName, serverType) {
+            const content = document.getElementById('site-config-editor').value;
+            const btn = document.getElementById('save-site-config-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"/></svg> Saving...';
+            }
+            try {
+                await api(`/sites/${siteName}/config`, 'POST', { content, server: serverType });
+                showToast('Config saved & server restarted');
+                closeDrawPanel();
+                loadSites();
+            } catch (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save & Restart';
+                }
+                showToast(err.message, 'error');
             }
         }
 
@@ -5142,7 +5294,7 @@
                                         <div>
                                             <div class="service-name">${s.name} ${s.version}</div>
                                             <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
-                                            ${(s.type === 'mysql' || s.type === 'mariadb') ? `<div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">👤 root:root • 📁 data/${s.type}</div>` : ''}
+                                            ${(s.type === 'mysql' || s.type === 'mariadb') ? `<div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">👤 user: root pass: root • 📁 data/${s.type}</div>` : ''}
                                             ${s.port_in_use && s.status !== 'running' ? `<div style="color: var(--warning); font-size: 11px; margin-top: 4px;">⚠️ Port ${s.port} used by: ${s.port_conflict || 'another app'}</div>` : ''}
                                         </div>
                                     </div>
@@ -5200,6 +5352,9 @@
                                             </div>
                                         </div>
                                         <div style="display: flex; gap: 12px; align-items: center;">
+                                            ${(type === 'mysql') ? `
+                                            <input type="text" id="password-${type}" class="form-input" placeholder="root pass (default: root)" style="padding: 6px 12px; font-size: 13px; width: 160px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary);">
+                                            ` : ''}
                                             <select class="form-select" id="version-${type}" style="padding: 6px 12px; font-size: 13px; width: 140px;" onchange="checkInstalled('${type}')">
                                                 ${availableVersions.map(v => {
                         let suffix = '';
@@ -5226,8 +5381,124 @@
                 list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading services</div>';
             } finally {
                 setLoading(list, false);
+                updateServiceStatusIndicator();
             }
         }
+
+        // Track connection status to tray app
+        let isConnectedToTray = true;
+
+        function updateServiceStatusIndicator() {
+            const dot = document.getElementById('services-status-dot');
+            const startAllBtn = document.getElementById('btn-start-all');
+            const stopAllBtn = document.getElementById('btn-stop-all');
+
+            if (!dot) return;
+
+            // Remove all status classes
+            dot.classList.remove('status-all', 'status-some', 'status-none', 'status-disconnected');
+
+            // Check connection status first
+            if (!isConnectedToTray) {
+                dot.classList.add('status-disconnected');
+                dot.title = 'Disconnected from Stacker';
+                return;
+            }
+
+            // Calculate service status
+            const total = cachedServices.length;
+            const running = cachedServices.filter(s => s.status === 'running').length;
+
+            if (total === 0) {
+                dot.classList.add('status-none');
+                dot.title = 'No services installed';
+            } else if (running === 0) {
+                dot.classList.add('status-none');
+                dot.title = 'All services stopped';
+            } else if (running === total) {
+                dot.classList.add('status-all');
+                dot.title = `All ${running} services running`;
+            } else {
+                dot.classList.add('status-some');
+                dot.title = `${running} of ${total} services running`;
+            }
+
+            // Update Start/Stop All button visibility (hide when not applicable)
+            if (startAllBtn) {
+                startAllBtn.style.display = (running === total) || total === 0 ? 'none' : 'inline-flex';
+            }
+            if (stopAllBtn) {
+                stopAllBtn.style.display = running === 0 ? 'none' : 'inline-flex';
+            }
+        }
+
+        // Connection health check - detect if tray app is disconnected
+        async function checkTrayConnection() {
+            try {
+                const res = await fetch('/api/status', { method: 'GET' });
+                if (res.ok) {
+                    if (!isConnectedToTray) {
+                        isConnectedToTray = true;
+                        hideConnectionLostModal();
+                        showToast('Reconnected to Stacker');
+                        loadStatus();
+                    }
+                } else {
+                    throw new Error('Not OK');
+                }
+            } catch (err) {
+                if (isConnectedToTray) {
+                    isConnectedToTray = false;
+                    updateServiceStatusIndicator();
+                    showConnectionLostModal();
+                }
+            }
+        }
+
+        function showConnectionLostModal() {
+            const modal = document.getElementById('connectionLostModal');
+            if (modal) {
+                modal.classList.add('open');
+                document.getElementById('retryStatus').textContent = '';
+            }
+        }
+
+        function hideConnectionLostModal() {
+            const modal = document.getElementById('connectionLostModal');
+            if (modal) {
+                modal.classList.remove('open');
+            }
+        }
+
+        async function retryConnection() {
+            const btn = document.getElementById('retryConnectionBtn');
+            const status = document.getElementById('retryStatus');
+
+            btn.disabled = true;
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"/></svg> Connecting...';
+            status.textContent = 'Attempting to reconnect...';
+
+            try {
+                const res = await fetch('/api/status', { method: 'GET' });
+                if (res.ok) {
+                    isConnectedToTray = true;
+                    hideConnectionLostModal();
+                    showToast('Reconnected to Stacker');
+                    loadStatus();
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (err) {
+                status.textContent = 'Connection failed. Make sure Stacker is running.';
+                status.style.color = 'var(--danger)';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Retry Connection';
+            }
+        }
+
+        // Start connection health check interval
+        setInterval(checkTrayConnection, 5000);
 
         function checkInstalled(type) {
             const select = document.getElementById(`version-${type}`);
@@ -5247,9 +5518,17 @@
 
         async function installService(type, btn) {
             const version = document.getElementById(`version-${type}`).value;
+
+            // Get password for MySQL (use input if exists, default: root)
+            let password = 'root';
+            const passwordInput = document.getElementById(`password-${type}`);
+            if (passwordInput && passwordInput.value) {
+                password = passwordInput.value;
+            }
+
             if (btn) setButtonLoading(btn, true);
             try {
-                await api('/services/install', 'POST', { type, version });
+                await api('/services/install', 'POST', { type, version, password });
                 if (btn) setButtonLoading(btn, false);
                 showToast(`Starting installation of ${type} ${version}...`);
 

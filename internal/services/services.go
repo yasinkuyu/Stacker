@@ -61,21 +61,22 @@ type DetailedStatus struct {
 }
 
 type ServiceManager struct {
-	services       map[string]*Service
-	available      []ServiceVersion
-	mu             sync.RWMutex
-	baseDir        string
-	installStatus  map[string]int
-	installErrors  map[string]string // Key: svcType-version
-	installLogs    map[string]string // Key: svcType-version (Last log message)
-	statusMu       sync.RWMutex
-	processes      map[string]*exec.Cmd
-	wg             sync.WaitGroup
-	shutdown       chan struct{}
-	OnStatusChange func()
-	apachePort     int
-	nginxPort      int
-	mysqlPort      int
+	services         map[string]*Service
+	available        []ServiceVersion
+	mu               sync.RWMutex
+	baseDir          string
+	installStatus    map[string]int
+	installErrors    map[string]string // Key: svcType-version
+	installLogs      map[string]string // Key: svcType-version (Last log message)
+	installPasswords map[string]string // Key: svcType-version (For MySQL root password)
+	statusMu         sync.RWMutex
+	processes        map[string]*exec.Cmd
+	wg               sync.WaitGroup
+	shutdown         chan struct{}
+	OnStatusChange   func()
+	apachePort       int
+	nginxPort        int
+	mysqlPort        int
 }
 
 func NewServiceManager() *ServiceManager {
@@ -253,6 +254,9 @@ func NewServiceManager() *ServiceManager {
             </div>
         </div>
     </div>
+    <footer style="position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.3); font-size: 12px;">
+        Stacker v1.1.0 • Made with ❤️ by <a href="https://github.com/yasinkuyu" target="_blank" style="color: rgba(255,255,255,0.5); text-decoration: none;">Yasin Kuyu</a>
+    </footer>
 </body>
 </html>`
 		os.WriteFile(indexFile, []byte(defaultHtml), 0644)
@@ -568,9 +572,19 @@ func (sm *ServiceManager) GetAvailableVersions(svcType string) []ServiceVersion 
 }
 
 func (sm *ServiceManager) InstallService(svcType, version string) error {
+	return sm.InstallServiceWithPassword(svcType, version, "root")
+}
+
+// InstallServiceWithPassword installs a service with an optional password (used for MySQL)
+func (sm *ServiceManager) InstallServiceWithPassword(svcType, version, password string) error {
 	key := svcType + "-" + version
 	sm.statusMu.Lock()
 	sm.installStatus[key] = 0
+	// Store password for MySQL install
+	if sm.installPasswords == nil {
+		sm.installPasswords = make(map[string]string)
+	}
+	sm.installPasswords[key] = password
 	sm.statusMu.Unlock()
 
 	installDir := filepath.Join(sm.baseDir, "bin", svcType, version)
@@ -734,25 +748,33 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 				} else {
 					fmt.Printf("✅ MySQL data directory initialized\n")
 
-					// Set root password to 'root' using --bootstrap
-					fmt.Printf("🔐 Setting MySQL root password to 'root'...\n")
+					// Get password from stored passwords (default: root)
+					sm.statusMu.RLock()
+					password := sm.installPasswords["mysql-"+version]
+					sm.statusMu.RUnlock()
+					if password == "" {
+						password = "root"
+					}
+
+					// Set root password using --bootstrap
+					fmt.Printf("🔐 Setting MySQL root password to '%s'...\n", password)
 					bootstrapCmd := exec.Command(mysqldPath,
 						"--bootstrap",
 						"--datadir="+dataDir,
 						"--basedir="+binaryPath,
 					)
 					bootstrapCmd.Env = env
-					bootstrapCmd.Stdin = strings.NewReader("ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';\nFLUSH PRIVILEGES;\n")
+					bootstrapCmd.Stdin = strings.NewReader(fmt.Sprintf("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s';\nFLUSH PRIVILEGES;\n", password))
 					if bout, berr := bootstrapCmd.CombinedOutput(); berr != nil {
 						fmt.Printf("⚠️ MySQL bootstrap error: %v\nOutput: %s\n", berr, string(bout))
 					} else {
-						fmt.Printf("✅ MySQL root password set\n")
+						fmt.Printf("✅ MySQL root password set to '%s'\n", password)
 					}
 				}
 			}
 
 			sm.updateInstallProgress("mysql", version, 100)
-			fmt.Printf("✅ MySQL %s installed and initialized with password 'root'\n", version)
+			fmt.Printf("✅ MySQL %s installed and initialized\n", version)
 			return nil
 		}
 	}

@@ -405,6 +405,8 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/services/start/", ws.handleServiceStart)
 	http.HandleFunc("/api/services/stop/", ws.handleServiceStop)
 	http.HandleFunc("/api/services/restart/", ws.handleServiceRestart)
+	http.HandleFunc("/api/services/start-all", ws.handleServiceStartAll)
+	http.HandleFunc("/api/services/stop-all", ws.handleServiceStopAll)
 	http.HandleFunc("/api/services/config/", ws.handleServiceConfig)
 	http.HandleFunc("/api/dumps", ws.handleDumps)
 	http.HandleFunc("/api/mail", ws.handleMail)
@@ -664,13 +666,21 @@ func (ws *WebServer) handleSites(w http.ResponseWriter, r *http.Request) {
 func (ws *WebServer) handleSiteByName(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract site name from URL: /api/sites/sitename
+	// Extract site name from URL: /api/sites/sitename or /api/sites/sitename/config
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 4 {
 		http.Error(w, "Site name required", http.StatusBadRequest)
 		return
 	}
 	siteName := parts[3]
+
+	// Check if this is a config request: /api/sites/sitename/config
+	isConfigRequest := len(parts) >= 5 && parts[4] == "config"
+
+	if isConfigRequest {
+		ws.handleSiteConfigRequest(w, r, siteName)
+		return
+	}
 
 	switch r.Method {
 	case "PUT":
@@ -714,11 +724,91 @@ func (ws *WebServer) handleSiteByName(w http.ResponseWriter, r *http.Request) {
 		sitesMu.Unlock()
 		saveSites(ws.stackerDir)
 
-		// Remove site config
-		configPath := filepath.Join(ws.stackerDir, "conf", "nginx", siteName+".conf")
-		os.Remove(configPath)
+		// Remove site config from both nginx and apache vhosts
+		nginxConfigPath := filepath.Join(ws.stackerDir, "conf", "nginx", siteName+".conf")
+		apacheConfigPath := filepath.Join(ws.stackerDir, "conf", "apache", "vhosts", siteName+".conf")
+		os.Remove(nginxConfigPath)
+		os.Remove(apacheConfigPath)
 
 		json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (ws *WebServer) handleSiteConfigRequest(w http.ResponseWriter, r *http.Request, siteName string) {
+	// Find the site to determine server type
+	sitesMu.RLock()
+	var site *Site
+	for _, s := range sites {
+		if s.Name == siteName {
+			siteCopy := s
+			site = &siteCopy
+			break
+		}
+	}
+	sitesMu.RUnlock()
+
+	serverType := "apache"
+	if site != nil && site.Server != "" {
+		serverType = site.Server
+	}
+
+	// Determine config path based on server type
+	var configPath string
+	if serverType == "nginx" {
+		configPath = filepath.Join(ws.stackerDir, "conf", "nginx", siteName+".conf")
+	} else {
+		configPath = filepath.Join(ws.stackerDir, "conf", "apache", "vhosts", siteName+".conf")
+	}
+
+	switch r.Method {
+	case "GET":
+		content, err := os.ReadFile(configPath)
+		if err != nil {
+			http.Error(w, "Config file not found", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{
+			"content": string(content),
+			"path":    configPath,
+			"server":  serverType,
+		})
+
+	case "POST":
+		var payload struct {
+			Content string `json:"content"`
+			Server  string `json:"server"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		if err := os.WriteFile(configPath, []byte(payload.Content), 0644); err != nil {
+			http.Error(w, "Failed to write config: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Restart the appropriate server
+		if payload.Server == "nginx" {
+			ws.serviceManager.RestartService("nginx-active")
+		} else {
+			// Find and restart/start apache service
+			for _, svc := range ws.serviceManager.GetServices() {
+				if svc.Type == "apache" {
+					if svc.Status == "running" {
+						ws.serviceManager.RestartService(svc.Name)
+					} else {
+						ws.serviceManager.StartService(svc.Name)
+					}
+					break
+				}
+			}
+		}
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1103,7 +1193,7 @@ server {
 }
 
 func (ws *WebServer) createApacheSiteConfig(site Site) error {
-	confDir := filepath.Join(ws.stackerDir, "conf", "apache")
+	confDir := filepath.Join(ws.stackerDir, "conf", "apache", "vhosts")
 	if err := os.MkdirAll(confDir, 0755); err != nil {
 		return err
 	}
@@ -1538,17 +1628,24 @@ func (ws *WebServer) handleServiceInstall(w http.ResponseWriter, r *http.Request
 	}
 
 	var req struct {
-		Type    string `json:"type"`
-		Version string `json:"version"`
-		Port    int    `json:"port"`
+		Type     string `json:"type"`
+		Version  string `json:"version"`
+		Port     int    `json:"port"`
+		Password string `json:"password"` // For MySQL root password
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
+	// Store password for MySQL install (default: root)
+	password := req.Password
+	if password == "" {
+		password = "root"
+	}
+
 	go func() {
-		if err := ws.serviceManager.InstallService(req.Type, req.Version); err != nil {
+		if err := ws.serviceManager.InstallServiceWithPassword(req.Type, req.Version, password); err != nil {
 			// Set progress to -1 on error and store error message
 			ws.serviceManager.SetInstallError(req.Type, req.Version, err.Error())
 			fmt.Printf("Error installing service: %v\n", err)
@@ -1713,6 +1810,44 @@ func (ws *WebServer) handleServiceRestart(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "restarted", "name": serviceName})
+}
+
+func (ws *WebServer) handleServiceStartAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	started := []string{}
+	for _, svc := range ws.serviceManager.GetServices() {
+		if svc.Status != "running" {
+			if err := ws.serviceManager.StartService(svc.Name); err == nil {
+				started = append(started, svc.Name)
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "started", "services": started})
+}
+
+func (ws *WebServer) handleServiceStopAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	stopped := []string{}
+	for _, svc := range ws.serviceManager.GetServices() {
+		if svc.Status == "running" {
+			if err := ws.serviceManager.StopService(svc.Name); err == nil {
+				stopped = append(stopped, svc.Name)
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "stopped", "services": stopped})
 }
 
 func (ws *WebServer) handleServiceConfig(w http.ResponseWriter, r *http.Request) {
