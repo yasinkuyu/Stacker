@@ -311,6 +311,10 @@ func (sm *ServiceManager) loadInstalledServices() {
 					version := vEntry.Name()
 					svcName := svcType + "-" + version
 
+					if (version == "bin" || version == "sbin") && strings.Contains(svcType, ".") {
+						svcName = svcType
+					}
+
 					// Check for status file or binary
 					installDir := filepath.Join(binDir, svcType, version)
 					originalInstallDir := installDir
@@ -471,10 +475,14 @@ func (sm *ServiceManager) checkPortInUse(port int) (bool, string) {
 		pids := strings.Split(pidStr, "\n")
 		if len(pids) > 0 {
 			// Get process name for first PID
-			psCmd := exec.Command("ps", "-p", pids[0], "-o", "comm=")
+			psCmd := exec.Command("ps", "-ww", "-p", pids[0], "-o", "command=")
 			psOutput, psErr := psCmd.Output()
 			if psErr == nil {
 				processName := strings.TrimSpace(string(psOutput))
+				// If it's too long, just take the first part
+				if len(processName) > 100 {
+					processName = processName[:97] + "..."
+				}
 				return true, fmt.Sprintf("%s (PID: %s)", processName, pids[0])
 			}
 		}
@@ -624,9 +632,17 @@ func (sm *ServiceManager) getDefaultPort(svcType string) int {
 			return sm.apachePort
 		}
 		return 80
+	case "php":
+		return 9000
 	case "redis":
 		return 6379
 	}
+
+	// Handle php5.6, php8.3 etc.
+	if strings.HasPrefix(svcType, "php") {
+		return 9000
+	}
+
 	return 0
 }
 
@@ -659,10 +675,11 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 					"--datadir="+dataDir,
 					"--basedir="+binaryPath,
 				)
-				initCmd.Env = append(os.Environ(),
+				env := append(os.Environ(),
 					"DYLD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
 					"LD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
 				)
+				initCmd.Env = env
 				output, err := initCmd.CombinedOutput()
 				if err != nil {
 					fmt.Printf("⚠️ MySQL init error: %v\nOutput: %s\n", err, string(output))
@@ -676,6 +693,7 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 						"--datadir="+dataDir,
 						"--basedir="+binaryPath,
 					)
+					bootstrapCmd.Env = env
 					bootstrapCmd.Stdin = strings.NewReader("ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';\nFLUSH PRIVILEGES;\n")
 					if bout, berr := bootstrapCmd.CombinedOutput(); berr != nil {
 						fmt.Printf("⚠️ MySQL bootstrap error: %v\nOutput: %s\n", berr, string(bout))
@@ -1029,6 +1047,43 @@ func (sm *ServiceManager) findApacheBinary(installDir string) string {
 		}
 	}
 	fmt.Printf("🚫 Apache binary NOT found in %s\n", installDir)
+	return ""
+}
+
+func (sm *ServiceManager) findPHPBinary(installDir string) string {
+	fmt.Printf("🔍 Checking PHP binary in: %s\n", installDir)
+
+	// Check both bin and sbin directories
+	binPaths := []string{"sbin/php-fpm", "bin/php-fpm", "bin/php"}
+
+	// Direct check
+	for _, binPath := range binPaths {
+		directPath := filepath.Join(installDir, binPath)
+		if _, err := os.Stat(directPath); err == nil {
+			fmt.Printf("✅ Found PHP binary directly at: %s\n", directPath)
+			return directPath
+		}
+	}
+
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		fmt.Printf("⚠️ Could not read installDir: %v\n", err)
+		return ""
+	}
+
+	// Check subdirectories
+	for _, entry := range entries {
+		if entry.IsDir() {
+			for _, binPath := range binPaths {
+				binaryPath := filepath.Join(installDir, entry.Name(), binPath)
+				if _, err := os.Stat(binaryPath); err == nil {
+					fmt.Printf("✅ Found PHP binary in subdirectory: %s\n", binaryPath)
+					return binaryPath
+				}
+			}
+		}
+	}
+	fmt.Printf("🚫 PHP binary NOT found in %s\n", installDir)
 	return ""
 }
 
@@ -2204,6 +2259,33 @@ func (sm *ServiceManager) StartService(name string) error {
 	var cmd *exec.Cmd
 	var binaryPath string
 
+	// Check and clear orphan processes if port is in use
+	if svc.Port > 0 {
+		inUse, conflict := sm.checkPortInUse(svc.Port)
+		if inUse && strings.Contains(conflict, "(PID: ") {
+			// Extract PID
+			parts := strings.Split(conflict, "(PID: ")
+			if len(parts) > 1 {
+				pidStr := strings.TrimRight(parts[1], ")")
+				var pid int
+				fmt.Sscanf(pidStr, "%d", &pid)
+
+				// Verify if it's our process using -ww to get full command line
+				psCmd := exec.Command("ps", "-ww", "-p", pidStr, "-o", "command=")
+				psOutput, _ := psCmd.Output()
+				fullCmd := strings.TrimSpace(string(psOutput))
+
+				if pid > 0 && strings.Contains(fullCmd, "Stacker") {
+					fmt.Printf("⚠️ Port %d is occupied by an orphan Stacker process (PID: %d). Cleaning up...\n", svc.Port, pid)
+					if process, err := os.FindProcess(pid); err == nil {
+						process.Signal(syscall.SIGKILL)
+						time.Sleep(1 * time.Second) // Give it a moment
+					}
+				}
+			}
+		}
+	}
+
 	switch svc.Type {
 	case "mariadb":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
@@ -2237,6 +2319,32 @@ func (sm *ServiceManager) StartService(name string) error {
 		cmd = sm.startNginx(svc, binaryPath)
 	case "apache":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
+
+		// Check if port is in use and handle orphan processes
+		inUse, conflict := sm.checkPortInUse(svc.Port)
+		if inUse && strings.Contains(conflict, "(PID:") {
+			// Extract PID
+			parts := strings.Split(conflict, "(PID: ")
+			if len(parts) > 1 {
+				pidStr := strings.TrimRight(parts[1], ")")
+				var pid int
+				fmt.Sscanf(pidStr, "%d", &pid)
+
+				// Verify if it's our process
+				psCmd := exec.Command("ps", "-p", pidStr, "-o", "comm=")
+				psOutput, _ := psCmd.Output()
+				psPath := strings.TrimSpace(string(psOutput))
+
+				if pid > 0 && strings.Contains(psPath, "Stacker") {
+					fmt.Printf("⚠️ Port %d is occupied by an orphan Stacker process (PID: %d). Cleaning up...\n", svc.Port, pid)
+					if process, err := os.FindProcess(pid); err == nil {
+						process.Signal(os.Kill)
+						time.Sleep(1 * time.Second) // Give it a moment
+					}
+				}
+			}
+		}
+
 		binaryPath = sm.findApacheBinary(svc.BinaryDir)
 		if binaryPath == "" {
 			// Fallback to old path just in case
@@ -2258,7 +2366,36 @@ func (sm *ServiceManager) StartService(name string) error {
 		}
 		cmd = sm.startRedis(svc, binaryPath)
 	default:
-		return fmt.Errorf("unsupported service type: %s", svc.Type)
+		// Handle PHP and variants
+		if strings.HasPrefix(svc.Type, "php") {
+			sm.updateInstallProgress(svc.Type, svc.Version, 30)
+			binaryPath = sm.findPHPBinary(svc.BinaryDir)
+			if binaryPath == "" {
+				return fmt.Errorf("PHP binary not found in %s", svc.BinaryDir)
+			}
+
+			// Simple PHP-FPM start
+			fpmConfDir := filepath.Join(sm.baseDir, "conf", "php-fpm")
+			os.MkdirAll(fpmConfDir, 0755)
+			fpmConf := filepath.Join(fpmConfDir, "php-fpm-"+svc.Name+".conf")
+
+			if _, err := os.Stat(fpmConf); os.IsNotExist(err) {
+				port := sm.getDefaultPort(svc.Type)
+				if port == 0 {
+					port = 9000
+				}
+				content := fmt.Sprintf("[global]\npid = %s/pids/%s.pid\nerror_log = %s/logs/php-fpm-%s.error.log\n[www]\nlisten = 127.0.0.1:%d\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\n", sm.baseDir, svc.Name, sm.baseDir, svc.Name, port)
+				os.WriteFile(fpmConf, []byte(content), 0644)
+			}
+
+			if strings.Contains(binaryPath, "php-fpm") {
+				cmd = exec.Command(binaryPath, "-F", "-y", fpmConf)
+			} else {
+				cmd = exec.Command(binaryPath, "-S", fmt.Sprintf("127.0.0.1:%d", sm.getDefaultPort(svc.Type)))
+			}
+		} else {
+			return fmt.Errorf("unsupported service type: %s", svc.Type)
+		}
 	}
 
 	if cmd == nil {
@@ -2843,13 +2980,19 @@ func (sm *ServiceManager) startMariaDB(svc *Service, binaryPath string) *exec.Cm
 }
 
 func (sm *ServiceManager) startMySQL(svc *Service, binaryPath string) *exec.Cmd {
+	// MySQL expects libraries in lib/ directory relative to the binary or via DYLD_LIBRARY_PATH
+	// On macOS, we add the lib directory to DYLD_LIBRARY_PATH
+	libDir := filepath.Join(binaryPath, "lib")
+
 	cmd := exec.Command(filepath.Join(binaryPath, "bin", "mysqld"),
 		"--defaults-file="+filepath.Join(svc.ConfigDir, "my.cnf"),
 		fmt.Sprintf("--port=%d", svc.Port),
 	)
+
+	// Ensure we include both the service's lib and common system paths
 	cmd.Env = append(os.Environ(),
-		"LD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
-		"DYLD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
+		"LD_LIBRARY_PATH="+libDir,
+		"DYLD_LIBRARY_PATH="+libDir,
 	)
 	return cmd
 }
@@ -2865,7 +3008,6 @@ func (sm *ServiceManager) startNginx(svc *Service, binaryPath string) *exec.Cmd 
 func (sm *ServiceManager) startApache(svc *Service, binaryPath string) *exec.Cmd {
 	cmd := exec.Command(binaryPath,
 		"-f", filepath.Join(svc.ConfigDir, "httpd.conf"),
-		"-k", "start",
 		"-D", "FOREGROUND",
 	)
 
