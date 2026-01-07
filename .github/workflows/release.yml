@@ -1,0 +1,91 @@
+name: Release macOS App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build and Release macOS App
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      - name: Build Binaries
+        run: |
+          echo "Building for macOS ARM64..."
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/stacker-mac-arm64 main.go
+          
+          echo "Building for macOS AMD64..."
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/stacker-mac-amd64 main.go
+
+      - name: Bundle .app (ARM64)
+        run: |
+          mkdir -p dist/Stacker-arm64.app/Contents/{MacOS,Resources}
+          cp dist/stacker-mac-arm64 dist/Stacker-arm64.app/Contents/MacOS/stacker
+          chmod +x dist/Stacker-arm64.app/Contents/MacOS/stacker
+          cp internal/web/logo.png dist/Stacker-arm64.app/Contents/Resources/AppIcon.png
+          
+          # Create Info.plist
+          cat > dist/Stacker-arm64.app/Contents/Info.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDisplayName</key>
+              <string>Stacker</string>
+              <key>CFBundleExecutable</key>
+              <string>stacker</string>
+              <key>CFBundleIconFile</key>
+              <string>AppIcon</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.insya.stacker</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>Stacker</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${{ github.ref_name }}</string>
+              <key>CFBundleVersion</key>
+              <string>${{ github.run_number }}</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>LSUIElement</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Bundle .app (AMD64)
+        run: |
+          mkdir -p dist/Stacker-amd64.app/Contents/{MacOS,Resources}
+          cp dist/stacker-mac-amd64 dist/Stacker-amd64.app/Contents/MacOS/stacker
+          chmod +x dist/Stacker-amd64.app/Contents/MacOS/stacker
+          cp internal/web/logo.png dist/Stacker-amd64.app/Contents/Resources/AppIcon.png
+          cp dist/Stacker-arm64.app/Contents/Info.plist dist/Stacker-amd64.app/Contents/Info.plist
+
+      - name: Zip Applications
+        run: |
+          cd dist
+          zip -r Stacker-macOS-arm64.zip Stacker-arm64.app
+          zip -r Stacker-macOS-amd64.zip Stacker-amd64.app
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/Stacker-macOS-arm64.zip
+            dist/Stacker-macOS-amd64.zip
+          generate_release_notes: true
