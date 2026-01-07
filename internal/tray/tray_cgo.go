@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/getlantern/systray"
+	"github.com/yasinkuyu/Stacker/internal/config"
 	"github.com/yasinkuyu/Stacker/internal/php"
 	"github.com/yasinkuyu/Stacker/internal/services"
 )
@@ -65,10 +66,20 @@ func (tm *TrayManager) onReady() {
 	systray.SetTitle("")
 	systray.SetTooltip("Stacker - PHP Development Environment")
 
-	// Set service manager status change callback
 	tm.svcManager.OnStatusChange = func() {
 		tm.updateServiceStatus()
 		tm.updateIconByStatus()
+	}
+
+	// Auto-start services if enabled
+	prefs := config.GetPreferences()
+	if prefs.AutoStartServices {
+		go func() {
+			// Small delay to ensure everything is initialized
+			time.Sleep(1 * time.Second)
+			fmt.Println("🚀 Background worker: Auto-starting services...")
+			tm.svcManager.StartAll()
+		}()
 	}
 
 	// Open Dashboard

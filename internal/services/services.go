@@ -2439,6 +2439,20 @@ func (sm *ServiceManager) StartService(name string) error {
 	sm.saveServiceStatus(svc)
 	sm.savePID(name, cmd.Process.Pid)
 
+	// Add to ActiveServices in preferences
+	p := config.GetPreferences()
+	found := false
+	for _, s := range p.ActiveServices {
+		if s == name {
+			found = true
+			break
+		}
+	}
+	if !found {
+		p.ActiveServices = append(p.ActiveServices, name)
+		p.Save()
+	}
+
 	// Start monitoring
 	go sm.monitorProcess(name, cmd, f)
 
@@ -2846,6 +2860,17 @@ func (sm *ServiceManager) stopServiceInternal(svc *Service) error {
 
 	svc.Status = "stopped"
 	svc.PID = 0
+
+	// Remove from ActiveServices in preferences
+	p := config.GetPreferences()
+	for i, s := range p.ActiveServices {
+		if s == svc.Name {
+			p.ActiveServices = append(p.ActiveServices[:i], p.ActiveServices[i+1:]...)
+			p.Save()
+			break
+		}
+	}
+
 	return nil
 }
 
@@ -2931,14 +2956,66 @@ func (sm *ServiceManager) GetService(name string) *Service {
 }
 
 func (sm *ServiceManager) StartAll() {
+	p := config.GetPreferences()
+	activeMap := make(map[string]bool)
+	for _, s := range p.ActiveServices {
+		activeMap[s] = true
+	}
+
 	sm.mu.RLock()
 	var names []string
 	for name := range sm.services {
-		names = append(names, name)
+		// If we have a list of active services from last session, only start those.
+		// If the list is empty, it means either it's the first run or everything was stopped.
+		// For the first run (list is empty), we might want to start all installed services?
+		// Let's check: if activeServices is nil (first run) we start all.
+		// If it's empty but not nil (everything stopped manually), we start nothing.
+		if p.ActiveServices == nil {
+			names = append(names, name)
+		} else if activeMap[name] {
+			names = append(names, name)
+		}
 	}
 	sm.mu.RUnlock()
 
+	// Priority order: DBs and PHP first, then Web Servers
+	priority := []string{"mysql", "mariadb", "redis", "php"}
+	others := []string{}
+	webServers := []string{}
+
 	for _, name := range names {
+		sm.mu.RLock()
+		s, ok := sm.services[name]
+		sm.mu.RUnlock()
+		if !ok {
+			continue
+		}
+
+		isPriority := false
+		for _, p := range priority {
+			if s.Type == p {
+				isPriority = true
+				break
+			}
+		}
+
+		if s.Type == "apache" || s.Type == "nginx" {
+			webServers = append(webServers, name)
+		} else if isPriority {
+			// Start priority services immediately in order
+			sm.StartService(name)
+		} else {
+			others = append(others, name)
+		}
+	}
+
+	// Start other services
+	for _, name := range others {
+		sm.StartService(name)
+	}
+
+	// Start web servers last
+	for _, name := range webServers {
 		sm.StartService(name)
 	}
 }

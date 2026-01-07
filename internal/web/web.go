@@ -54,30 +54,33 @@ type Site struct {
 
 // Preferences holds user settings
 type Preferences struct {
-	Theme           string `json:"theme"`
-	AutoStart       bool   `json:"autoStart"`
-	ShowTray        bool   `json:"showTray"`
-	Port            int    `json:"port"`
-	SlimMode        bool   `json:"slimMode"`
-	DomainExtension string `json:"domainExtension"`
-	ApachePort      int    `json:"apachePort"`
-	NginxPort       int    `json:"nginxPort"`
-	MySQLPort       int    `json:"mysqlPort"`
-	Language        string `json:"language"`
+	Theme             string   `json:"theme"`
+	AutoStart         bool     `json:"autoStart"`
+	AutoStartServices bool     `json:"autoStartServices"`
+	ActiveServices    []string `json:"activeServices"`
+	ShowTray          bool     `json:"showTray"`
+	Port              int      `json:"port"`
+	SlimMode          bool     `json:"slimMode"`
+	DomainExtension   string   `json:"domainExtension"`
+	ApachePort        int      `json:"apachePort"`
+	NginxPort         int      `json:"nginxPort"`
+	MySQLPort         int      `json:"mysqlPort"`
+	Language          string   `json:"language"`
 }
 
 var (
 	prefs = Preferences{
-		Theme:           "light",
-		AutoStart:       false,
-		ShowTray:        true,
-		Port:            9999,
-		SlimMode:        false,
-		DomainExtension: ".local",
-		ApachePort:      80,
-		NginxPort:       81,
-		MySQLPort:       3306,
-		Language:        "en",
+		Theme:             "light",
+		AutoStart:         false,
+		AutoStartServices: true,
+		ShowTray:          true,
+		Port:              9999,
+		SlimMode:          false,
+		DomainExtension:   ".local",
+		ApachePort:        80,
+		NginxPort:         81,
+		MySQLPort:         3306,
+		Language:          "en",
 	}
 	prefMutex sync.RWMutex
 	sites     = make([]Site, 0)
@@ -143,7 +146,8 @@ func saveSites(stackerDir string) {
 }
 
 func loadPreferences(stackerDir string) {
-	prefsFile := filepath.Join(stackerDir, "preferences.json")
+	homeDir, _ := os.UserHomeDir()
+	prefsFile := filepath.Join(homeDir, ".stacker-app", "preferences.json")
 	data, err := os.ReadFile(prefsFile)
 	if err != nil {
 		return
@@ -152,7 +156,8 @@ func loadPreferences(stackerDir string) {
 }
 
 func savePreferences(stackerDir string) {
-	prefsFile := filepath.Join(stackerDir, "preferences.json")
+	homeDir, _ := os.UserHomeDir()
+	prefsFile := filepath.Join(homeDir, ".stacker-app", "preferences.json")
 	data, _ := json.MarshalIndent(prefs, "", "  ")
 	os.WriteFile(prefsFile, data, 0644)
 }
@@ -1990,6 +1995,9 @@ func (ws *WebServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
 		}
 		if showTray, ok := updates["showTray"].(bool); ok {
 			prefs.ShowTray = showTray
+		}
+		if autoStartServices, ok := updates["autoStartServices"].(bool); ok {
+			prefs.AutoStartServices = autoStartServices
 		}
 		if slimMode, ok := updates["slimMode"].(bool); ok {
 			prefs.SlimMode = slimMode

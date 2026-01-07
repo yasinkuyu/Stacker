@@ -51,7 +51,11 @@
         "system_mode": "Modo Sistema",
         "slim_mode": "Barra Lateral Delgada",
         "notifications": "Notificaciones",
-        "updates": "Actualizaciones"
+        "updates": "Actualizaciones",
+        "launch_on_login": "Launch on Login",
+        "launch_on_login_desc": "Start Stacker automatically when you log in",
+        "auto_start_services": "Auto-start Services",
+        "auto_start_services_desc": "Start services automatically when Stacker opens"
     },
     "services": {
         "title": "Servicios",

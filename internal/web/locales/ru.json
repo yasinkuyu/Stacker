@@ -51,7 +51,11 @@
         "system_mode": "Системная тема",
         "slim_mode": "Узкая боковая панель",
         "notifications": "Уведомления",
-        "updates": "Обновления"
+        "updates": "Обновления",
+        "launch_on_login": "Launch on Login",
+        "launch_on_login_desc": "Start Stacker automatically when you log in",
+        "auto_start_services": "Auto-start Services",
+        "auto_start_services_desc": "Start services automatically when Stacker opens"
     },
     "services": {
         "title": "Сервисы",

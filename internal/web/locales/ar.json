@@ -51,7 +51,11 @@
         "system_mode": "وضع النظام",
         "slim_mode": "شريط جانبي نحيف",
         "notifications": "الإشعارات",
-        "updates": "التحديثات"
+        "updates": "التحديثات",
+        "launch_on_login": "Launch on Login",
+        "launch_on_login_desc": "Start Stacker automatically when you log in",
+        "auto_start_services": "Auto-start Services",
+        "auto_start_services_desc": "Start services automatically when Stacker opens"
     },
     "services": {
         "title": "الخدمات",

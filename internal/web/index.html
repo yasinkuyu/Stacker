@@ -2924,10 +2924,21 @@
                         <div class="settings-section-title" data-i18n="settings.general">General</div>
                         <div class="settings-row">
                             <div class="settings-info">
-                                <div class="settings-label">Automated Start</div>
-                                <div class="settings-desc">Start services automatically when Stacker opens</div>
+                                <div class="settings-label" data-i18n="settings.launch_on_login">Launch on Login</div>
+                                <div class="settings-desc" data-i18n="settings.launch_on_login_desc">Start Stacker
+                                    automatically when you log in</div>
                             </div>
                             <button class="toggle-switch" id="auto-start-toggle" onclick="toggleAutoStart()"></button>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <div class="settings-label" data-i18n="settings.auto_start_services">Auto-start Services
+                                </div>
+                                <div class="settings-desc" data-i18n="settings.auto_start_services_desc">Start services
+                                    automatically when Stacker opens</div>
+                            </div>
+                            <button class="toggle-switch" id="auto-start-services-toggle"
+                                onclick="toggleAutoStartServices()"></button>
                         </div>
                         <div class="settings-row">
                             <div class="settings-info">
@@ -3992,6 +4003,7 @@
                         btn.classList.toggle('active', btn.dataset.theme === prefs.theme);
                     });
                     document.getElementById('auto-start-toggle').classList.toggle('active', prefs.autoStart);
+                    document.getElementById('auto-start-services-toggle').classList.toggle('active', prefs.autoStartServices);
                     document.getElementById('tray-toggle').classList.toggle('active', prefs.showTray);
                     document.getElementById('port-input').value = prefs.port || 9999;
                     document.getElementById('apache-port-input').value = prefs.apachePort || 80;
@@ -4027,7 +4039,17 @@
             try {
                 await api('/preferences', 'PUT', { autoStart: newState });
                 toggle.classList.toggle('active', newState);
-                showToast(newState ? 'Auto-start enabled' : 'Auto-start disabled');
+                showToast(newState ? 'Launch on login enabled' : 'Launch on login disabled');
+            } catch (err) { showToast(err.message, 'error'); }
+        }
+
+        async function toggleAutoStartServices() {
+            const toggle = document.getElementById('auto-start-services-toggle');
+            const newState = !toggle.classList.contains('active');
+            try {
+                await api('/preferences', 'PUT', { autoStartServices: newState });
+                toggle.classList.toggle('active', newState);
+                showToast(newState ? 'Service auto-start enabled' : 'Service auto-start disabled');
             } catch (err) { showToast(err.message, 'error'); }
         }
 

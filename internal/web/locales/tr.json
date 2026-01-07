@@ -51,7 +51,11 @@
         "system_mode": "Sistem Modu",
         "slim_mode": "Dar Kenar Çubuğu",
         "notifications": "Bildirimler",
-        "updates": "Güncellemeler"
+        "updates": "Güncellemeler",
+        "launch_on_login": "Açılışta Başlat",
+        "launch_on_login_desc": "Stacker'ı oturum açtığınızda otomatik olarak başlatır",
+        "auto_start_services": "Servisleri Otomatik Başlat",
+        "auto_start_services_desc": "Stacker açıldığında servisleri otomatik olarak başlatır"
     },
     "services": {
         "title": "Servisler",

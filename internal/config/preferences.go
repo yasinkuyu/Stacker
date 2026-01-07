@@ -7,10 +7,12 @@ import (
 )
 
 type Preferences struct {
-	Theme     string `json:"theme"` // "light" or "dark"
-	AutoStart bool   `json:"autoStart"`
-	Port      int    `json:"port"`
-	ShowTray  bool   `json:"showTray"`
+	Theme             string   `json:"theme"` // "light" or "dark"
+	AutoStart         bool     `json:"autoStart"`
+	AutoStartServices bool     `json:"autoStartServices"`
+	ActiveServices    []string `json:"activeServices"`
+	Port              int      `json:"port"`
+	ShowTray          bool     `json:"showTray"`
 }
 
 var prefs *Preferences
@@ -41,10 +43,11 @@ func LoadPreferences() *Preferences {
 			go func() {
 				// Simple fire-and-forget save to update file
 				p := &Preferences{
-					Theme:     prefs.Theme,
-					AutoStart: prefs.AutoStart,
-					Port:      9999,
-					ShowTray:  prefs.ShowTray,
+					Theme:             prefs.Theme,
+					AutoStart:         prefs.AutoStart,
+					AutoStartServices: true, // Default to true for existing users
+					Port:              9999,
+					ShowTray:          prefs.ShowTray,
 				}
 				data, _ := json.MarshalIndent(p, "", "  ")
 				os.WriteFile(prefsPath, data, 0644)
@@ -52,10 +55,11 @@ func LoadPreferences() *Preferences {
 		}
 	} else {
 		prefs = &Preferences{
-			Theme:     "dark",
-			AutoStart: false,
-			Port:      9999,
-			ShowTray:  true,
+			Theme:             "dark",
+			AutoStart:         false,
+			AutoStartServices: true,
+			Port:              9999,
+			ShowTray:          true,
 		}
 	}
 
