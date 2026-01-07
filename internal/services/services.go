@@ -42,6 +42,8 @@ type Service struct {
 	PortInUse    bool      `json:"port_in_use"`
 	PortConflict string    `json:"port_conflict,omitempty"`
 	Runnable     bool      `json:"runnable"` // true for daemons (nginx, mysql), false for tools (composer, git)
+	Username     string    `json:"username,omitempty"`
+	Password     string    `json:"password,omitempty"`
 }
 
 type ServiceVersion = config.ServiceVersion
@@ -648,6 +650,16 @@ func (sm *ServiceManager) InstallServiceWithPassword(svcType, version, password 
 		Runnable:  isRunnable,
 	}
 
+	// Set credentials for database services
+	if svcType == "mysql" || svcType == "mariadb" {
+		svc.Username = "root"
+		if password != "" {
+			svc.Password = password
+		} else {
+			svc.Password = "root"
+		}
+	}
+
 	sm.mu.Lock()
 	sm.services[svc.Name] = svc
 	sm.mu.Unlock()
@@ -725,11 +737,15 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 				// Patch MySQL binaries before initialization
 				sm.UpdateInstallLog("mysql", version, "Patching MySQL binaries for macOS...")
 				if err := sm.patchMySQLBinaries(binaryPath); err != nil {
-					fmt.Printf("⚠️ Warning: Failed to patch MySQL binaries: %v\n", err)
+					sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Warning: Failed to patch: %v", err))
 				}
 
-				fmt.Printf("📦 Initializing MySQL data directory...\n")
+				sm.UpdateInstallLog("mysql", version, "Initializing MySQL data directory...")
 				mysqldPath := filepath.Join(binaryPath, "bin", "mysqld")
+
+				// Ensure data directory is empty for fresh install
+				os.RemoveAll(dataDir)
+				os.MkdirAll(dataDir, 0755)
 
 				// Initialize with insecure (no password)
 				initCmd := exec.Command(mysqldPath,
@@ -744,8 +760,10 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 				initCmd.Env = env
 				output, err := initCmd.CombinedOutput()
 				if err != nil {
+					sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Init error: %v", err))
 					fmt.Printf("⚠️ MySQL init error: %v\nOutput: %s\n", err, string(output))
 				} else {
+					sm.UpdateInstallLog("mysql", version, "Data directory initialized")
 					fmt.Printf("✅ MySQL data directory initialized\n")
 
 					// Get password from stored passwords (default: root)
@@ -757,17 +775,23 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 					}
 
 					// Set root password using --bootstrap
+					sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Setting root password to '%s'...", password))
 					fmt.Printf("🔐 Setting MySQL root password to '%s'...\n", password)
+
 					bootstrapCmd := exec.Command(mysqldPath,
 						"--bootstrap",
 						"--datadir="+dataDir,
 						"--basedir="+binaryPath,
 					)
 					bootstrapCmd.Env = env
-					bootstrapCmd.Stdin = strings.NewReader(fmt.Sprintf("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s';\nFLUSH PRIVILEGES;\n", password))
+					// Use both ALTER USER and FLUSH PRIVILEGES
+					bootstrapCmd.Stdin = strings.NewReader(fmt.Sprintf("FLUSH PRIVILEGES;\nALTER USER 'root'@'localhost' IDENTIFIED BY '%s';\nFLUSH PRIVILEGES;\n", password))
+
 					if bout, berr := bootstrapCmd.CombinedOutput(); berr != nil {
+						sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Bootstrap error: %v", berr))
 						fmt.Printf("⚠️ MySQL bootstrap error: %v\nOutput: %s\n", berr, string(bout))
 					} else {
+						sm.UpdateInstallLog("mysql", version, "Root password set successfully")
 						fmt.Printf("✅ MySQL root password set to '%s'\n", password)
 					}
 				}

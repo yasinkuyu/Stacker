@@ -12,7 +12,8 @@
             --bg-primary: #f5f5f7;
             --bg-secondary: #ffffff;
             --bg-tertiary: #e8e8ec;
-            --bg-hover: #d4d4d9;
+            --bg-hover: rgba(99, 102, 241, 0.06);
+            /* Soft indigo tint */
             --text-primary: #1a1a1a;
             --text-secondary: #4a4a4a;
             --text-muted: #7a7a7a;
@@ -43,7 +44,8 @@
             --bg-primary: #0a0a0f;
             --bg-secondary: #14141a;
             --bg-tertiary: #1e1e28;
-            --bg-hover: #282835;
+            --bg-hover: rgba(129, 140, 248, 0.08);
+            /* Soft indigo tint */
             --text-primary: #f0f0f5;
             --text-secondary: #b8b8c5;
             --text-muted: #6b6b7a;
@@ -549,7 +551,7 @@
         }
 
         .panel-quick-link:hover {
-            background: var(--bg-tertiary);
+            background: var(--bg-hover);
         }
 
         .btn-sm {
@@ -1717,7 +1719,7 @@
         }
 
         .service-card:hover {
-            background: var(--bg-tertiary);
+            background: var(--bg-hover);
             border-color: var(--border);
         }
 
@@ -5294,7 +5296,8 @@
                                         <div>
                                             <div class="service-name">${s.name} ${s.version}</div>
                                             <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
-                                            ${(s.type === 'mysql' || s.type === 'mariadb') ? `<div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">👤 user: root pass: root • 📁 data/${s.type}</div>` : ''}
+                                            <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
+                                            ${(s.type === 'mysql' || s.type === 'mariadb') ? `<div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">👤 ${s.username || 'root'}:${s.password || 'root'} • 📁 data/${s.type}</div>` : ''}
                                             ${s.port_in_use && s.status !== 'running' ? `<div style="color: var(--warning); font-size: 11px; margin-top: 4px;">⚠️ Port ${s.port} used by: ${s.port_conflict || 'another app'}</div>` : ''}
                                         </div>
                                     </div>
