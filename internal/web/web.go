@@ -191,6 +191,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/open-config-folder", ws.handleOpenConfigFolder)
 	http.HandleFunc("/api/open-terminal", ws.handleOpenTerminal)
 	http.HandleFunc("/api/open-site-terminal", ws.handleOpenSiteTerminal)
+	http.HandleFunc("/api/run-terminal-command", ws.handleRunTerminalCommand)
 	http.HandleFunc("/api/browse-folder", ws.handleBrowseFolder)
 	http.HandleFunc("/api/dumps/ingest", ws.handleDumpIngest)
 
@@ -535,6 +536,36 @@ func (ws *WebServer) handleOpenTerminal(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cmd.Run()
+	w.WriteHeader(http.StatusOK)
+}
+
+func (ws *WebServer) handleRunTerminalCommand(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Command string `json:"command"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "darwin" {
+		// Open Terminal and run the command
+		script := fmt.Sprintf(`tell application "Terminal"
+			activate
+			do script "%s"
+		end tell`, req.Command)
+		cmd = exec.Command("osascript", "-e", script)
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/c", "start", "cmd", "/K", req.Command)
+	} else {
+		cmd = exec.Command("x-terminal-emulator", "-e", "bash", "-c", req.Command+"; exec bash")
+	}
+
+	if err := cmd.Run(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

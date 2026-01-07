@@ -2751,7 +2751,10 @@
                             this command in terminal:</p>
                         <code id="hosts-terminal-command"
                             style="display: block; background: var(--bg-tertiary); padding: 12px; border-radius: 8px; font-size: 12px; word-break: break-all;"></code>
-                        <button class="btn" style="margin-top: 8px;" onclick="copyHostsCommand()">Copy Command</button>
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button class="btn btn-primary" onclick="openHostsTerminal()">Open Terminal</button>
+                            <button class="btn" onclick="copyHostsCommand()">Copy Command</button>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 12px; justify-content: flex-end;">
                         <button class="btn" onclick="closeHostsConfirm()">Cancel</button>
@@ -5517,6 +5520,17 @@
             const cmd = document.getElementById('hosts-terminal-command').textContent;
             navigator.clipboard.writeText(cmd);
             showToast('Command copied to clipboard');
+        }
+
+        async function openHostsTerminal() {
+            const cmd = document.getElementById('hosts-terminal-command').textContent;
+            try {
+                await api('/run-terminal-command', 'POST', { command: cmd });
+                showToast('Terminal opened with command');
+                closeHostsConfirm();
+            } catch (err) {
+                showToast('Could not open terminal: ' + err.message, 'error');
+            }
         }
 
         function addHostEntry() {
