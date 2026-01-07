@@ -336,6 +336,7 @@ func generateDefaultApacheConfig(htdocsDir string, logsDir string) string {
 <VirtualHost *:80>
     ServerName localhost
     DocumentRoot "%s"
+    DirectoryIndex index.php index.html index.htm
 
     <Directory "%s">
         Options Indexes FollowSymLinks
@@ -1116,10 +1117,13 @@ func (ws *WebServer) createApacheSiteConfig(site Site) error {
 # Generated: %[2]s
 <VirtualHost *:%[5]d>
     ServerName %[1]s
+    ServerAlias *.%[1]s
     DocumentRoot "%[3]s"
+    DirectoryIndex index.php index.html index.htm
+    AcceptPathInfo On
     
     <Directory "%[3]s">
-        Options Indexes FollowSymLinks
+        Options Indexes FollowSymLinks MultiViews
         AllowOverride All
         Require all granted
     </Directory>
@@ -1347,32 +1351,38 @@ func (ws *WebServer) ensureSSLCertificate(domain string) error {
 }
 
 func (ws *WebServer) getPHPPort(version string) int {
-	if version == "" {
-		pm := php.NewPHPManager()
-		pm.DetectPHPVersions()
-		if def := pm.GetDefault(); def != nil {
-			version = def.Version
-		} else {
-			return 9000 // Last fallback
+	// If version is specified, use its calculated port
+	if version != "" {
+		clean := strings.ReplaceAll(version, ".", "")
+		var port int
+		fmt.Sscanf(clean, "%d", &port)
+		if port < 100 {
+			return 9000 + port
+		}
+		return port
+	}
+
+	// If no version specified, try to find a running PHP service in ServiceManager
+	for _, svc := range ws.serviceManager.GetServices() {
+		if strings.HasPrefix(svc.Type, "php") && svc.Status == "running" {
+			return svc.Port
 		}
 	}
 
-	// Map versions like 8.3 -> 9083, 7.4 -> 9074
-	// Remove dots and prefix with 90
-	clean := strings.ReplaceAll(version, ".", "")
-	var port int
-	fmt.Sscanf(clean, "%d", &port)
-
-	if port == 0 {
-		return 9000
+	// Fallback to default detection if none running
+	pm := php.NewPHPManager()
+	pm.DetectPHPVersions()
+	if def := pm.GetDefault(); def != nil {
+		clean := strings.ReplaceAll(def.Version, ".", "")
+		var port int
+		fmt.Sscanf(clean, "%d", &port)
+		if port < 100 {
+			return 9000 + port
+		}
+		return port
 	}
 
-	// If port is < 100 (like 83), prefix with 90
-	if port < 100 {
-		return 9000 + port
-	}
-
-	return port
+	return 9000 // Ultimate fallback
 }
 
 // ===========================================

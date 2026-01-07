@@ -1596,6 +1596,10 @@ LoadModule expires_module lib/httpd/modules/mod_expires.so
 LoadModule deflate_module lib/httpd/modules/mod_deflate.so
 LoadModule log_config_module lib/httpd/modules/mod_log_config.so
 
+# Log Formats
+LogFormat "%%h %%l %%u %%t \"%%r\" %%>s %%b \"%%{Referer}i\" \"%%{User-Agent}i\"" combined
+LogFormat "%%h %%l %%u %%t \"%%r\" %%>s %%b" common
+
 # Logs
 ErrorLog "${APACHE_LOG_DIR}/error_log"
 CustomLog "${APACHE_LOG_DIR}/access_log" combined
@@ -1605,6 +1609,9 @@ SSLRandomSeed startup builtin
 SSLRandomSeed connect builtin
 SSLSessionCache "shmcb:/tmp/ssl_scache(512000)"
 SSLSessionCacheTimeout 300
+
+# Default DirectoryIndex
+DirectoryIndex index.php index.html index.htm
 
 # Default DocumentRoot for localhost and fallback
 DocumentRoot "%s"
