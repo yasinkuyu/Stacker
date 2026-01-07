@@ -5296,7 +5296,6 @@
                                         <div>
                                             <div class="service-name">${s.name} ${s.version}</div>
                                             <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
-                                            <div class="service-port">Port: ${s.port || 'Default'} • Status: ${s.status}</div>
                                             ${(s.type === 'mysql' || s.type === 'mariadb') ? `<div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">👤 ${s.username || 'root'}:${s.password || 'root'} • 📁 data/${s.type}</div>` : ''}
                                             ${s.port_in_use && s.status !== 'running' ? `<div style="color: var(--warning); font-size: 11px; margin-top: 4px;">⚠️ Port ${s.port} used by: ${s.port_conflict || 'another app'}</div>` : ''}
                                         </div>
