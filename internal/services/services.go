@@ -774,22 +774,37 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 						password = "root"
 					}
 
-					// Set root password using --bootstrap
-					sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Setting root password to '%s'...", password))
+					// Set root password using --init-file
+					sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Setting root password to '%s' (via init-file)...", password))
 					fmt.Printf("🔐 Setting MySQL root password to '%s'...\n", password)
 
-					bootstrapCmd := exec.Command(mysqldPath,
-						"--bootstrap",
-						"--datadir="+dataDir,
-						"--basedir="+binaryPath,
-					)
-					bootstrapCmd.Env = env
-					// Use both ALTER USER and FLUSH PRIVILEGES
-					bootstrapCmd.Stdin = strings.NewReader(fmt.Sprintf("FLUSH PRIVILEGES;\nALTER USER 'root'@'localhost' IDENTIFIED BY '%s';\nFLUSH PRIVILEGES;\n", password))
+					// Create init.sql file
+					initSqlPath := filepath.Join(binaryPath, "init.sql")
+					initSqlContent := fmt.Sprintf(`
+ALTER USER 'root'@'localhost' IDENTIFIED BY '%s';
+FLUSH PRIVILEGES;
+SHUTDOWN;
+`, password)
+					if err := os.WriteFile(initSqlPath, []byte(initSqlContent), 0644); err != nil {
+						sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Failed to create init.sql: %v", err))
+						return err
+					}
+					defer os.Remove(initSqlPath)
 
-					if bout, berr := bootstrapCmd.CombinedOutput(); berr != nil {
-						sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Bootstrap error: %v", berr))
-						fmt.Printf("⚠️ MySQL bootstrap error: %v\nOutput: %s\n", berr, string(bout))
+					// Run mysqld with init-file
+					// Use --console to see output in stdout/stderr if needed
+					// --skip-networking to avoid port conflicts during init
+					initCmd := exec.Command(mysqldPath,
+						"--defaults-file="+filepath.Join(configDir, "my.cnf"),
+						"--init-file="+initSqlPath,
+						"--console",
+						"--skip-networking",
+					)
+					initCmd.Env = env
+
+					if out, err := initCmd.CombinedOutput(); err != nil {
+						sm.UpdateInstallLog("mysql", version, fmt.Sprintf("Password set error: %v", err))
+						fmt.Printf("⚠️ MySQL password set error: %v\nOutput: %s\n", err, string(out))
 					} else {
 						sm.UpdateInstallLog("mysql", version, "Root password set successfully")
 						fmt.Printf("✅ MySQL root password set to '%s'\n", password)

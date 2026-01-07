@@ -40,17 +40,36 @@ func LoadPreferences() *Preferences {
 		json.Unmarshal(data, prefs)
 
 		// Defaults for new fields
+		shouldSave := false
 		if prefs.Language == "" {
 			prefs.Language = "en"
+			shouldSave = true
 		}
 		if prefs.DomainExtension == "" {
 			prefs.DomainExtension = "local"
+			shouldSave = true
+		}
+		if prefs.ApachePort == 0 {
+			prefs.ApachePort = 8080
+			shouldSave = true
+		}
+		if prefs.NginxPort == 0 {
+			prefs.NginxPort = 80
+			shouldSave = true
+		}
+		if prefs.MySQLPort == 0 {
+			prefs.MySQLPort = 3306
+			shouldSave = true
 		}
 
 		// Auto-migrate from 8080 to 9999
 		if prefs.Port == 8080 {
 			prefs.Port = 9999
 			prefs.AutoStartServices = true
+			shouldSave = true
+		}
+
+		if shouldSave {
 			prefs.Save()
 		}
 	} else {
@@ -63,6 +82,9 @@ func LoadPreferences() *Preferences {
 			SlimMode:          false,
 			DomainExtension:   "local",
 			Language:          "en",
+			ApachePort:        8080,
+			NginxPort:         80,
+			MySQLPort:         3306,
 		}
 	}
 
