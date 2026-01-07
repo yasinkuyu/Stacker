@@ -7,21 +7,60 @@ CGO_ENABLED=1 go build -ldflags="-s -w" -o dist/stacker-mac-arm64 main.go
 CGO_ENABLED=1 GOARCH=amd64 go build -ldflags="-s -w" -o dist/stacker-mac-amd64 main.go
 
 # Linux (no tray for standalone)
-CGO_ENABLED=0 go build -ldflags="-s -w" -tags no_tray -o dist/stacker-linux-amd64 main.go
+# CGO_ENABLED=0 go build -ldflags="-s -w" -tags no_tray -o dist/stacker-linux-amd64 main.go
 
 # Windows
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -tags no_tray -o dist/stacker-windows-amd64.exe main.go
+# CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -tags no_tray -o dist/stacker-windows-amd64.exe main.go
 
 # Create macOS app bundles
 echo ""
-echo "📦 Creating macOS .app bundles..."
+# Create macOS app bundles
+echo ""
+echo "📦 Creating macOS Universal .app bundle..."
 
-# ARM64 .app
-mkdir -p dist/Stacker-arm64.app/Contents/{MacOS,Resources}
-cp dist/stacker-mac-arm64 dist/Stacker-arm64.app/Contents/MacOS/stacker
-chmod +x dist/Stacker-arm64.app/Contents/MacOS/stacker
-cp internal/web/logo.png dist/Stacker-arm64.app/Contents/Resources/AppIcon.png
-cat > dist/Stacker-arm64.app/Contents/Info.plist << 'EOF'
+# Generate AppIcon.icns
+echo "🎨 Generating AppIcon.icns..."
+rm -f dist/AppIcon.icns
+ICONSET="dist/Stacker.iconset"
+mkdir -p "$ICONSET"
+SOURCE_ICON="internal/web/app_icon_1024.png"
+
+# Check if source icon exists
+if [ -f "$SOURCE_ICON" ]; then
+    sips -z 16 16     -s format png "$SOURCE_ICON" --out "$ICONSET/icon_16x16.png" > /dev/null
+    sips -z 32 32     -s format png "$SOURCE_ICON" --out "$ICONSET/icon_16x16@2x.png" > /dev/null
+    sips -z 32 32     -s format png "$SOURCE_ICON" --out "$ICONSET/icon_32x32.png" > /dev/null
+    sips -z 64 64     -s format png "$SOURCE_ICON" --out "$ICONSET/icon_32x32@2x.png" > /dev/null
+    sips -z 128 128   -s format png "$SOURCE_ICON" --out "$ICONSET/icon_128x128.png" > /dev/null
+    sips -z 256 256   -s format png "$SOURCE_ICON" --out "$ICONSET/icon_128x128@2x.png" > /dev/null
+    sips -z 256 256   -s format png "$SOURCE_ICON" --out "$ICONSET/icon_256x256.png" > /dev/null
+    sips -z 512 512   -s format png "$SOURCE_ICON" --out "$ICONSET/icon_256x256@2x.png" > /dev/null
+    sips -z 512 512   -s format png "$SOURCE_ICON" --out "$ICONSET/icon_512x512.png" > /dev/null
+    sips -z 1024 1024 -s format png "$SOURCE_ICON" --out "$ICONSET/icon_512x512@2x.png" > /dev/null
+
+    iconutil -c icns "$ICONSET" -o dist/AppIcon.icns
+    rm -rf "$ICONSET"
+else
+    echo "⚠️  High-res icon not found ($SOURCE_ICON). Using fallback."
+fi
+
+# Create Universal Binary using Lipo
+echo "🔗 Creating Universal Binary (arm64 + amd64)..."
+lipo -create -output dist/stacker-universal dist/stacker-mac-arm64 dist/stacker-mac-amd64
+
+# Universal .app
+mkdir -p dist/Stacker.app/Contents/{MacOS,Resources}
+cp dist/stacker-universal dist/Stacker.app/Contents/MacOS/stacker
+chmod +x dist/Stacker.app/Contents/MacOS/stacker
+
+# Copy AppIcon.icns if generated, otherwise fallback
+if [ -f "dist/AppIcon.icns" ]; then
+    cp dist/AppIcon.icns dist/Stacker.app/Contents/Resources/AppIcon.icns
+else
+    cp internal/web/logo.png dist/Stacker.app/Contents/Resources/AppIcon.png
+fi
+
+cat > dist/Stacker.app/Contents/Info.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -43,7 +82,9 @@ cat > dist/Stacker-arm64.app/Contents/Info.plist << 'EOF'
     <key>CFBundleShortVersionString</key>
     <string>1.0.0</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>5</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
     <key>NSHighResolutionCapable</key>
@@ -53,13 +94,6 @@ cat > dist/Stacker-arm64.app/Contents/Info.plist << 'EOF'
 </dict>
 </plist>
 EOF
-
-# AMD64 .app
-mkdir -p dist/Stacker-amd64.app/Contents/{MacOS,Resources}
-cp dist/stacker-mac-amd64 dist/Stacker-amd64.app/Contents/MacOS/stacker
-chmod +x dist/Stacker-amd64.app/Contents/MacOS/stacker
-cp internal/web/logo.png dist/Stacker-amd64.app/Contents/Resources/AppIcon.png
-cp dist/Stacker-arm64.app/Contents/Info.plist dist/Stacker-amd64.app/Contents/Info.plist
 
 echo ""
 echo "✅ Build complete! Binaries available in dist/"
