@@ -1,6 +1,11 @@
 # Changelog
 
 ## v1.1.0 (Jan 07, 2026)
+- [feat] **MySQL Security:** Added Root Password configuration during installation and credential persistence.
+- [feat] **Service Control:** Added "Start All" and "Stop All" buttons for global service management.
+- [fix] **Dashboard Loading:** Resolved "No sites yet" issue by ensuring cache update on load.
+- [fix] **Preferences:** Fixed zero-port issue in `preferences.json` by enforcing defaults (8080/80/3306).
+- [improve] **UI Experience:** Added "Connection Lost" modal, status dots, and softer hover aesthetics.
 - [feat] **Cross-Platform Power:** Full support for Windows, macOS, and Linux with platform-specific process and port management.
 - [feat] **Service State Persistence:** Automatically remembers and restores active services upon application restart.
 - [feat] **Smart Dependency Auto-start:** Intelligent service startup ordering (Database → PHP → Web Server) for reliable environment boot.

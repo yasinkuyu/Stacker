@@ -34,5 +34,21 @@ Current development status and stability goals.
 - [ ] **Import/Export Settings:** Easily migration Stacker settings between machines.
 - [ ] **Health Monitoring:** Basic CPU/RAM monitoring per managed service.
 
+
+## 🧪 Platform Testing Status
+
+| Feature | macOS | Windows | Linux |
+| :--- | :---: | :---: | :---: |
+| **Tray App** | ✅ | ❓ | ❓ |
+| **MySQL Service** | ✅ | ❓ | ❓ |
+| **MariaDB Service** | ❓ | ❓ | ❓ |
+| **Apache Service** | ✅ | ❓ | ❓ |
+| **PHP Management** | ✅ | ❓ | ❓ |
+| **Sites Management** | ✅ | ❓ | ❓ |
+| **Logs Viewer** | ✅ | ❓ | ❓ |
+| **Settings** | ✅ | ❓ | ❓ |
+| **Mail Catcher** | ❓ | ❓ | ❓ |
+| **Dumps (Import)** | ❓ | ❓ | ❓ |
+
 ---
 *Last updated: January 7, 2026*
