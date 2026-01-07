@@ -3,10 +3,10 @@
 
 package tray
 
-import (
-	"fmt"
 	"os/exec"
 	"runtime"
+
+	"github.com/yasinkuyu/Stacker/internal/services"
 )
 
 type TrayManager struct {
@@ -42,4 +42,9 @@ func OpenBrowser(url string) {
 	}
 
 	cmd.Start()
+}
+
+// GetServiceManager returns nil for no-tray builds
+func (tm *TrayManager) GetServiceManager() *services.ServiceManager {
+	return nil
 }
