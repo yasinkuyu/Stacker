@@ -19,7 +19,7 @@ description: How to install and manage services (MySQL, Redis, Nginx)
 # Install MySQL
 curl -X POST http://localhost:9999/api/services/install \
   -H "Content-Type: application/json" \
-  -d '{"name":"mysql","port":3306}'
+  -d '{"name":"mysql","port":3306,"password":"root"}'
 
 # Install Redis
 curl -X POST http://localhost:9999/api/services/install \

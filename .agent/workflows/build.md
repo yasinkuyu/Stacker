@@ -34,6 +34,24 @@ bash build.sh
 open dist/Stacker-arm64.app
 ```
 
+## GitHub Release
+
+Automated release workflow via GitHub Actions:
+
+1. Commit changes:
+```bash
+git add .
+git commit -m "chore: release v1.1.0"
+```
+
+2. Create and push tag:
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+This triggers `.github/workflows/release.yml` which builds macOS .app bundles and uploads them to GitHub Releases.
+
 ## Build Outputs
 
 - `dist/Stacker-arm64.app` - macOS Apple Silicon app bundle

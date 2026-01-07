@@ -10,7 +10,7 @@ description: How to add and manage local development sites
 2. Click "Sites" in sidebar
 3. Click "Add Site" button
 4. Fill in:
-   - **Site Name**: project name (will be accessible at `name.test`)
+   - **Site Name**: project name (will be accessible at `name.local`)
    - **Project Path**: full path to project root
    - **PHP Version**: optional, uses default if empty
    - **SSL**: enable for HTTPS
@@ -45,4 +45,4 @@ Sites are stored in:
 
 ## Access Sites
 
-Sites are accessible at `https://{name}.test` or `http://{name}.test`
+Sites are accessible at `https://{name}.local` or `http://{name}.local`
