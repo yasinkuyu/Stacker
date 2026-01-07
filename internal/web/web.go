@@ -1252,8 +1252,10 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 			continue
 		}
 
-		// Successfully got response, proceed with extraction
-		defer resp.Body.Close()
+		// Ensure target directory exists
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			return err
+		}
 
 		// Set progress to 0
 		ws.progressMu.Lock()
@@ -1272,6 +1274,7 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 
 		gzr, err := gzip.NewReader(pr)
 		if err != nil {
+			os.RemoveAll(targetDir)
 			return err
 		}
 		defer gzr.Close()
@@ -1284,6 +1287,7 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 				break
 			}
 			if err != nil {
+				os.RemoveAll(targetDir)
 				return err
 			}
 
@@ -1292,15 +1296,18 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 			switch header.Typeflag {
 			case tar.TypeDir:
 				if err := os.MkdirAll(target, 0755); err != nil {
+					os.RemoveAll(targetDir)
 					return err
 				}
 			case tar.TypeReg:
 				f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 				if err != nil {
+					os.RemoveAll(targetDir)
 					return err
 				}
 				if _, err := io.Copy(f, tr); err != nil {
 					f.Close()
+					os.RemoveAll(targetDir)
 					return err
 				}
 				f.Close()
@@ -1322,7 +1329,13 @@ func (ws *WebServer) downloadAndExtractPHP(version, targetDir string) error {
 				}
 			}
 		}
-		os.Chmod(phpBinary, 0755)
+
+		if _, err := os.Stat(phpBinary); err == nil {
+			os.Chmod(phpBinary, 0755)
+		} else {
+			os.RemoveAll(targetDir)
+			return fmt.Errorf("PHP binary not found after extraction")
+		}
 
 		// Set progress to 100
 		ws.progressMu.Lock()
@@ -1456,9 +1469,16 @@ func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	svcs := ws.serviceManager.GetServices()
-	// Update status for each service before returning
+	var filteredSvcs []*services.Service
+
+	// Update status and filter out PHP services from main services list
 	for _, svc := range svcs {
 		ws.serviceManager.GetStatus(svc.Name)
+
+		// Hide php services from "Services" page (they go to PHP page)
+		if !strings.HasPrefix(svc.Type, "php") {
+			filteredSvcs = append(filteredSvcs, svc)
+		}
 	}
 
 	available := ws.serviceManager.GetAvailableVersions("")
@@ -1487,7 +1507,7 @@ func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]interface{}{
-		"installed":         svcs,
+		"installed":         filteredSvcs,
 		"available":         available,
 		"installedVersions": installedVersions,
 		"systemVersions":    sysVersions,
@@ -1884,20 +1904,44 @@ func (ws *WebServer) handlePHP(w http.ResponseWriter, r *http.Request) {
 	pm := php.NewPHPManager()
 	pm.DetectPHPVersions()
 
-	type PHPVersion struct {
-		Version string `json:"version"`
-		Path    string `json:"path"`
-		Default bool   `json:"default"`
+	type PHPVersionInfo struct {
+		Version   string `json:"version"`
+		Path      string `json:"path"`
+		Default   bool   `json:"default"`
+		Installed bool   `json:"installed"`
+		Status    string `json:"status"`
 	}
 
-	var versions []PHPVersion
+	var versions []PHPVersionInfo
 	defaultPHP := pm.GetDefault()
 
+	// Detect Stacker-managed PHP versions by looking at bin/php*
+	binDir := filepath.Join(ws.stackerDir, "bin")
+	entries, _ := os.ReadDir(binDir)
+	managedVersions := make(map[string]bool)
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "php") {
+			v := strings.TrimPrefix(entry.Name(), "php")
+			// Check if it's really installed (has status.json or binary)
+			statusFile := filepath.Join(binDir, entry.Name(), "status.json")
+			if _, err := os.Stat(statusFile); err == nil {
+				managedVersions[v] = true
+			}
+		}
+	}
+
 	for _, v := range pm.GetVersions() {
-		versions = append(versions, PHPVersion{
-			Version: v.Version,
-			Path:    v.Path,
-			Default: defaultPHP != nil && v.Version == defaultPHP.Version,
+		status := "system"
+		if managedVersions[v.Version] {
+			status = "installed"
+		}
+
+		versions = append(versions, PHPVersionInfo{
+			Version:   v.Version,
+			Path:      v.Path,
+			Default:   defaultPHP != nil && v.Version == defaultPHP.Version,
+			Installed: true,
+			Status:    status,
 		})
 	}
 
@@ -1920,15 +1964,15 @@ func (ws *WebServer) handlePHPInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create PHP directory structure
-	phpBinDir := filepath.Join(ws.stackerDir, "bin", "php"+req.Version, "bin")
-	confDir := filepath.Join(ws.stackerDir, "conf", "php")
-	os.MkdirAll(phpBinDir, 0755)
-	os.MkdirAll(confDir, 0755)
-
 	// Download real PHP binary in background
-	go func(version string, xdebug bool, binDir string, cDir string) {
-		err := ws.downloadAndExtractPHP(version, binDir)
+	go func(version string, xdebug bool) {
+		// Calculate internal dirs
+		phpDir := filepath.Join(ws.stackerDir, "bin", "php"+version)
+		phpBinDir := filepath.Join(phpDir, "bin")
+		confDir := filepath.Join(ws.stackerDir, "conf", "php")
+		os.MkdirAll(confDir, 0755)
+
+		err := ws.downloadAndExtractPHP(version, phpBinDir)
 		if err != nil {
 			fmt.Printf("Error downloading PHP %s: %v\n", version, err)
 			return
@@ -1972,9 +2016,9 @@ xdebug.start_with_request=trigger
 `
 		}
 
-		os.WriteFile(filepath.Join(cDir, "php"+version+".ini"), []byte(phpIni), 0644)
+		os.WriteFile(filepath.Join(confDir, "php"+version+".ini"), []byte(phpIni), 0644)
 		fmt.Printf("✅ PHP %s configuration finalized\n", version)
-	}(req.Version, req.XDebug, phpBinDir, confDir)
+	}(req.Version, req.XDebug)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "starting", "version": req.Version})
