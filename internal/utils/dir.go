@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 )
 
 // GetStackerDir returns the Stacker application data directory
@@ -18,7 +19,13 @@ func GetStackerDir() string {
 		if strings.Contains(execPath, ".app/Contents/MacOS") {
 			// Use .app/Contents/Resources for self-contained mode
 			appDir := filepath.Dir(filepath.Dir(execPath))
-			return filepath.Join(appDir, "Resources", "Stacker")
+			resourcesPath := filepath.Join(appDir, "Resources", "Stacker")
+
+			// Check if we can write to this directory
+			// In App Translocation (quarantine), this will be read-only
+			if err := syscall.Access(filepath.Dir(resourcesPath), 2); err == nil { // 2 is W_OK
+				return resourcesPath
+			}
 		}
 	}
 
