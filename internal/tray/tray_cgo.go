@@ -341,32 +341,15 @@ func (tm *TrayManager) updateIconByStatus() {
 }
 
 func (tm *TrayManager) onExit() {
-	fmt.Println("🛑 Stacker is shutting down...")
-
-	// Request all services to stop
-	tm.svcManager.Stop()
-
-	timeout := time.After(tm.shutdownTimeout)
-	done := make(chan struct{})
-
-	go func() {
-		if err := tm.svcManager.GracefulStopAll(); err != nil {
-			fmt.Printf("⚠️ Graceful stop had errors: %v\n", err)
-		}
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-done:
-		fmt.Println("✅ All services stopped gracefully")
-	case <-timeout:
-		fmt.Println("⚠️ Timeout, force stopping remaining services...")
-		tm.svcManager.ForceStopAll()
-	}
-
-	tm.svcManager.Wait()
+	fmt.Println("🛑 Tray UI is closing...")
+	// Signal internal goroutines to stop
 	close(tm.quitChan)
-	fmt.Println("👋 Goodbye!")
+	fmt.Println("👋 UI Closed")
+}
+
+// GetServiceManager returns the service manager for cleanup
+func (tm *TrayManager) GetServiceManager() *services.ServiceManager {
+	return tm.svcManager
 }
 
 func (tm *TrayManager) openBrowser() {

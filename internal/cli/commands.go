@@ -65,6 +65,17 @@ var trayAppCmd = &cobra.Command{
 		tm := tray.NewTrayManager()
 		tm.SetWebURL(url)
 		tm.Run()
+
+		// Shutdown services after UI is gone (Background Worker logic)
+		fmt.Println("🛑 Stacker is shutting down services...")
+		sm := tm.GetServiceManager()
+		sm.Stop()
+		if err := sm.GracefulStopAll(); err != nil {
+			fmt.Printf("⚠️ Graceful stop had errors: %v\n", err)
+			sm.ForceStopAll()
+		}
+		sm.Wait()
+		fmt.Println("👋 Goodbye!")
 	},
 }
 
@@ -98,6 +109,17 @@ var uiCmd = &cobra.Command{
 		tm := tray.NewTrayManager()
 		tm.SetWebURL(url)
 		tm.Run()
+
+		// Shutdown services after UI is gone (Background Worker logic)
+		fmt.Println("🛑 Stacker is shutting down services...")
+		sm := tm.GetServiceManager()
+		sm.Stop()
+		if err := sm.GracefulStopAll(); err != nil {
+			fmt.Printf("⚠️ Graceful stop had errors: %v\n", err)
+			sm.ForceStopAll()
+		}
+		sm.Wait()
+		fmt.Println("👋 Goodbye!")
 	},
 }
 
