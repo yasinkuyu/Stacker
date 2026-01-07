@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/yasinkuyu/Stacker/internal/utils"
 )
 
 type Preferences struct {
@@ -28,8 +30,7 @@ func LoadPreferences() *Preferences {
 		return prefs
 	}
 
-	homeDir, _ := os.UserHomeDir()
-	configDir := filepath.Join(homeDir, ".stacker-app")
+	configDir := utils.GetStackerDir()
 	os.MkdirAll(configDir, 0755)
 
 	prefsPath := filepath.Join(configDir, "preferences.json")
@@ -69,8 +70,7 @@ func LoadPreferences() *Preferences {
 }
 
 func (p *Preferences) Save() error {
-	homeDir, _ := os.UserHomeDir()
-	configDir := filepath.Join(homeDir, ".stacker-app")
+	configDir := utils.GetStackerDir()
 	os.MkdirAll(configDir, 0755)
 
 	prefsPath := filepath.Join(configDir, "preferences.json")

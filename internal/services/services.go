@@ -1607,7 +1607,7 @@ func (sm *ServiceManager) compileApache(version, installDir, configDir, dataDir 
 func (sm *ServiceManager) createApacheConfig(configDir, dataDir, installDir, version string, port int) error {
 	// Use sm.baseDir as the reliable Stacker root
 	stackerDir := sm.baseDir
-	vhostDir := filepath.Join(stackerDir, "conf", "apache") // Shared site configs
+	vhostDir := filepath.Join(stackerDir, "conf", "apache", "vhosts") // Shared site configs
 	sharedHtdocs := filepath.Join(stackerDir, "htdocs")
 	logDir := filepath.Join(stackerDir, "logs", "apache")
 

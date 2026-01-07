@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -94,9 +95,6 @@ func NewWebServer(cfg *config.Config) *WebServer {
 	loadSites(stackerDir)
 	loadPreferences(stackerDir)
 
-	// Setup default pages for localhost (like MAMP)
-	setupDefaultPages(stackerDir)
-
 	// Update service manager with initial ports
 	sm.UpdatePorts(prefs.ApachePort, prefs.NginxPort, prefs.MySQLPort)
 
@@ -105,7 +103,7 @@ func NewWebServer(cfg *config.Config) *WebServer {
 	go pm.DetectPHPVersions()
 	fm := php.NewFPMManager()
 
-	return &WebServer{
+	ws := &WebServer{
 		config:          cfg,
 		dumpManager:     dumps.NewDumpManager(cfg),
 		mailManager:     mail.NewMailManager(cfg),
@@ -115,6 +113,11 @@ func NewWebServer(cfg *config.Config) *WebServer {
 		stackerDir:      stackerDir,
 		installProgress: make(map[string]int),
 	}
+
+	// Setup default pages for localhost (like MAMP)
+	ws.setupDefaultPages()
+
+	return ws
 }
 
 func loadSites(stackerDir string) {
@@ -147,7 +150,9 @@ func savePreferences(stackerDir string) {
 }
 
 // setupDefaultPages creates default welcome page and server configs (like MAMP)
-func setupDefaultPages(stackerDir string) {
+// setupDefaultPages creates default welcome page and server configs (like MAMP)
+func (ws *WebServer) setupDefaultPages() {
+	stackerDir := ws.stackerDir
 	// Create default htdocs directory
 	htdocsDir := filepath.Join(stackerDir, "htdocs")
 	os.MkdirAll(htdocsDir, 0755)
@@ -165,20 +170,35 @@ func setupDefaultPages(stackerDir string) {
 		os.WriteFile(phpinfoPath, []byte("<?php phpinfo(); ?>"), 0644)
 	}
 
+	// Detect active php port for default setup
+	phpPort := ws.getPHPPort("")
+
 	// Create default Nginx config
 	nginxConfDir := filepath.Join(stackerDir, "conf", "nginx")
 	os.MkdirAll(nginxConfDir, 0755)
 	defaultNginxConf := filepath.Join(nginxConfDir, "default.conf")
-	nginxConfig := generateDefaultNginxConfig(htdocsDir)
+	nginxConfig := generateDefaultNginxConfig(htdocsDir, phpPort)
 	os.WriteFile(defaultNginxConf, []byte(nginxConfig), 0644)
 
-	// Create default Apache config
-	apacheConfDir := filepath.Join(stackerDir, "conf", "apache")
-	os.MkdirAll(apacheConfDir, 0755)
+	// Ensure the vhosts directory exists for site configs
+	vhostDir := filepath.Join(stackerDir, "conf", "apache", "vhosts")
+	os.MkdirAll(vhostDir, 0755)
+
+	// Regenerate all site configs
+	for _, site := range sites {
+		if site.Server == "apache" || site.Server == "" {
+			ws.createApacheSiteConfig(site)
+		} else if site.Server == "nginx" {
+			ws.createNginxSiteConfig(site)
+		}
+	}
+
+	// Create default Apache config inside vhosts directory to ensure it's included
 	logsDir := filepath.Join(stackerDir, "logs")
 	os.MkdirAll(logsDir, 0755)
-	defaultApacheConf := filepath.Join(apacheConfDir, "default.conf")
-	apacheConfig := generateDefaultApacheConfig(htdocsDir, logsDir)
+
+	defaultApacheConf := filepath.Join(vhostDir, "default.conf")
+	apacheConfig := generateDefaultApacheConfig(htdocsDir, logsDir, phpPort)
 	os.WriteFile(defaultApacheConf, []byte(apacheConfig), 0644)
 }
 
@@ -188,112 +208,132 @@ func generateWelcomePage() string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stacker - Local Development Environment</title>
+    <title>Welcome to Stacker</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            min-height: 100vh;
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            background: #0a0a0a;
+            overflow-x: hidden;
             color: #fff;
         }
-        .container {
-            max-width: 900px;
+        .container { 
+            display: flex; 
+            max-width: 900px; 
+            width: 90%; 
+            height: 450px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .left { 
+            background: linear-gradient(135deg, #00fa9a 0%, #00d97e 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
+        }
+        .right { 
+            background: linear-gradient(135deg, #ff1493 0%, #d91270 100%); 
+            width: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            text-align: center; 
+            padding: 40px; 
+        }
+        .divider { 
+            position: absolute; 
+            right: 0; 
+            top: 10%; 
+            bottom: 10%; 
+            width: 3px; 
+            background: rgba(0,0,0,0.2); 
+            border-radius: 2px;
+        }
+        h1.big-text { 
+            font-size: 4rem; 
+            font-weight: 900; 
+            color: #000; 
+            line-height: 0.9; 
+            text-transform: uppercase; 
+            letter-spacing: -2px; 
+        }
+        .right-content { max-width:100%; }
+        h2 { 
+            font-size: 2rem; 
+            font-weight: 700; 
+            color: white; 
+            margin: 0 0 20px 0; 
+            line-height: 1.2; 
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 240px;
             margin: 0 auto;
-            padding: 60px 20px;
+        }
+        .btn { 
+            display: block; 
+            background: #000; 
+            color: #00fa9a; 
+            padding: 14px 28px; 
+            font-size: 0.9rem; 
+            font-weight: 700; 
+            text-decoration: none; 
+            text-transform: uppercase; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 8px;
+            transition: all 0.3s ease;
             text-align: center;
         }
-        .logo {
-            font-size: 72px;
-            margin-bottom: 20px;
+        .btn:hover {
+            background: #1a1a1a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,250,154,0.3);
         }
-        h1 {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .subtitle {
-            font-size: 18px;
-            color: #888;
-            margin-bottom: 40px;
-        }
-        .status {
-            display: inline-block;
-            padding: 8px 16px;
-            background: rgba(102, 126, 234, 0.2);
-            border-radius: 20px;
-            font-size: 14px;
-            color: #667eea;
-            margin-bottom: 40px;
-        }
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        .card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-            text-decoration: none;
+        .btn-secondary {
+            background: rgba(0,0,0,0.3);
             color: #fff;
-            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .card:hover {
-            background: rgba(255,255,255,0.1);
-            transform: translateY(-5px);
+        .btn-secondary:hover {
+            background: rgba(0,0,0,0.5);
+            border-color: #fff;
         }
-        .card-icon { font-size: 36px; margin-bottom: 15px; }
-        .card-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-        .card-desc { font-size: 14px; color: #888; }
-        .footer {
-            color: #555;
-            font-size: 14px;
-            margin-top: 40px;
-        }
-        .footer a { color: #667eea; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">📦</div>
-        <h1>Stacker</h1>
-        <p class="subtitle">Your Local Development Environment is Ready</p>
-        <div class="status">✓ Server Running</div>
-        
-        <div class="cards">
-            <a href="http://localhost:9999" class="card">
-                <div class="card-icon">⚙️</div>
-                <div class="card-title">Stacker Dashboard</div>
-                <div class="card-desc">Manage sites, services, and PHP versions</div>
-            </a>
-            <a href="/phpinfo.php" class="card">
-                <div class="card-icon">🐘</div>
-                <div class="card-title">PHP Info</div>
-                <div class="card-desc">View PHP configuration and modules</div>
-            </a>
-            <a href="http://localhost:9999/#sites" class="card">
-                <div class="card-icon">🌐</div>
-                <div class="card-title">Your Sites</div>
-                <div class="card-desc">Add and manage local development sites</div>
-            </a>
+        <div class="left">
+            <h1 class="big-text">STACKER<br>READY</h1>
+            <div class="divider"></div>
         </div>
-
-        <div class="footer">
-            <p>Document Root: <code>~/Library/Application Support/Stacker/htdocs</code></p>
-            <p style="margin-top: 10px;">Powered by <a href="https://github.com/yasinkuyu/stacker">Stacker</a></p>
+        <div class="right">
+            <div class="right-content">
+                <h2>Local Environment<br>Running</h2>
+                <div class="btn-group">
+                    <a href="http://localhost:9999" class="btn">Open Dashboard</a>
+                    <a href="/phpinfo.php" class="btn btn-secondary">PHP Info</a>
+                </div>
+            </div>
         </div>
     </div>
 </body>
 </html>`
 }
 
-func generateDefaultNginxConfig(htdocsDir string) string {
+func generateDefaultNginxConfig(htdocsDir string, phpPort int) string {
 	return fmt.Sprintf(`# Stacker Default Server - Catch-all for localhost
 server {
     listen 80 default_server;
@@ -308,7 +348,7 @@ server {
     }
 
     location ~ \.php$ {
-        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_pass 127.0.0.1:%d;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
     }
@@ -317,10 +357,10 @@ server {
         deny all;
     }
 }
-`, htdocsDir)
+`, htdocsDir, phpPort)
 }
 
-func generateDefaultApacheConfig(htdocsDir string, logsDir string) string {
+func generateDefaultApacheConfig(htdocsDir string, logsDir string, phpPort int) string {
 	return fmt.Sprintf(`# Stacker Default VirtualHost - Catch-all for localhost
 <VirtualHost *:80>
     ServerName localhost
@@ -334,13 +374,13 @@ func generateDefaultApacheConfig(htdocsDir string, logsDir string) string {
     </Directory>
 
     <FilesMatch \.php$>
-        SetHandler "proxy:fcgi://127.0.0.1:9000"
+        SetHandler "proxy:fcgi://127.0.0.1:%d"
     </FilesMatch>
 
     ErrorLog "%s/apache_error.log"
     CustomLog "%s/apache_access.log" combined
 </VirtualHost>
-`, htdocsDir, htdocsDir, logsDir, logsDir)
+`, htdocsDir, htdocsDir, phpPort, logsDir, logsDir)
 }
 
 func (ws *WebServer) Start() error {
@@ -1340,35 +1380,69 @@ func (ws *WebServer) ensureSSLCertificate(domain string) error {
 }
 
 func (ws *WebServer) getPHPPort(version string) int {
-	// If version is specified, use its calculated port
+	// helper to check if port is listening
+	isListening := func(port int) bool {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 100*time.Millisecond)
+		if err != nil {
+			return false
+		}
+		conn.Close()
+		return true
+	}
+
+	// 1. If version is specified, use its calculated port
 	if version != "" {
 		clean := strings.ReplaceAll(version, ".", "")
 		var port int
 		fmt.Sscanf(clean, "%d", &port)
+		calculated := 9000
 		if port < 100 {
-			return 9000 + port
+			calculated = 9000 + port
+		} else {
+			calculated = port
 		}
-		return port
+
+		// If calculated port is listening, use it
+		if isListening(calculated) {
+			return calculated
+		}
+
+		// Fallback to 9000 if calculated fails but 9000 is alive
+		if calculated != 9000 && isListening(9000) {
+			return 9000
+		}
+		return calculated
 	}
 
-	// If no version specified, try to find a running PHP service in ServiceManager
+	// 2. Try to find a running PHP service in ServiceManager
 	for _, svc := range ws.serviceManager.GetServices() {
 		if strings.HasPrefix(svc.Type, "php") && svc.Status == "running" {
 			return svc.Port
 		}
 	}
 
-	// Fallback to default detection if none running
+	// 3. Fallback to default detection
 	pm := php.NewPHPManager()
 	pm.DetectPHPVersions()
 	if def := pm.GetDefault(); def != nil {
 		clean := strings.ReplaceAll(def.Version, ".", "")
 		var port int
 		fmt.Sscanf(clean, "%d", &port)
+		calculated := 9000
 		if port < 100 {
-			return 9000 + port
+			calculated = 9000 + port
+		} else {
+			calculated = port
 		}
-		return port
+
+		if isListening(calculated) {
+			return calculated
+		}
+	}
+
+	// 4. Final fallback to 9000 if it's listening
+	if isListening(9000) {
+		return 9000
 	}
 
 	return 9000 // Ultimate fallback
