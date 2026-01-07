@@ -199,6 +199,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/hosts", ws.handleHosts)
 	http.HandleFunc("/api/hosts/", ws.handleHostsByLine)
 	http.HandleFunc("/api/hosts/toggle", ws.handleHostsToggle)
+	http.HandleFunc("/api/hosts/bulk-delete", ws.handleHostsBulkDelete)
 	http.HandleFunc("/api/hosts/backup", ws.handleHostsBackup)
 	http.HandleFunc("/api/hosts/backups", ws.handleHostsBackups)
 	http.HandleFunc("/api/hosts/restore", ws.handleHostsRestore)
@@ -2160,6 +2161,34 @@ func (ws *WebServer) handleHostsToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{"status": "toggled"})
+}
+
+func (ws *WebServer) handleHostsBulkDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	var req struct {
+		LineIndexes []int `json:"lineIndexes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := hm.DeleteMultipleEntries(req.LineIndexes); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "deleted",
+		"deleted": len(req.LineIndexes),
+	})
 }
 
 func (ws *WebServer) handleHostsBackup(w http.ResponseWriter, r *http.Request) {

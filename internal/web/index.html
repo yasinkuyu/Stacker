@@ -5337,7 +5337,8 @@
                     <thead>
                         <tr style="background: var(--bg-tertiary); text-align: left;">
                             <th style="padding: 12px; width: 40px;">
-                                <input type="checkbox" id="hosts-select-all" onchange="toggleSelectAllHosts(this.checked)" 
+                                <input type="checkbox" id="hosts-select-all" onclick="toggleSelectAllHosts()" 
+                                       ${selectedHostLines.size > 0 ? 'checked' : ''}
                                        style="width: 16px; height: 16px; cursor: pointer;">
                             </th>
                             <th style="padding: 12px; width: 50px;">Status</th>
@@ -5403,12 +5404,13 @@
             updateBulkDeleteBtn();
         }
 
-        function toggleSelectAllHosts(checked) {
+        function toggleSelectAllHosts() {
             const nonSystemEntries = cachedHostEntries.filter(e => e.group !== 'system');
-            if (checked) {
-                nonSystemEntries.forEach(e => selectedHostLines.add(e.lineIndex));
-            } else {
+            // Toggle behavior: if any are selected, deselect all; otherwise select all
+            if (selectedHostLines.size > 0) {
                 selectedHostLines.clear();
+            } else {
+                nonSystemEntries.forEach(e => selectedHostLines.add(e.lineIndex));
             }
             renderHostsList();
             updateBulkDeleteBtn();
@@ -5455,22 +5457,16 @@
                 'Delete Multiple Entries',
                 `Are you sure you want to delete ${selectedHostLines.size} selected entries?`,
                 async () => {
-                    const lines = Array.from(selectedHostLines).sort((a, b) => b - a); // Delete from bottom up
-                    let errors = 0;
-                    for (const lineIndex of lines) {
-                        try {
-                            await api('/hosts/' + lineIndex, 'DELETE');
-                        } catch (err) {
-                            errors++;
-                        }
+                    const lineIndexes = Array.from(selectedHostLines);
+                    try {
+                        await api('/hosts/bulk-delete', 'POST', { lineIndexes });
+                        showToast(`Deleted ${lineIndexes.length} entries`);
+                        selectedHostLines.clear();
+                        loadHosts();
+                    } catch (err) {
+                        // Permission error - will show password dialog or fallback to modal
+                        showToast(err.message, 'error');
                     }
-                    if (errors > 0) {
-                        showToast(`Deleted ${lines.length - errors} entries. ${errors} failed (permission denied).`, 'warning');
-                    } else {
-                        showToast(`Deleted ${lines.length} entries`);
-                    }
-                    selectedHostLines.clear();
-                    loadHosts();
                 }
             );
         }
@@ -5496,9 +5492,16 @@
             modal.style.display = 'flex';
         }
 
-        function handleHostsPermissionError(err, cmd) {
+        async function handleHostsPermissionError(err, cmd) {
             if (err.message.includes('500') || err.message.includes('permission') || err.message.includes('denied')) {
-                showHostsPermissionError(cmd);
+                // Directly open terminal with the sudo command
+                try {
+                    await api('/run-terminal-command', 'POST', { command: cmd });
+                    showToast('Terminal opened. Please complete the operation there.');
+                } catch (termErr) {
+                    // Fallback to showing the modal if terminal fails to open
+                    showHostsPermissionError(cmd);
+                }
             } else {
                 showToast(err.message, 'error');
             }
@@ -5510,9 +5513,10 @@
         }
 
         async function executeHostsConfirm() {
-            if (hostsConfirmCallback) {
-                closeHostsConfirm();
-                await hostsConfirmCallback();
+            const callback = hostsConfirmCallback;
+            closeHostsConfirm();
+            if (callback && typeof callback === 'function') {
+                await callback();
             }
         }
 

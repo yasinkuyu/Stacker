@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -238,6 +239,43 @@ func (hm *HostsManager) DeleteEntry(lineIndex int) error {
 	return hm.writeLines(newLines)
 }
 
+// DeleteMultipleEntries removes multiple entries in a single operation (one password prompt)
+func (hm *HostsManager) DeleteMultipleEntries(lineIndexes []int) error {
+	if len(lineIndexes) == 0 {
+		return nil
+	}
+
+	// Create backup first
+	if _, err := hm.CreateBackup(); err != nil {
+		LogError(fmt.Sprintf("Failed to create backup before bulk delete: %v", err))
+	}
+
+	content, err := os.ReadFile(hm.hostsPath)
+	if err != nil {
+		return fmt.Errorf("cannot read hosts file: %w", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+
+	// Create a set of line indexes to delete (1-indexed)
+	toDelete := make(map[int]bool)
+	for _, idx := range lineIndexes {
+		if idx >= 1 && idx <= len(lines) {
+			toDelete[idx] = true
+		}
+	}
+
+	// Build new lines excluding the ones to delete
+	var newLines []string
+	for i, line := range lines {
+		if !toDelete[i+1] { // i+1 because lineIndex is 1-based
+			newLines = append(newLines, line)
+		}
+	}
+
+	return hm.writeLines(newLines)
+}
+
 // ToggleEntry enables or disables an entry by commenting/uncommenting
 func (hm *HostsManager) ToggleEntry(lineIndex int) error {
 	content, err := os.ReadFile(hm.hostsPath)
@@ -429,11 +467,75 @@ func (hm *HostsManager) buildEntryLine(entry HostEntry) string {
 }
 
 // writeLines writes a slice of lines to the hosts file
+// Uses osascript with admin privileges on macOS for password prompt
 func (hm *HostsManager) writeLines(lines []string) error {
 	content := strings.Join(lines, "\n")
-	if err := os.WriteFile(hm.hostsPath, []byte(content), 0644); err != nil {
-		return fmt.Errorf("cannot write to hosts file: %w (try running with sudo)", err)
+
+	// First try direct write
+	if err := os.WriteFile(hm.hostsPath, []byte(content), 0644); err == nil {
+		return nil
 	}
+
+	// If direct write fails, use platform-specific privileged write
+	switch runtime.GOOS {
+	case "darwin":
+		return hm.writeLinesPrivilegedMac(content)
+	case "linux":
+		return hm.writeLinesPrivilegedLinux(content)
+	case "windows":
+		// Windows usually doesn't need sudo for hosts file if app is run as admin
+		return fmt.Errorf("cannot write to hosts file: permission denied. Run the app as Administrator")
+	default:
+		return fmt.Errorf("cannot write to hosts file: permission denied (try running with sudo)")
+	}
+}
+
+// writeLinesPrivilegedMac uses osascript to write with admin privileges and password prompt
+func (hm *HostsManager) writeLinesPrivilegedMac(content string) error {
+	// Create a temporary file with the content
+	tmpFile, err := os.CreateTemp("", "hosts_*.tmp")
+	if err != nil {
+		return fmt.Errorf("cannot create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("cannot write to temp file: %w", err)
+	}
+	tmpFile.Close()
+
+	// Use osascript with admin privileges to copy temp file to /etc/hosts
+	script := fmt.Sprintf(`do shell script "cp '%s' '%s'" with administrator privileges`, tmpFile.Name(), hm.hostsPath)
+	cmd := exec.Command("osascript", "-e", script)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("admin copy failed: %s - %w", string(output), err)
+	}
+
+	return nil
+}
+
+// writeLinesPrivilegedLinux uses pkexec for privileged write on Linux
+func (hm *HostsManager) writeLinesPrivilegedLinux(content string) error {
+	// Create a temporary file with the content
+	tmpFile, err := os.CreateTemp("", "hosts_*.tmp")
+	if err != nil {
+		return fmt.Errorf("cannot create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("cannot write to temp file: %w", err)
+	}
+	tmpFile.Close()
+
+	// Use pkexec (PolicyKit) for graphical sudo prompt
+	cmd := exec.Command("pkexec", "cp", tmpFile.Name(), hm.hostsPath)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("privileged copy failed: %s - %w", string(output), err)
+	}
+
 	return nil
 }
 
