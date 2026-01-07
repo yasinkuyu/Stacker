@@ -7,12 +7,18 @@ import (
 )
 
 type Preferences struct {
-	Theme             string   `json:"theme"` // "light" or "dark"
+	Theme             string   `json:"theme"`
 	AutoStart         bool     `json:"autoStart"`
 	AutoStartServices bool     `json:"autoStartServices"`
 	ActiveServices    []string `json:"activeServices"`
-	Port              int      `json:"port"`
 	ShowTray          bool     `json:"showTray"`
+	Port              int      `json:"port"`
+	SlimMode          bool     `json:"slimMode"`
+	DomainExtension   string   `json:"domainExtension"`
+	ApachePort        int      `json:"apachePort"`
+	NginxPort         int      `json:"nginxPort"`
+	MySQLPort         int      `json:"mysqlPort"`
+	Language          string   `json:"language"`
 }
 
 var prefs *Preferences
@@ -32,26 +38,19 @@ func LoadPreferences() *Preferences {
 		prefs = &Preferences{}
 		json.Unmarshal(data, prefs)
 
+		// Defaults for new fields
+		if prefs.Language == "" {
+			prefs.Language = "en"
+		}
+		if prefs.DomainExtension == "" {
+			prefs.DomainExtension = "local"
+		}
+
 		// Auto-migrate from 8080 to 9999
 		if prefs.Port == 8080 {
 			prefs.Port = 9999
-			// We can't easily call Save() here without being an instance method or duplicating logic,
-			// but we can at least return the updated in-memory value directly.
-			// Ideally we should save it, but let's just create a helper or just modify the struct.
-			// Let's rely on the user saving later or just accept in-memory fix for now.
-			// Actually, let's write it back so it persists.
-			go func() {
-				// Simple fire-and-forget save to update file
-				p := &Preferences{
-					Theme:             prefs.Theme,
-					AutoStart:         prefs.AutoStart,
-					AutoStartServices: true, // Default to true for existing users
-					Port:              9999,
-					ShowTray:          prefs.ShowTray,
-				}
-				data, _ := json.MarshalIndent(p, "", "  ")
-				os.WriteFile(prefsPath, data, 0644)
-			}()
+			prefs.AutoStartServices = true
+			prefs.Save()
 		}
 	} else {
 		prefs = &Preferences{
@@ -60,6 +59,9 @@ func LoadPreferences() *Preferences {
 			AutoStartServices: true,
 			Port:              9999,
 			ShowTray:          true,
+			SlimMode:          false,
+			DomainExtension:   "local",
+			Language:          "en",
 		}
 	}
 

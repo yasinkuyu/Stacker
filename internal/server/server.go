@@ -3,7 +3,6 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/yasinkuyu/Stacker/internal/config"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/yasinkuyu/Stacker/internal/config"
 )
 
 type Server struct {
@@ -190,7 +191,13 @@ func (s *Server) generateCertificates() (string, string, error) {
 	cmd := exec.Command("mkcert", "-install")
 	cmd.Run()
 
-	cmd = exec.Command("mkcert", "*.test", "localhost")
+	prefs := config.GetPreferences()
+	ext := prefs.DomainExtension
+	if ext == "" {
+		ext = "local"
+	}
+
+	cmd = exec.Command("mkcert", "*."+ext, "localhost")
 	cmd.Dir = certDir
 	if err := cmd.Run(); err != nil {
 		return "", "", fmt.Errorf("mkcert failed: %w", err)

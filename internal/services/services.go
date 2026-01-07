@@ -1112,7 +1112,7 @@ func (sm *ServiceManager) findPHPBinary(installDir string) string {
 	fmt.Printf("🔍 Checking PHP binary in: %s\n", installDir)
 
 	// Check both bin and sbin directories
-	binPaths := []string{"sbin/php-fpm" + ext, "bin/php-fpm" + ext, "bin/php" + ext, "bin/php-cgi" + ext}
+	binPaths := []string{"sbin/php-fpm" + ext, "bin/php-fpm" + ext, "bin/php" + ext, "bin/php-cgi" + ext, "php-cgi" + ext, "php" + ext}
 
 	// Direct check
 	for _, binPath := range binPaths {
@@ -2588,13 +2588,13 @@ func (sm *ServiceManager) GracefulStopAll() error {
 
 	sm.mu.RLock()
 	var wg sync.WaitGroup
-	for name, svc := range sm.services {
+	for _, svc := range sm.services {
 		if svc.Status == "running" {
 			wg.Add(1)
-			go func(n string) {
+			go func(service *Service) {
 				defer wg.Done()
-				sm.StopService(n)
-			}(name)
+				sm.stopServiceInternal(service)
+			}(svc)
 		}
 	}
 	sm.mu.RUnlock()
@@ -2715,11 +2715,22 @@ func (sm *ServiceManager) StopService(name string) error {
 	}
 
 	err := sm.stopServiceInternal(svc)
-	sm.mu.Unlock()
-
 	if err != nil {
+		sm.mu.Unlock()
 		return err
 	}
+
+	// Remove from ActiveServices in preferences only when manually stopped
+	p := config.GetPreferences()
+	for i, s := range p.ActiveServices {
+		if s == name {
+			p.ActiveServices = append(p.ActiveServices[:i], p.ActiveServices[i+1:]...)
+			p.Save()
+			break
+		}
+	}
+
+	sm.mu.Unlock()
 
 	sm.saveServiceStatus(svc)
 	os.Remove(sm.getPIDFile(name))
@@ -2918,16 +2929,6 @@ func (sm *ServiceManager) stopServiceInternal(svc *Service) error {
 	svc.Status = "stopped"
 	svc.PID = 0
 
-	// Remove from ActiveServices in preferences
-	p := config.GetPreferences()
-	for i, s := range p.ActiveServices {
-		if s == svc.Name {
-			p.ActiveServices = append(p.ActiveServices[:i], p.ActiveServices[i+1:]...)
-			p.Save()
-			break
-		}
-	}
-
 	return nil
 }
 
@@ -3050,7 +3051,7 @@ func (sm *ServiceManager) StartAll() {
 
 		isPriority := false
 		for _, p := range priority {
-			if s.Type == p {
+			if strings.HasPrefix(s.Type, p) {
 				isPriority = true
 				break
 			}

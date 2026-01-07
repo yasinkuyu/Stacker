@@ -6,6 +6,7 @@
 *.dylib
 stacker
 stacker.exe
+stacker_*
 
 # Test binary, built with `go test -c`
 *.test

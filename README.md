@@ -45,7 +45,7 @@ Most local development tools are either too heavy, platform-locked, or outdated.
 *   **Instant Sites**: Add, list, and remove local sites in seconds.
 *   **Multi-Server**: Choose Apache or Nginx per site—run both servers simultaneously.
 *   **Automatic HTTPS**: Built-in SSL certificate management via `mkcert`.
-*   **Hosts Management**: Automatically handles your `/etc/hosts` for `.test` domains.
+*   **Hosts Management**: Automatically handles your `/etc/hosts` for `.local` domains (configurable).
 *   **Modern Web UI**: A beautiful, responsive dark-themed dashboard to control everything.
 
 ### 🐘 Multi-PHP Power

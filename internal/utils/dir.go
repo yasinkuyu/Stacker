@@ -27,6 +27,13 @@ func GetStackerDir() string {
 	if runtime.GOOS == "darwin" {
 		return filepath.Join(home, "Library", "Application Support", "Stacker")
 	}
+	if runtime.GOOS == "windows" {
+		appData := os.Getenv("APPDATA")
+		if appData != "" {
+			return filepath.Join(appData, "Stacker")
+		}
+		return filepath.Join(home, ".stacker")
+	}
 	// Linux fallback
 	return filepath.Join(home, ".stacker")
 }

@@ -52,21 +52,8 @@ type Site struct {
 	Url    string `json:"url"`              // Dynamic URL based on settings
 }
 
-// Preferences holds user settings
-type Preferences struct {
-	Theme             string   `json:"theme"`
-	AutoStart         bool     `json:"autoStart"`
-	AutoStartServices bool     `json:"autoStartServices"`
-	ActiveServices    []string `json:"activeServices"`
-	ShowTray          bool     `json:"showTray"`
-	Port              int      `json:"port"`
-	SlimMode          bool     `json:"slimMode"`
-	DomainExtension   string   `json:"domainExtension"`
-	ApachePort        int      `json:"apachePort"`
-	NginxPort         int      `json:"nginxPort"`
-	MySQLPort         int      `json:"mysqlPort"`
-	Language          string   `json:"language"`
-}
+// Use centralized Preferences from config package
+type Preferences = config.Preferences
 
 var (
 	prefs = Preferences{
@@ -146,20 +133,17 @@ func saveSites(stackerDir string) {
 }
 
 func loadPreferences(stackerDir string) {
-	homeDir, _ := os.UserHomeDir()
-	prefsFile := filepath.Join(homeDir, ".stacker-app", "preferences.json")
-	data, err := os.ReadFile(prefsFile)
-	if err != nil {
-		return
+	p := config.GetPreferences()
+	if p != nil {
+		prefs = *p
 	}
-	json.Unmarshal(data, &prefs)
 }
 
 func savePreferences(stackerDir string) {
-	homeDir, _ := os.UserHomeDir()
-	prefsFile := filepath.Join(homeDir, ".stacker-app", "preferences.json")
-	data, _ := json.MarshalIndent(prefs, "", "  ")
-	os.WriteFile(prefsFile, data, 0644)
+	// Sync back to config package for global access
+	p := config.GetPreferences()
+	*p = prefs
+	p.Save()
 }
 
 // setupDefaultPages creates default welcome page and server configs (like MAMP)

@@ -136,7 +136,12 @@ var addCmd = &cobra.Command{
 			fmt.Printf("❌ Failed to add site: %v\n", err)
 			return
 		}
-		utils.AddToHosts(name + ".test")
+		prefs := config.GetPreferences()
+		ext := prefs.DomainExtension
+		if ext == "" {
+			ext = "local"
+		}
+		utils.AddToHosts(name + "." + ext)
 		fmt.Printf("✅ Site added: %s -> %s\n", name, path)
 	},
 }
@@ -150,9 +155,14 @@ var listCmd = &cobra.Command{
 			fmt.Println("No sites configured")
 			return
 		}
+		prefs := config.GetPreferences()
+		ext := prefs.DomainExtension
+		if ext == "" {
+			ext = "local"
+		}
 		fmt.Println("Configured sites:")
 		for _, site := range cfg.Sites {
-			fmt.Printf("  🌐 %s.test -> %s\n", site.Name, site.Path)
+			fmt.Printf("  🌐 %s.%s -> %s\n", site.Name, ext, site.Path)
 		}
 	},
 }
@@ -172,7 +182,12 @@ var removeCmd = &cobra.Command{
 			fmt.Printf("❌ Failed to remove site: %v\n", err)
 			return
 		}
-		utils.RemoveFromHosts(name + ".test")
+		prefs := config.GetPreferences()
+		ext := prefs.DomainExtension
+		if ext == "" {
+			ext = "local"
+		}
+		utils.RemoveFromHosts(name + "." + ext)
 		fmt.Printf("✅ Site removed: %s\n", name)
 	},
 }
@@ -595,7 +610,12 @@ var statusCmd = &cobra.Command{
 		if len(cfg.Sites) > 0 {
 			fmt.Printf("\n🌐 Sites (%d):\n", len(cfg.Sites))
 			for _, site := range cfg.Sites {
-				fmt.Printf("   • %s.test\n", site.Name)
+				prefs := config.GetPreferences()
+				ext := prefs.DomainExtension
+				if ext == "" {
+					ext = "local"
+				}
+				fmt.Printf("   • %s.%s\n", site.Name, ext)
 			}
 		}
 		sm := services.NewServiceManager()
