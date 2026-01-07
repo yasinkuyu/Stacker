@@ -5,26 +5,23 @@ Current development status and stability goals.
 ## 🚀 Current Status
 
 | Feature | Progress | Status | Description |
-
-| Feature | Progress | Status | Description |
 | :--- | :---: | :---: | :--- |
-| **User Interface (UI)** | 99% | ✅ | Modern layout implemented, nearly complete. |
-| **Localization (i18n)** | 50% | 🏗️ | Implementation in progress (Core ready, need more languages). |
-| **Theme System** | 99% | ✅ | Light/Dark mode fully functional with persistence. |
-| **Service Management** | 80% | 🔧 | Major features implemented, focus on reliability. |
-| **PHP Management** | 30% | 🏗️ | Basic listing only. Setup needs work. |
-| **Site Management** | 40% | 🏗️ | Basic listing. Creation logic needs stabilization. |
-| **Mail Catcher** | 50% | 🏗️ | Basic functionality implemented. |
-| **Database Dumps** | 50% | 🏗️ | Core export/import logic in development. |
-| **Logs Viewer** | 70% | 🏗️ | Functional log tailing and filtered search. |
+| **User Interface (UI)** | 100% | ✅ | Modern Glassmorphism layout fully implemented. |
+| **Localization (i18n)** | 99% | ✅ | Full support for 13 languages with dynamic updates. |
+| **Theme System** | 100% | ✅ | Light/Dark mode fully functional with cross-component persistence. |
+| **Service Management** | 95% | ✅ | Cross-platform, persistence, and dependency boot ready. |
+| **PHP Management** | 75% | 🔧 | Smart port detection and auto-FPM configuration ready. |
+| **Site Management** | 70% | 🔧 | Dynamic domain extensions and hosts CRUD ready. |
+| **Mail Catcher** | 60% | 🏗️ | SMTP interceptor and UI viewer functional. |
+| **Logs Viewer** | 80% | ✅ | Advanced real-time tailing and filtered search. |
 
 ## 🗺️ Focus Areas (Stability First)
 
-### 🛠️ Phase 1: Core Reliability (v1.1.0)
-- [ ] **Service Manager Refactor:** Improve PID tracking and process state detection (current pain point).
-- [ ] **Port Conflict Resolution:** Better detection of ports already in use by system services.
-- [ ] **Error Handling:** Detailed error messages for failed service starts in the UI.
-- [ ] **Config Validation:** Check syntax of config files before applying changes.
+### ✅ Phase 1: Core Reliability (v1.1.0) - COMPLETED
+- [x] **Service Manager Refactor:** Improved PID tracking, cross-platform signal management (SIGKILL/taskkill).
+- [x] **Port Conflict Resolution:** Intelligent detection via `lsof`/`netstat` and proactive port clearing.
+- [x] **State Persistence:** Restore previously active services on restart.
+- [x] **Unified Settings:** Centralized preference management between Web and Backend.
 
 ### ⚡ Phase 2: UX Improvements (v1.2.0)
 - [ ] **Service Auto-Recovery:** Attempt to restart services if they crash unexpectedly.
@@ -38,4 +35,4 @@ Current development status and stability goals.
 - [ ] **Health Monitoring:** Basic CPU/RAM monitoring per managed service.
 
 ---
-*Last updated: January 2, 2026*
+*Last updated: January 7, 2026*
