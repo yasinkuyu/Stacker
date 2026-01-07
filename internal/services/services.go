@@ -2320,31 +2320,6 @@ func (sm *ServiceManager) StartService(name string) error {
 	case "apache":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
 
-		// Check if port is in use and handle orphan processes
-		inUse, conflict := sm.checkPortInUse(svc.Port)
-		if inUse && strings.Contains(conflict, "(PID:") {
-			// Extract PID
-			parts := strings.Split(conflict, "(PID: ")
-			if len(parts) > 1 {
-				pidStr := strings.TrimRight(parts[1], ")")
-				var pid int
-				fmt.Sscanf(pidStr, "%d", &pid)
-
-				// Verify if it's our process
-				psCmd := exec.Command("ps", "-p", pidStr, "-o", "comm=")
-				psOutput, _ := psCmd.Output()
-				psPath := strings.TrimSpace(string(psOutput))
-
-				if pid > 0 && strings.Contains(psPath, "Stacker") {
-					fmt.Printf("⚠️ Port %d is occupied by an orphan Stacker process (PID: %d). Cleaning up...\n", svc.Port, pid)
-					if process, err := os.FindProcess(pid); err == nil {
-						process.Signal(os.Kill)
-						time.Sleep(1 * time.Second) // Give it a moment
-					}
-				}
-			}
-		}
-
 		binaryPath = sm.findApacheBinary(svc.BinaryDir)
 		if binaryPath == "" {
 			// Fallback to old path just in case

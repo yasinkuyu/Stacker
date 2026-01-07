@@ -180,10 +180,8 @@ func setupDefaultPages(stackerDir string) {
 	nginxConfDir := filepath.Join(stackerDir, "conf", "nginx")
 	os.MkdirAll(nginxConfDir, 0755)
 	defaultNginxConf := filepath.Join(nginxConfDir, "default.conf")
-	if _, err := os.Stat(defaultNginxConf); os.IsNotExist(err) {
-		nginxConfig := generateDefaultNginxConfig(htdocsDir)
-		os.WriteFile(defaultNginxConf, []byte(nginxConfig), 0644)
-	}
+	nginxConfig := generateDefaultNginxConfig(htdocsDir)
+	os.WriteFile(defaultNginxConf, []byte(nginxConfig), 0644)
 
 	// Create default Apache config
 	apacheConfDir := filepath.Join(stackerDir, "conf", "apache")
@@ -191,10 +189,8 @@ func setupDefaultPages(stackerDir string) {
 	logsDir := filepath.Join(stackerDir, "logs")
 	os.MkdirAll(logsDir, 0755)
 	defaultApacheConf := filepath.Join(apacheConfDir, "default.conf")
-	if _, err := os.Stat(defaultApacheConf); os.IsNotExist(err) {
-		apacheConfig := generateDefaultApacheConfig(htdocsDir, logsDir)
-		os.WriteFile(defaultApacheConf, []byte(apacheConfig), 0644)
-	}
+	apacheConfig := generateDefaultApacheConfig(htdocsDir, logsDir)
+	os.WriteFile(defaultApacheConf, []byte(apacheConfig), 0644)
 }
 
 func generateWelcomePage() string {
@@ -339,7 +335,6 @@ func generateDefaultApacheConfig(htdocsDir string, logsDir string) string {
 	return fmt.Sprintf(`# Stacker Default VirtualHost - Catch-all for localhost
 <VirtualHost *:80>
     ServerName localhost
-    ServerAlias *
     DocumentRoot "%s"
 
     <Directory "%s">
