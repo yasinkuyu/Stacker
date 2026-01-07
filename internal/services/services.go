@@ -467,27 +467,53 @@ func (sm *ServiceManager) loadInstalledServices() {
 }
 
 func (sm *ServiceManager) checkPortInUse(port int) (bool, string) {
-	// First try lsof to get process name - this is more reliable
-	cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port), "-sTCP:LISTEN", "-t")
-	output, err := cmd.Output()
-	if err == nil && len(output) > 0 {
-		// Get PID from output
-		pidStr := strings.TrimSpace(string(output))
-		pids := strings.Split(pidStr, "\n")
-		if len(pids) > 0 {
-			// Get process name for first PID
-			psCmd := exec.Command("ps", "-ww", "-p", pids[0], "-o", "command=")
-			psOutput, psErr := psCmd.Output()
-			if psErr == nil {
-				processName := strings.TrimSpace(string(psOutput))
-				// If it's too long, just take the first part
-				if len(processName) > 100 {
-					processName = processName[:97] + "..."
+	if runtime.GOOS == "windows" {
+		// Windows: use netstat to find PID
+		cmd := exec.Command("cmd", "/c", fmt.Sprintf("netstat -ano | findstr :%d | findstr LISTENING", port))
+		output, err := cmd.Output()
+		if err == nil && len(output) > 0 {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				parts := strings.Fields(line)
+				if len(parts) >= 5 {
+					pid := parts[len(parts)-1]
+					// Get process name using tasklist
+					nameCmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %s", pid), "/NH", "/FO", "CSV")
+					nameOutput, _ := nameCmd.Output()
+					processName := "Unknown"
+					if len(nameOutput) > 0 {
+						csvParts := strings.Split(string(nameOutput), ",")
+						if len(csvParts) > 0 {
+							processName = strings.Trim(csvParts[0], "\"")
+						}
+					}
+					return true, fmt.Sprintf("%s (PID: %s)", processName, pid)
 				}
-				return true, fmt.Sprintf("%s (PID: %s)", processName, pids[0])
 			}
 		}
-		return true, fmt.Sprintf("Process PID: %s", pidStr)
+	} else {
+		// macOS/Linux: use lsof to get process name - this is more reliable
+		cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port), "-sTCP:LISTEN", "-t")
+		output, err := cmd.Output()
+		if err == nil && len(output) > 0 {
+			// Get PID from output
+			pidStr := strings.TrimSpace(string(output))
+			pids := strings.Split(pidStr, "\n")
+			if len(pids) > 0 {
+				// Get process name for first PID
+				psCmd := exec.Command("ps", "-ww", "-p", pids[0], "-o", "command=")
+				psOutput, psErr := psCmd.Output()
+				if psErr == nil {
+					processName := strings.TrimSpace(string(psOutput))
+					// If it's too long, just take the first part
+					if len(processName) > 100 {
+						processName = processName[:97] + "..."
+					}
+					return true, fmt.Sprintf("%s (PID: %s)", processName, pids[0])
+				}
+			}
+			return true, fmt.Sprintf("Process PID: %s", pidStr)
+		}
 	}
 
 	// Fallback: try TCP connection
@@ -948,9 +974,13 @@ func (sm *ServiceManager) initializeMariaDB(binaryPath, configDir, dataDir strin
 }
 
 func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
+	binName := "mariadbd"
+	if runtime.GOOS == "windows" {
+		binName = "mariadbd.exe"
+	}
 	fmt.Printf("🔍 Checking MariaDB binary in: %s\n", installDir)
 	// Direct check (if stripped)
-	directPath := filepath.Join(installDir, "bin", "mariadbd")
+	directPath := filepath.Join(installDir, "bin", binName)
 	if _, err := os.Stat(directPath); err == nil {
 		fmt.Printf("✅ Found MariaDB binary directly at: %s\n", directPath)
 		return installDir
@@ -968,7 +998,7 @@ func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
 			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			if strings.Contains(entry.Name(), "mariadb") {
 				binaryPath := filepath.Join(installDir, entry.Name())
-				checkPath := filepath.Join(binaryPath, "bin", "mariadbd")
+				checkPath := filepath.Join(binaryPath, "bin", binName)
 				if _, err := os.Stat(checkPath); err == nil {
 					fmt.Printf("✅ Found MariaDB binary in subdirectory: %s\n", binaryPath)
 					return binaryPath
@@ -982,9 +1012,13 @@ func (sm *ServiceManager) findMariaDBBinary(installDir string) string {
 }
 
 func (sm *ServiceManager) findMySQLBinary(installDir string) string {
+	binName := "mysqld"
+	if runtime.GOOS == "windows" {
+		binName = "mysqld.exe"
+	}
 	fmt.Printf("🔍 Checking MySQL binary in: %s\n", installDir)
 	// Direct check (if stripped)
-	directPath := filepath.Join(installDir, "bin", "mysqld")
+	directPath := filepath.Join(installDir, "bin", binName)
 	if _, err := os.Stat(directPath); err == nil {
 		fmt.Printf("✅ Found MySQL binary directly at: %s\n", directPath)
 		return installDir
@@ -1002,7 +1036,7 @@ func (sm *ServiceManager) findMySQLBinary(installDir string) string {
 			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			if strings.Contains(strings.ToLower(entry.Name()), "mysql") {
 				binaryPath := filepath.Join(installDir, entry.Name())
-				checkPath := filepath.Join(binaryPath, "bin", "mysqld")
+				checkPath := filepath.Join(binaryPath, "bin", binName)
 				if _, err := os.Stat(checkPath); err == nil {
 					fmt.Printf("✅ Found MySQL binary in subdirectory: %s\n", binaryPath)
 					return binaryPath
@@ -1016,22 +1050,26 @@ func (sm *ServiceManager) findMySQLBinary(installDir string) string {
 }
 
 func (sm *ServiceManager) findApacheBinary(installDir string) string {
+	binName := "httpd"
+	if runtime.GOOS == "windows" {
+		binName = "httpd.exe"
+	}
 	fmt.Printf("🔍 Checking Apache binary in: %s\n", installDir)
 	// Check compiled binary location first
-	compiledPath := filepath.Join(installDir, "apache-bin", "bin", "httpd")
+	compiledPath := filepath.Join(installDir, "apache-bin", "bin", binName)
 	if _, err := os.Stat(compiledPath); err == nil {
 		fmt.Printf("✅ Found Apache binary in compiled path: %s\n", compiledPath)
 		return compiledPath
 	}
 	// Try nested apache-bin if necessary (some builds might nest it)
-	nestedCompiled := filepath.Join(installDir, "apache-bin", "apache-bin", "bin", "httpd")
+	nestedCompiled := filepath.Join(installDir, "apache-bin", "apache-bin", "bin", binName)
 	if _, err := os.Stat(nestedCompiled); err == nil {
 		return nestedCompiled
 	}
 	fmt.Printf("❌ Compiled path check failed for: %s\n", compiledPath)
 
 	// Direct check
-	directPath := filepath.Join(installDir, "bin", "httpd")
+	directPath := filepath.Join(installDir, "bin", binName)
 	if _, err := os.Stat(directPath); err == nil {
 		fmt.Printf("✅ Found Apache binary directly at: %s\n", directPath)
 		return directPath
@@ -1048,14 +1086,14 @@ func (sm *ServiceManager) findApacheBinary(installDir string) string {
 		if entry.IsDir() {
 			fmt.Printf("📁 Checking subdirectory: %s\n", entry.Name())
 			// Subdirectory check (e.g., httpd-2.4.58/bin/httpd)
-			binaryPath := filepath.Join(installDir, entry.Name(), "bin", "httpd")
+			binaryPath := filepath.Join(installDir, entry.Name(), "bin", binName)
 			if _, err := os.Stat(binaryPath); err == nil {
 				fmt.Printf("✅ Found Apache binary in subdirectory: %s\n", binaryPath)
 				return binaryPath
 			}
 
 			// Check for apache2/bin/httpd
-			binaryPath = filepath.Join(installDir, entry.Name(), "apache2", "bin", "httpd")
+			binaryPath = filepath.Join(installDir, entry.Name(), "apache2", "bin", binName)
 			if _, err := os.Stat(binaryPath); err == nil {
 				fmt.Printf("✅ Found Apache binary in apache2 subdirectory: %s\n", binaryPath)
 				return binaryPath
@@ -1067,10 +1105,14 @@ func (sm *ServiceManager) findApacheBinary(installDir string) string {
 }
 
 func (sm *ServiceManager) findPHPBinary(installDir string) string {
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
 	fmt.Printf("🔍 Checking PHP binary in: %s\n", installDir)
 
 	// Check both bin and sbin directories
-	binPaths := []string{"sbin/php-fpm", "bin/php-fpm", "bin/php"}
+	binPaths := []string{"sbin/php-fpm" + ext, "bin/php-fpm" + ext, "bin/php" + ext, "bin/php-cgi" + ext}
 
 	// Direct check
 	for _, binPath := range binPaths {
@@ -1104,10 +1146,14 @@ func (sm *ServiceManager) findPHPBinary(installDir string) string {
 }
 
 func (sm *ServiceManager) findNginxBinary(installDir string) string {
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
 	fmt.Printf("🔍 Checking Nginx binary in: %s\n", installDir)
 
 	// Check both bin and sbin directories
-	binPaths := []string{"sbin/nginx", "bin/nginx"}
+	binPaths := []string{"sbin/nginx" + ext, "bin/nginx" + ext, "nginx" + ext}
 
 	// Direct check
 	for _, binPath := range binPaths {
@@ -2364,9 +2410,13 @@ func (sm *ServiceManager) StartService(name string) error {
 		cmd = sm.startApache(svc, binaryPath)
 	case "redis":
 		sm.updateInstallProgress(svc.Type, svc.Version, 30)
-		binaryPath = filepath.Join(svc.BinaryDir, "redis-server")
+		binName := "redis-server"
+		if runtime.GOOS == "windows" {
+			binName = "redis-server.exe"
+		}
+		binaryPath = filepath.Join(svc.BinaryDir, binName)
 		if _, err := os.Stat(binaryPath); err != nil {
-			binaryPath = filepath.Join(svc.BinaryDir, "src", "redis-server")
+			binaryPath = filepath.Join(svc.BinaryDir, "src", binName)
 		}
 		cmd = sm.startRedis(svc, binaryPath)
 	default:
@@ -2393,8 +2443,10 @@ func (sm *ServiceManager) StartService(name string) error {
 
 			if strings.Contains(binaryPath, "php-fpm") {
 				cmd = exec.Command(binaryPath, "-F", "-y", fpmConf)
+			} else if strings.Contains(binaryPath, "php-cgi") {
+				cmd = exec.Command(binaryPath, "-b", fmt.Sprintf("127.0.0.1:%d", port))
 			} else {
-				cmd = exec.Command(binaryPath, "-S", fmt.Sprintf("127.0.0.1:%d", sm.getDefaultPort(svc.Type)))
+				cmd = exec.Command(binaryPath, "-S", fmt.Sprintf("127.0.0.1:%d", port))
 			}
 		} else {
 			return fmt.Errorf("unsupported service type: %s", svc.Type)
@@ -2841,19 +2893,24 @@ func (sm *ServiceManager) stopServiceInternal(svc *Service) error {
 	}
 
 	if pid > 0 {
-		process, err := os.FindProcess(pid)
-		if err == nil {
-			// Try SIGTERM first
-			if err := process.Signal(syscall.SIGTERM); err == nil {
-				// Wait a bit for graceful shutdown
-				time.Sleep(500 * time.Millisecond)
-				// Check if still running
-				if err := process.Signal(syscall.Signal(0)); err == nil {
-					// Still running, force kill
+		if runtime.GOOS == "windows" {
+			// Windows: use taskkill for more reliable process termination
+			exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", pid)).Run()
+		} else {
+			process, err := os.FindProcess(pid)
+			if err == nil {
+				// Try SIGTERM first
+				if err := process.Signal(syscall.SIGTERM); err == nil {
+					// Wait a bit for graceful shutdown
+					time.Sleep(500 * time.Millisecond)
+					// Check if still running
+					if err := process.Signal(syscall.Signal(0)); err == nil {
+						// Still running, force kill
+						process.Signal(syscall.SIGKILL)
+					}
+				} else {
 					process.Signal(syscall.SIGKILL)
 				}
-			} else {
-				process.Signal(syscall.SIGKILL)
 			}
 		}
 	}
@@ -3048,32 +3105,64 @@ func (sm *ServiceManager) FormatStatus() string {
 }
 
 func (sm *ServiceManager) startMariaDB(svc *Service, binaryPath string) *exec.Cmd {
-	cmd := exec.Command(filepath.Join(binaryPath, "bin", "mariadbd"),
+	binName := "mariadbd"
+	if runtime.GOOS == "windows" {
+		binName = "mariadbd.exe"
+	}
+	cmd := exec.Command(filepath.Join(binaryPath, "bin", binName),
 		"--defaults-file="+filepath.Join(svc.ConfigDir, "my.cnf"),
 		fmt.Sprintf("--port=%d", svc.Port),
 	)
-	cmd.Env = append(os.Environ(),
-		"LD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
-		"DYLD_LIBRARY_PATH="+filepath.Join(binaryPath, "lib"),
-	)
+
+	libDir := filepath.Join(binaryPath, "lib")
+	env := os.Environ()
+	if runtime.GOOS == "windows" {
+		// On Windows, add bin to PATH
+		for i, e := range env {
+			if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
+				env[i] = e + ";" + filepath.Join(binaryPath, "bin")
+				break
+			}
+		}
+	} else {
+		env = append(env,
+			"LD_LIBRARY_PATH="+libDir,
+			"DYLD_LIBRARY_PATH="+libDir,
+		)
+	}
+	cmd.Env = env
 	return cmd
 }
 
 func (sm *ServiceManager) startMySQL(svc *Service, binaryPath string) *exec.Cmd {
+	binName := "mysqld"
+	if runtime.GOOS == "windows" {
+		binName = "mysqld.exe"
+	}
 	// MySQL expects libraries in lib/ directory relative to the binary or via DYLD_LIBRARY_PATH
-	// On macOS, we add the lib directory to DYLD_LIBRARY_PATH
 	libDir := filepath.Join(binaryPath, "lib")
 
-	cmd := exec.Command(filepath.Join(binaryPath, "bin", "mysqld"),
+	cmd := exec.Command(filepath.Join(binaryPath, "bin", binName),
 		"--defaults-file="+filepath.Join(svc.ConfigDir, "my.cnf"),
 		fmt.Sprintf("--port=%d", svc.Port),
 	)
 
-	// Ensure we include both the service's lib and common system paths
-	cmd.Env = append(os.Environ(),
-		"LD_LIBRARY_PATH="+libDir,
-		"DYLD_LIBRARY_PATH="+libDir,
-	)
+	env := os.Environ()
+	if runtime.GOOS == "windows" {
+		// On Windows, add bin to PATH
+		for i, e := range env {
+			if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
+				env[i] = e + ";" + filepath.Join(binaryPath, "bin")
+				break
+			}
+		}
+	} else {
+		env = append(env,
+			"LD_LIBRARY_PATH="+libDir,
+			"DYLD_LIBRARY_PATH="+libDir,
+		)
+	}
+	cmd.Env = env
 	return cmd
 }
 
@@ -3091,23 +3180,41 @@ func (sm *ServiceManager) startApache(svc *Service, binaryPath string) *exec.Cmd
 		"-D", "FOREGROUND",
 	)
 
-	// Add dynamic library paths for macOS dependencies (often from Homebrew)
+	// Library paths for dependencies
 	libPaths := []string{
 		filepath.Join(svc.BinaryDir, "lib"),
-		"/opt/homebrew/opt/apr/lib",
-		"/opt/homebrew/opt/apr-util/lib",
-		"/opt/homebrew/opt/pcre2/lib",
-		"/usr/local/opt/apr/lib",
-		"/usr/local/opt/apr-util/lib",
-		"/usr/local/opt/pcre2/lib",
 	}
 
-	path := strings.Join(libPaths, ":")
-	cmd.Env = append(os.Environ(),
-		"DYLD_LIBRARY_PATH="+path,
-		"LD_LIBRARY_PATH="+path,
-	)
+	if runtime.GOOS == "darwin" {
+		libPaths = append(libPaths,
+			"/opt/homebrew/opt/apr/lib",
+			"/opt/homebrew/opt/apr-util/lib",
+			"/opt/homebrew/opt/pcre2/lib",
+			"/usr/local/opt/apr/lib",
+			"/usr/local/opt/apr-util/lib",
+			"/usr/local/opt/pcre2/lib",
+		)
+	}
 
+	path := strings.Join(libPaths, string(os.PathListSeparator))
+	env := os.Environ()
+
+	if runtime.GOOS == "windows" {
+		// On Windows, add bin to PATH so it finds DLLs
+		for i, e := range env {
+			if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
+				env[i] = e + ";" + filepath.Join(svc.BinaryDir, "bin")
+				break
+			}
+		}
+	} else {
+		env = append(env,
+			"DYLD_LIBRARY_PATH="+path,
+			"LD_LIBRARY_PATH="+path,
+		)
+	}
+
+	cmd.Env = env
 	return cmd
 }
 
