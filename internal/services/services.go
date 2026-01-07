@@ -708,6 +708,12 @@ func (sm *ServiceManager) installMySQL(version, installDir, configDir, dataDir s
 			sm.updateInstallProgress("mysql", version, 80)
 			binaryPath := sm.findMySQLBinary(installDir)
 			if binaryPath != "" {
+				// Patch MySQL binaries before initialization
+				sm.UpdateInstallLog("mysql", version, "Patching MySQL binaries for macOS...")
+				if err := sm.patchMySQLBinaries(binaryPath); err != nil {
+					fmt.Printf("⚠️ Warning: Failed to patch MySQL binaries: %v\n", err)
+				}
+
 				fmt.Printf("📦 Initializing MySQL data directory...\n")
 				mysqldPath := filepath.Join(binaryPath, "bin", "mysqld")
 

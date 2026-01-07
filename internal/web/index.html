@@ -4851,7 +4851,7 @@
                 btn.disabled = true;
                 btn.style.width = originalWidth + 'px';
                 btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-color:white;border-top-color:transparent;"></div>';
-                await api(`/services/${name}/start`, 'POST');
+                await api(`/services/start/${name}`, 'POST');
                 showToast(`${name.toUpperCase()} started successfully`);
                 loadServices();
             } catch (err) {
@@ -4870,7 +4870,7 @@
                 btn.disabled = true;
                 btn.style.width = originalWidth + 'px';
                 btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-color:white;border-top-color:transparent;"></div>';
-                await api(`/services/${name}/stop`, 'POST');
+                await api(`/services/stop/${name}`, 'POST');
                 showToast(`${name.toUpperCase()} stopped successfully`);
                 loadServices();
             } catch (err) {
