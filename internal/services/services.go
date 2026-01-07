@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -632,15 +633,30 @@ func (sm *ServiceManager) getDefaultPort(svcType string) int {
 			return sm.apachePort
 		}
 		return 80
-	case "php":
-		return 9000
 	case "redis":
 		return 6379
 	}
 
 	// Handle php5.6, php8.3 etc.
 	if strings.HasPrefix(svcType, "php") {
-		return 9000
+		version := strings.TrimPrefix(svcType, "php")
+		// Handle php-8.3 or 8.3-bin
+		version = strings.TrimPrefix(version, "-")
+		version = strings.Split(version, "-")[0]
+
+		if version == "" {
+			return 9000
+		}
+
+		clean := strings.ReplaceAll(version, ".", "")
+		port, err := strconv.Atoi(clean)
+		if err != nil || port == 0 {
+			return 9000
+		}
+		if port < 100 {
+			return 9000 + port
+		}
+		return port
 	}
 
 	return 0
@@ -1572,6 +1588,12 @@ LoadModule proxy_module lib/httpd/modules/mod_proxy.so
 LoadModule proxy_fcgi_module lib/httpd/modules/mod_proxy_fcgi.so
 LoadModule ssl_module lib/httpd/modules/mod_ssl.so
 LoadModule socache_shmcb_module lib/httpd/modules/mod_socache_shmcb.so
+LoadModule rewrite_module lib/httpd/modules/mod_rewrite.so
+LoadModule alias_module lib/httpd/modules/mod_alias.so
+LoadModule env_module lib/httpd/modules/mod_env.so
+LoadModule headers_module lib/httpd/modules/mod_headers.so
+LoadModule expires_module lib/httpd/modules/mod_expires.so
+LoadModule deflate_module lib/httpd/modules/mod_deflate.so
 LoadModule log_config_module lib/httpd/modules/mod_log_config.so
 
 # Logs
@@ -2354,14 +2376,13 @@ func (sm *ServiceManager) StartService(name string) error {
 			os.MkdirAll(fpmConfDir, 0755)
 			fpmConf := filepath.Join(fpmConfDir, "php-fpm-"+svc.Name+".conf")
 
-			if _, err := os.Stat(fpmConf); os.IsNotExist(err) {
-				port := sm.getDefaultPort(svc.Type)
-				if port == 0 {
-					port = 9000
-				}
-				content := fmt.Sprintf("[global]\npid = %s/pids/%s.pid\nerror_log = %s/logs/php-fpm-%s.error.log\n[www]\nlisten = 127.0.0.1:%d\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\n", sm.baseDir, svc.Name, sm.baseDir, svc.Name, port)
-				os.WriteFile(fpmConf, []byte(content), 0644)
+			// Always regenerate FPM config to ensure correct port and paths
+			port := sm.getDefaultPort(svc.Type)
+			if port == 0 {
+				port = 9000
 			}
+			content := fmt.Sprintf("[global]\npid = %s/pids/%s.pid\nerror_log = %s/logs/php-fpm-%s.error.log\n[www]\nlisten = 127.0.0.1:%d\npm = dynamic\npm.max_children = 5\npm.start_servers = 2\npm.min_spare_servers = 1\npm.max_spare_servers = 3\n", sm.baseDir, svc.Name, sm.baseDir, svc.Name, port)
+			os.WriteFile(fpmConf, []byte(content), 0644)
 
 			if strings.Contains(binaryPath, "php-fpm") {
 				cmd = exec.Command(binaryPath, "-F", "-y", fpmConf)
