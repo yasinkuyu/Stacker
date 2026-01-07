@@ -194,6 +194,16 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/browse-folder", ws.handleBrowseFolder)
 	http.HandleFunc("/api/dumps/ingest", ws.handleDumpIngest)
 
+	// Hosts Management API
+	http.HandleFunc("/api/hosts", ws.handleHosts)
+	http.HandleFunc("/api/hosts/", ws.handleHostsByLine)
+	http.HandleFunc("/api/hosts/toggle", ws.handleHostsToggle)
+	http.HandleFunc("/api/hosts/backup", ws.handleHostsBackup)
+	http.HandleFunc("/api/hosts/backups", ws.handleHostsBackups)
+	http.HandleFunc("/api/hosts/restore", ws.handleHostsRestore)
+	http.HandleFunc("/api/hosts/export", ws.handleHostsExport)
+	http.HandleFunc("/api/hosts/import", ws.handleHostsImport)
+
 	logoFS, _ := fs.Sub(serviceLogos, "services")
 	http.Handle("/api/static/services/", http.StripPrefix("/api/static/services/", http.FileServer(http.FS(logoFS))))
 
@@ -709,7 +719,9 @@ const defaultIndexHTML = `<!DOCTYPE html>
 </html>`
 
 func (ws *WebServer) createSiteConfig(site Site) error {
-	// Create both Nginx and Apache configs
+	// Always create both Nginx and Apache configs for flexibility
+	// The "Server" field indicates which one is primary/active
+	// but both configs are generated so user can switch between them
 	if err := ws.createNginxSiteConfig(site); err != nil {
 		return fmt.Errorf("nginx config: %w", err)
 	}
@@ -1999,4 +2011,216 @@ func (ws *WebServer) handleLocales(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+// ===========================================
+// HOSTS MANAGEMENT API
+// ===========================================
+
+func (ws *WebServer) handleHosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	switch r.Method {
+	case "GET":
+		entries, err := hm.GetAllEntries()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"entries":   entries,
+			"hostsPath": utils.GetHostsPath(),
+		})
+
+	case "POST":
+		var entry utils.HostEntry
+		if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		if entry.IP == "" {
+			entry.IP = "127.0.0.1"
+		}
+		if entry.Hostname == "" {
+			http.Error(w, "Hostname is required", http.StatusBadRequest)
+			return
+		}
+
+		if err := hm.AddEntry(entry); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "created", "hostname": entry.Hostname})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (ws *WebServer) handleHostsByLine(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	// Extract line number from URL: /api/hosts/123
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 {
+		http.Error(w, "Line index required", http.StatusBadRequest)
+		return
+	}
+
+	var lineIndex int
+	fmt.Sscanf(parts[3], "%d", &lineIndex)
+	if lineIndex < 1 {
+		http.Error(w, "Invalid line index", http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case "PUT":
+		var entry utils.HostEntry
+		if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		if err := hm.UpdateEntry(lineIndex, entry); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+
+	case "DELETE":
+		if err := hm.DeleteEntry(lineIndex); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (ws *WebServer) handleHostsToggle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	var req struct {
+		LineIndex int `json:"lineIndex"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := hm.ToggleEntry(req.LineIndex); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "toggled"})
+}
+
+func (ws *WebServer) handleHostsBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	backupPath, err := hm.CreateBackup()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "created", "path": backupPath})
+}
+
+func (ws *WebServer) handleHostsBackups(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	backups, err := hm.GetBackups()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"backups": backups})
+}
+
+func (ws *WebServer) handleHostsRestore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := hm.RestoreBackup(req.Path); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "restored"})
+}
+
+func (ws *WebServer) handleHostsExport(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	content, err := hm.ExportHosts()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"content": content})
+}
+
+func (ws *WebServer) handleHostsImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	hm := utils.NewHostsManager()
+
+	var req struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := hm.ImportHosts(req.Content); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "imported"})
 }

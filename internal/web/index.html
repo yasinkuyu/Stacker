@@ -2292,6 +2292,17 @@
                 <span class="icon-nav-label" data-i18n="nav.logs">Logs</span>
             </button>
 
+            <button class="icon-nav-item" data-page="hosts" title="Hosts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <line x1="8" y1="6" x2="16" y2="6" />
+                    <line x1="8" y1="10" x2="16" y2="10" />
+                    <line x1="8" y1="14" x2="12" y2="14" />
+                </svg>
+                <span class="icon-nav-label">Hosts</span>
+            </button>
+
             <div class="icon-nav-spacer"></div>
 
             <button class="icon-nav-item" data-page="about" title="About">
@@ -2667,6 +2678,86 @@
                         <span class="card-title">Log Files</span>
                     </div>
                     <div class="card-body" id="logs-list"></div>
+                </div>
+            </div>
+
+            <!-- Hosts -->
+            <div id="hosts" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Hosts Manager</h1>
+                    <p class="page-subtitle" id="hosts-path-display">Manage your system hosts file entries</p>
+                </div>
+                <div class="card">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                            <span class="card-title">Host Entries</span>
+                            <input type="text" class="form-input" id="hosts-search" placeholder="Search hosts..."
+                                style="max-width: 200px; height: 32px; font-size: 12px;" oninput="filterHosts()">
+                            <select id="hosts-filter" class="form-select" style="width: auto; height: 32px;"
+                                onchange="filterHosts()">
+                                <option value="all">All Groups</option>
+                                <option value="stacker">Stacker</option>
+                                <option value="custom">Custom</option>
+                                <option value="system">System</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-danger" id="hosts-bulk-delete-btn" onclick="bulkDeleteHosts()"
+                                style="display: none;">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                                Delete Selected (<span id="hosts-selected-count">0</span>)
+                            </button>
+                            <button class="btn" onclick="exportHosts()">Export</button>
+                            <button class="btn" onclick="importHosts()">Import</button>
+                            <button class="btn" onclick="backupHosts()">Backup</button>
+                            <button class="btn btn-primary" onclick="addHostEntry()">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Add Entry
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div id="hosts-list"></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-top: 16px;">
+                    <div class="card-header">
+                        <span class="card-title">Backups</span>
+                        <button class="btn" onclick="loadHostsBackups()">Refresh</button>
+                    </div>
+                    <div class="card-body" id="hosts-backups"></div>
+                </div>
+            </div>
+
+            <!-- Confirm Modal for Hosts -->
+            <div id="hosts-confirm-modal"
+                style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+                <div
+                    style="background: var(--bg-secondary); border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                    <h3 style="margin-bottom: 12px;" id="hosts-confirm-title">Confirm Action</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;" id="hosts-confirm-message">Are you
+                        sure?</p>
+                    <div id="hosts-confirm-terminal-cmd" style="display: none; margin-bottom: 16px;">
+                        <p style="color: var(--warning); margin-bottom: 8px; font-size: 13px;">⚠️ Permission denied. Run
+                            this command in terminal:</p>
+                        <code id="hosts-terminal-command"
+                            style="display: block; background: var(--bg-tertiary); padding: 12px; border-radius: 8px; font-size: 12px; word-break: break-all;"></code>
+                        <button class="btn" style="margin-top: 8px;" onclick="copyHostsCommand()">Copy Command</button>
+                    </div>
+                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button class="btn" onclick="closeHostsConfirm()">Cancel</button>
+                        <button class="btn btn-danger" id="hosts-confirm-btn"
+                            onclick="executeHostsConfirm()">Confirm</button>
+                    </div>
                 </div>
             </div>
 
@@ -3731,6 +3822,7 @@
                 case 'logs': await loadLogs(); break;
                 case 'php': await loadPHP(); break;
                 case 'settings': await loadSettings(); break;
+                case 'hosts': await loadHosts(); break;
             }
         }
 
@@ -5185,6 +5277,375 @@
                     </div>
                 `).join('');
             } catch (err) { }
+        }
+
+        // ===========================================
+        // HOSTS MANAGEMENT
+        // ===========================================
+
+        let cachedHostEntries = [];
+        let selectedHostLines = new Set();
+        let hostsConfirmCallback = null;
+
+        async function loadHosts() {
+            const list = document.getElementById('hosts-list');
+            const pathEl = document.getElementById('hosts-path-display');
+            try {
+                const data = await api('/hosts');
+                cachedHostEntries = data.entries || [];
+                if (pathEl) pathEl.textContent = 'Hosts file: ' + data.hostsPath;
+                selectedHostLines.clear();
+                updateBulkDeleteBtn();
+                renderHostsList();
+                loadHostsBackups();
+            } catch (err) {
+                if (err.message.includes('permission') || err.message.includes('denied')) {
+                    showHostsPermissionError('sudo cat /etc/hosts');
+                } else {
+                    list.innerHTML = '<div class="empty-state"><p>Could not load hosts file</p></div>';
+                }
+            }
+        }
+
+        function renderHostsList() {
+            const list = document.getElementById('hosts-list');
+            const filter = document.getElementById('hosts-filter').value;
+            const searchEl = document.getElementById('hosts-search');
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
+
+            let entries = cachedHostEntries;
+            if (filter !== 'all') {
+                entries = entries.filter(e => e.group === filter);
+            }
+            if (search) {
+                entries = entries.filter(e =>
+                    e.hostname.toLowerCase().includes(search) ||
+                    e.ip.toLowerCase().includes(search)
+                );
+            }
+
+            if (!entries.length) {
+                list.innerHTML = '<div class="empty-state" style="padding: 24px;"><p>No entries found</p></div>';
+                return;
+            }
+
+            list.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: var(--bg-tertiary); text-align: left;">
+                            <th style="padding: 12px; width: 40px;">
+                                <input type="checkbox" id="hosts-select-all" onchange="toggleSelectAllHosts(this.checked)" 
+                                       style="width: 16px; height: 16px; cursor: pointer;">
+                            </th>
+                            <th style="padding: 12px; width: 50px;">Status</th>
+                            <th style="padding: 12px;">IP Address</th>
+                            <th style="padding: 12px;">Hostname</th>
+                            <th style="padding: 12px; width: 80px;">Group</th>
+                            <th style="padding: 12px; width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${entries.map(e => `
+                            <tr style="border-bottom: 1px solid var(--border); ${!e.enabled ? 'opacity: 0.5;' : ''}" data-line="${e.lineIndex}">
+                                <td style="padding: 12px;">
+                                    ${e.group !== 'system' ? `
+                                        <input type="checkbox" class="host-checkbox" data-line="${e.lineIndex}" 
+                                               ${selectedHostLines.has(e.lineIndex) ? 'checked' : ''}
+                                               onchange="toggleHostSelection(${e.lineIndex}, this.checked)"
+                                               style="width: 16px; height: 16px; cursor: pointer;">
+                                    ` : '<span style="color: var(--text-muted);">🔒</span>'}
+                                </td>
+                                <td style="padding: 12px;">
+                                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${e.enabled ? 'var(--success)' : 'var(--text-muted)'};"></span>
+                                </td>
+                                <td style="padding: 12px; font-family: monospace; font-size: 13px;">${e.ip}</td>
+                                <td style="padding: 12px; font-weight: 500;">${e.hostname}</td>
+                                <td style="padding: 12px;">
+                                    <span class="site-badge" style="font-size: 11px; padding: 2px 8px; background: ${e.group === 'system' ? 'var(--bg-tertiary)' : e.group === 'stacker' ? 'var(--accent-light)' : 'var(--success-light)'}; color: ${e.group === 'system' ? 'var(--text-muted)' : e.group === 'stacker' ? 'var(--accent)' : 'var(--success)'};">${e.group}</span>
+                                </td>
+                                <td style="padding: 12px;">
+                                    <div style="display: flex; gap: 4px;">
+                                        <button class="icon-btn" onclick="toggleHost(${e.lineIndex})" title="${e.enabled ? 'Disable' : 'Enable'}">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                ${e.enabled ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'}
+                                            </svg>
+                                        </button>
+                                        ${e.group !== 'system' ? `
+                                            <button class="icon-btn danger" onclick="confirmDeleteHost(${e.lineIndex}, '${e.hostname}')" title="Delete">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <polyline points="3 6 5 6 21 6"/>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                </svg>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function filterHosts() {
+            renderHostsList();
+        }
+
+        function toggleHostSelection(lineIndex, checked) {
+            if (checked) {
+                selectedHostLines.add(lineIndex);
+            } else {
+                selectedHostLines.delete(lineIndex);
+            }
+            updateBulkDeleteBtn();
+        }
+
+        function toggleSelectAllHosts(checked) {
+            const nonSystemEntries = cachedHostEntries.filter(e => e.group !== 'system');
+            if (checked) {
+                nonSystemEntries.forEach(e => selectedHostLines.add(e.lineIndex));
+            } else {
+                selectedHostLines.clear();
+            }
+            renderHostsList();
+            updateBulkDeleteBtn();
+        }
+
+        function updateBulkDeleteBtn() {
+            const btn = document.getElementById('hosts-bulk-delete-btn');
+            const countEl = document.getElementById('hosts-selected-count');
+            if (btn && countEl) {
+                countEl.textContent = selectedHostLines.size;
+                btn.style.display = selectedHostLines.size > 0 ? 'inline-flex' : 'none';
+            }
+        }
+
+        async function toggleHost(lineIndex) {
+            try {
+                await api('/hosts/toggle', 'POST', { lineIndex });
+                showToast('Entry toggled');
+                loadHosts();
+            } catch (err) {
+                handleHostsPermissionError(err, `sudo sed -i '' '${lineIndex}s/^#//' /etc/hosts`);
+            }
+        }
+
+        function confirmDeleteHost(lineIndex, hostname) {
+            showHostsConfirm(
+                'Delete Host Entry',
+                `Are you sure you want to delete "${hostname}"?`,
+                async () => {
+                    try {
+                        await api('/hosts/' + lineIndex, 'DELETE');
+                        showToast('Entry deleted');
+                        loadHosts();
+                    } catch (err) {
+                        handleHostsPermissionError(err, `sudo sed -i '' '${lineIndex}d' /etc/hosts`);
+                    }
+                }
+            );
+        }
+
+        function bulkDeleteHosts() {
+            if (selectedHostLines.size === 0) return;
+            showHostsConfirm(
+                'Delete Multiple Entries',
+                `Are you sure you want to delete ${selectedHostLines.size} selected entries?`,
+                async () => {
+                    const lines = Array.from(selectedHostLines).sort((a, b) => b - a); // Delete from bottom up
+                    let errors = 0;
+                    for (const lineIndex of lines) {
+                        try {
+                            await api('/hosts/' + lineIndex, 'DELETE');
+                        } catch (err) {
+                            errors++;
+                        }
+                    }
+                    if (errors > 0) {
+                        showToast(`Deleted ${lines.length - errors} entries. ${errors} failed (permission denied).`, 'warning');
+                    } else {
+                        showToast(`Deleted ${lines.length} entries`);
+                    }
+                    selectedHostLines.clear();
+                    loadHosts();
+                }
+            );
+        }
+
+        function showHostsConfirm(title, message, callback) {
+            const modal = document.getElementById('hosts-confirm-modal');
+            document.getElementById('hosts-confirm-title').textContent = title;
+            document.getElementById('hosts-confirm-message').textContent = message;
+            document.getElementById('hosts-confirm-terminal-cmd').style.display = 'none';
+            document.getElementById('hosts-confirm-btn').style.display = 'inline-flex';
+            hostsConfirmCallback = callback;
+            modal.style.display = 'flex';
+        }
+
+        function showHostsPermissionError(cmd) {
+            const modal = document.getElementById('hosts-confirm-modal');
+            document.getElementById('hosts-confirm-title').textContent = 'Permission Denied';
+            document.getElementById('hosts-confirm-message').textContent = 'Cannot modify hosts file without elevated permissions.';
+            document.getElementById('hosts-confirm-terminal-cmd').style.display = 'block';
+            document.getElementById('hosts-terminal-command').textContent = cmd;
+            document.getElementById('hosts-confirm-btn').style.display = 'none';
+            hostsConfirmCallback = null;
+            modal.style.display = 'flex';
+        }
+
+        function handleHostsPermissionError(err, cmd) {
+            if (err.message.includes('500') || err.message.includes('permission') || err.message.includes('denied')) {
+                showHostsPermissionError(cmd);
+            } else {
+                showToast(err.message, 'error');
+            }
+        }
+
+        function closeHostsConfirm() {
+            document.getElementById('hosts-confirm-modal').style.display = 'none';
+            hostsConfirmCallback = null;
+        }
+
+        async function executeHostsConfirm() {
+            if (hostsConfirmCallback) {
+                closeHostsConfirm();
+                await hostsConfirmCallback();
+            }
+        }
+
+        function copyHostsCommand() {
+            const cmd = document.getElementById('hosts-terminal-command').textContent;
+            navigator.clipboard.writeText(cmd);
+            showToast('Command copied to clipboard');
+        }
+
+        function addHostEntry() {
+            const content = `
+                <div class="form-group">
+                    <label class="form-label">IP Address</label>
+                    <input type="text" class="form-input" id="hostIP" value="127.0.0.1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hostname</label>
+                    <input type="text" class="form-input" id="hostHostname" placeholder="mysite.local">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Comment (optional)</label>
+                    <input type="text" class="form-input" id="hostComment" placeholder="Added by Stacker">
+                </div>
+            `;
+            openDrawPanel('Add Host Entry', content, saveHostEntry);
+        }
+
+        async function saveHostEntry() {
+            const ip = document.getElementById('hostIP').value.trim();
+            const hostname = document.getElementById('hostHostname').value.trim();
+            const comment = document.getElementById('hostComment').value.trim();
+
+            if (!hostname) {
+                showToast('Hostname is required', 'error');
+                return;
+            }
+
+            try {
+                await api('/hosts', 'POST', { ip, hostname, comment, enabled: true, group: 'custom' });
+                showToast('Entry added');
+                closeDrawPanel();
+                loadHosts();
+            } catch (err) {
+                handleHostsPermissionError(err, `echo "127.0.0.1\t${hostname}" | sudo tee -a /etc/hosts`);
+            }
+        }
+
+        async function backupHosts() {
+            try {
+                const result = await api('/hosts/backup', 'POST');
+                showToast('Backup created');
+                loadHostsBackups();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function loadHostsBackups() {
+            const list = document.getElementById('hosts-backups');
+            if (!list) return;
+            try {
+                const data = await api('/hosts/backups');
+                const backups = data.backups || [];
+                if (!backups.length) {
+                    list.innerHTML = '<div class="empty-state"><p>No backups yet</p></div>';
+                    return;
+                }
+                list.innerHTML = backups.map(b => `
+                    <div class="list-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="item-info">
+                            <div class="item-primary">${b.name}</div>
+                            <div class="item-secondary">${new Date(b.createdAt).toLocaleString()} - ${(b.size / 1024).toFixed(1)} KB</div>
+                        </div>
+                        <button class="btn btn-sm" onclick="confirmRestoreBackup('${b.path}')">Restore</button>
+                    </div>
+                `).join('');
+            } catch (err) { }
+        }
+
+        function confirmRestoreBackup(path) {
+            showHostsConfirm(
+                'Restore Backup',
+                'Are you sure you want to restore this backup? Current hosts file will be backed up first.',
+                async () => {
+                    try {
+                        await api('/hosts/restore', 'POST', { path });
+                        showToast('Hosts file restored');
+                        loadHosts();
+                    } catch (err) {
+                        handleHostsPermissionError(err, `sudo cp "${path}" /etc/hosts`);
+                    }
+                }
+            );
+        }
+
+        async function exportHosts() {
+            try {
+                const data = await api('/hosts/export');
+                const blob = new Blob([data.content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'hosts_export.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Hosts file exported');
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        function importHosts() {
+            const content = `
+                <div class="form-group">
+                    <label class="form-label">Paste hosts file content</label>
+                    <textarea class="form-input" id="hostsImportContent" rows="15" style="font-family: monospace; font-size: 12px;"></textarea>
+                    <div class="form-hint">⚠️ This will replace your entire hosts file. A backup will be created first.</div>
+                </div>
+            `;
+            openDrawPanel('Import Hosts', content, doImportHosts, 'Import', true);
+        }
+
+        async function doImportHosts() {
+            const content = document.getElementById('hostsImportContent').value;
+            if (!content.trim()) {
+                showToast('Content is empty', 'error');
+                return;
+            }
+            try {
+                await api('/hosts/import', 'POST', { content });
+                showToast('Hosts file imported');
+                closeDrawPanel();
+                loadHosts();
+            } catch (err) {
+                handleHostsPermissionError(err, 'Copy the content and run: sudo nano /etc/hosts');
+            }
         }
 
         async function viewEmail(id) {
