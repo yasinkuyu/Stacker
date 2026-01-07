@@ -104,6 +104,9 @@ func NewWebServer(cfg *config.Config) *WebServer {
 	loadSites(stackerDir)
 	loadPreferences(stackerDir)
 
+	// Setup default pages for localhost (like MAMP)
+	setupDefaultPages(stackerDir)
+
 	// Update service manager with initial ports
 	sm.UpdatePorts(prefs.ApachePort, prefs.NginxPort, prefs.MySQLPort)
 
@@ -152,6 +155,207 @@ func savePreferences(stackerDir string) {
 	prefsFile := filepath.Join(stackerDir, "preferences.json")
 	data, _ := json.MarshalIndent(prefs, "", "  ")
 	os.WriteFile(prefsFile, data, 0644)
+}
+
+// setupDefaultPages creates default welcome page and server configs (like MAMP)
+func setupDefaultPages(stackerDir string) {
+	// Create default htdocs directory
+	htdocsDir := filepath.Join(stackerDir, "htdocs")
+	os.MkdirAll(htdocsDir, 0755)
+
+	// Create default index.html (welcome page)
+	indexPath := filepath.Join(htdocsDir, "index.html")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		welcomeHTML := generateWelcomePage()
+		os.WriteFile(indexPath, []byte(welcomeHTML), 0644)
+	}
+
+	// Create phpinfo.php
+	phpinfoPath := filepath.Join(htdocsDir, "phpinfo.php")
+	if _, err := os.Stat(phpinfoPath); os.IsNotExist(err) {
+		os.WriteFile(phpinfoPath, []byte("<?php phpinfo(); ?>"), 0644)
+	}
+
+	// Create default Nginx config
+	nginxConfDir := filepath.Join(stackerDir, "conf", "nginx")
+	os.MkdirAll(nginxConfDir, 0755)
+	defaultNginxConf := filepath.Join(nginxConfDir, "default.conf")
+	if _, err := os.Stat(defaultNginxConf); os.IsNotExist(err) {
+		nginxConfig := generateDefaultNginxConfig(htdocsDir)
+		os.WriteFile(defaultNginxConf, []byte(nginxConfig), 0644)
+	}
+
+	// Create default Apache config
+	apacheConfDir := filepath.Join(stackerDir, "conf", "apache")
+	os.MkdirAll(apacheConfDir, 0755)
+	logsDir := filepath.Join(stackerDir, "logs")
+	os.MkdirAll(logsDir, 0755)
+	defaultApacheConf := filepath.Join(apacheConfDir, "default.conf")
+	if _, err := os.Stat(defaultApacheConf); os.IsNotExist(err) {
+		apacheConfig := generateDefaultApacheConfig(htdocsDir, logsDir)
+		os.WriteFile(defaultApacheConf, []byte(apacheConfig), 0644)
+	}
+}
+
+func generateWelcomePage() string {
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacker - Local Development Environment</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 72px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            font-size: 18px;
+            color: #888;
+            margin-bottom: 40px;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 20px;
+            font-size: 14px;
+            color: #667eea;
+            margin-bottom: 40px;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-5px);
+        }
+        .card-icon { font-size: 36px; margin-bottom: 15px; }
+        .card-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .card-desc { font-size: 14px; color: #888; }
+        .footer {
+            color: #555;
+            font-size: 14px;
+            margin-top: 40px;
+        }
+        .footer a { color: #667eea; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">📦</div>
+        <h1>Stacker</h1>
+        <p class="subtitle">Your Local Development Environment is Ready</p>
+        <div class="status">✓ Server Running</div>
+        
+        <div class="cards">
+            <a href="http://localhost:9999" class="card">
+                <div class="card-icon">⚙️</div>
+                <div class="card-title">Stacker Dashboard</div>
+                <div class="card-desc">Manage sites, services, and PHP versions</div>
+            </a>
+            <a href="/phpinfo.php" class="card">
+                <div class="card-icon">🐘</div>
+                <div class="card-title">PHP Info</div>
+                <div class="card-desc">View PHP configuration and modules</div>
+            </a>
+            <a href="http://localhost:9999/#sites" class="card">
+                <div class="card-icon">🌐</div>
+                <div class="card-title">Your Sites</div>
+                <div class="card-desc">Add and manage local development sites</div>
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>Document Root: <code>~/Library/Application Support/Stacker/htdocs</code></p>
+            <p style="margin-top: 10px;">Powered by <a href="https://github.com/yasinkuyu/stacker">Stacker</a></p>
+        </div>
+    </div>
+</body>
+</html>`
+}
+
+func generateDefaultNginxConfig(htdocsDir string) string {
+	return fmt.Sprintf(`# Stacker Default Server - Catch-all for localhost
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name localhost _;
+
+    root %s;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+`, htdocsDir)
+}
+
+func generateDefaultApacheConfig(htdocsDir string, logsDir string) string {
+	return fmt.Sprintf(`# Stacker Default VirtualHost - Catch-all for localhost
+<VirtualHost *:80>
+    ServerName localhost
+    ServerAlias *
+    DocumentRoot "%s"
+
+    <Directory "%s">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:fcgi://127.0.0.1:9000"
+    </FilesMatch>
+
+    ErrorLog "%s/apache_error.log"
+    CustomLog "%s/apache_access.log" combined
+</VirtualHost>
+`, htdocsDir, htdocsDir, logsDir, logsDir)
 }
 
 func (ws *WebServer) Start() error {
