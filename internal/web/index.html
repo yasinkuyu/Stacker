@@ -89,20 +89,41 @@
             min-height: 100vh;
         }
 
-        /* Loading Spinner */
+        /* Premium Loading Spinner */
         .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid var(--border);
+            width: 28px;
+            height: 28px;
+            border: 3px solid var(--accent-light);
             border-top-color: var(--accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.6s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+            display: inline-block;
+            vertical-align: middle;
+            box-shadow: 0 0 10px var(--accent-light);
         }
 
         @keyframes spin {
             to {
                 transform: rotate(360deg);
             }
+        }
+
+        .spinner-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            gap: 16px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .spinner-large {
+            width: 40px;
+            height: 40px;
+            border-width: 4px;
         }
 
         /* ==========================================
@@ -3199,6 +3220,33 @@
     </div>
 
     <script>
+        // Standard loading helper
+        function setLoading(container, isLoading = true, message = "") {
+            const el = typeof container === 'string' ? document.querySelector(container) : container;
+            if (!el) return;
+
+            if (isLoading) {
+                // Prevent multiple spinner overlays
+                if (el.querySelector('.spinner-container')) return;
+
+                // Store original content
+                el.dataset.oldHtml = el.innerHTML;
+
+                el.innerHTML = `
+                    <div class="spinner-container">
+                        <div class="spinner spinner-large"></div>
+                        ${message ? `<span class="loading-text">${message}</span>` : ''}
+                    </div>
+                `;
+            } else {
+                // If we have stored content, we could restore it here
+                // but usually the specific load function will overwrite anyway.
+                // For safety, let's not clear unless there's a spinner
+                if (el.querySelector('.spinner-container')) {
+                    // Optional: el.innerHTML = el.dataset.oldHtml || '';
+                }
+            }
+        }
         // ==========================================
         // i18n & Localization Engine
         // ==========================================
@@ -3216,9 +3264,14 @@
                 // Sync select input if it exists
                 const select = document.getElementById('lang-select');
                 if (select) select.value = lang;
+
+                // Trigger an event that translations are ready
+                document.dispatchEvent(new CustomEvent('translationsReady'));
+                return true;
             } catch (err) {
                 console.error('i18n Error:', err);
-                if (lang !== 'en') loadTranslations('en');
+                if (lang !== 'en') return loadTranslations('en');
+                return false;
             }
         }
 
@@ -3273,7 +3326,7 @@
         }
 
         // Initialize i18n
-        loadTranslations(currentLang);
+        // loadTranslations(currentLang); // Now handled by DOMContentLoaded for better sync
 
         // ==========================================
         // UI & Navigation (New 3-Column Layout)
@@ -3842,15 +3895,7 @@
 
         async function loadPHP() {
             const list = document.getElementById('php-list');
-
-            // Show loading spinner
-            list.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 16px;">
-                    <div class="spinner"></div>
-                    <span style="color: var(--text-muted); font-size: 13px;">Loading PHP versions...</span>
-                </div>
-            `;
-
+            setLoading(list, true, 'Loading PHP versions...');
             try {
                 const data = await api('/php');
                 if (!data || !data.versions || data.versions.length === 0) {
@@ -3890,6 +3935,8 @@
             } catch (err) {
                 console.error('Error loading PHP versions:', err);
                 list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading PHP versions</div>';
+            } finally {
+                setLoading(list, false);
             }
         }
 
@@ -4242,6 +4289,11 @@
 
         async function loadSites() {
             const list = document.getElementById('sites-list');
+            const panelList = document.getElementById('panelList');
+            setLoading(list, true, t('common.loading') || 'Loading sites...');
+            if (currentPanelSection === 'sites' || currentPanelSection === 'dashboard') {
+                setLoading(panelList, true);
+            }
             try {
                 const sites = await api('/sites');
                 const phpData = await api('/php').catch(() => ({ versions: [] }));
@@ -4278,7 +4330,14 @@
                         </div>
                     </div>
                 `).join('');
-            } catch (err) { }
+            } catch (err) {
+                list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading sites</div>';
+            } finally {
+                setLoading(list, false);
+                if (currentPanelSection === 'sites' || currentPanelSection === 'dashboard') {
+                    setLoading(panelList, false);
+                }
+            }
         }
 
         async function addSite() {
@@ -4786,28 +4845,40 @@
         }
 
         async function startService(name, btn) {
-            if (btn) setButtonLoading(btn, true);
+            const originalHtml = btn.innerHTML;
+            const originalWidth = btn.offsetWidth;
             try {
-                await api(`/services/start/${name}`, 'POST');
-                showToast(`${name} started`);
+                btn.disabled = true;
+                btn.style.width = originalWidth + 'px';
+                btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-color:white;border-top-color:transparent;"></div>';
+                await api(`/services/${name}/start`, 'POST');
+                showToast(`${name.toUpperCase()} started successfully`);
                 loadServices();
             } catch (err) {
                 showToast(err.message, 'error');
             } finally {
-                if (btn) setButtonLoading(btn, false);
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                btn.style.width = '';
             }
         }
 
         async function stopService(name, btn) {
-            if (btn) setButtonLoading(btn, true);
+            const originalHtml = btn.innerHTML;
+            const originalWidth = btn.offsetWidth;
             try {
-                await api(`/services/stop/${name}`, 'POST');
-                showToast(`${name} stopped`);
+                btn.disabled = true;
+                btn.style.width = originalWidth + 'px';
+                btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-color:white;border-top-color:transparent;"></div>';
+                await api(`/services/${name}/stop`, 'POST');
+                showToast(`${name.toUpperCase()} stopped successfully`);
                 loadServices();
             } catch (err) {
                 showToast(err.message, 'error');
             } finally {
-                if (btn) setButtonLoading(btn, false);
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                btn.style.width = '';
             }
         }
 
@@ -5028,15 +5099,7 @@
 
         async function loadServices() {
             const list = document.getElementById('services-list');
-
-            // Show loading spinner
-            list.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px;">
-                    <div class="spinner"></div>
-                    <span style="color: var(--text-muted); font-size: 13px;">Loading services...</span>
-                </div>
-            `;
-
+            setLoading(list, true, 'Updating services...');
             try {
                 const data = await api('/services');
                 if (!data) return;
@@ -5159,7 +5222,11 @@
                     </div>
                 `;
                 list.innerHTML = html;
-            } catch (err) { }
+            } catch (err) {
+                list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading services</div>';
+            } finally {
+                setLoading(list, false);
+            }
         }
 
         function checkInstalled(type) {
@@ -5239,6 +5306,8 @@
 
         async function loadDumps() {
             const list = document.getElementById('dumps-list');
+            if (!list) return;
+            setLoading(list, true, 'Intercepting dumps...');
             try {
                 const data = await api('/dumps');
                 if (!data || !data.dumps || !data.dumps.length) {
@@ -5254,7 +5323,11 @@
                         <span class="item-secondary">${new Date(d.timestamp).toLocaleString()}</span>
                     </div>
                 `).join('');
-            } catch (err) { }
+            } catch (err) {
+                list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading dumps</div>';
+            } finally {
+                setLoading(list, false);
+            }
         }
 
         async function viewDump(id) {
@@ -5264,11 +5337,13 @@
                 if (dump) {
                     openDrawPanel('Dump Details', `<pre style="padding:16px;background:#1e1e1e;color:#fff;overflow:auto;">${JSON.stringify(dump.data, null, 2)}</pre>`, null, 'Close');
                 }
-            } catch (err) { }
+            } catch (err) { showToast('Could not load dump', 'error'); }
         }
 
         async function loadMail() {
             const list = document.getElementById('mail-list');
+            if (!list) return;
+            setLoading(list, true, 'Catching emails...');
             try {
                 const emails = await api('/mail');
                 if (!emails || !emails.length) {
@@ -5283,11 +5358,17 @@
                         </div>
                     </div>
                 `).join('');
-            } catch (err) { }
+            } catch (err) {
+                list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading emails</div>';
+            } finally {
+                setLoading(list, false);
+            }
         }
 
         async function loadLogs() {
             const list = document.getElementById('logs-list');
+            if (!list) return;
+            setLoading(list, true, 'Fetching logs...');
             try {
                 const logs = await api('/logs');
                 if (!logs || !logs.length) {
@@ -5301,7 +5382,11 @@
                         </div>
                     </div>
                 `).join('');
-            } catch (err) { }
+            } catch (err) {
+                list.innerHTML = '<div class="empty-state" style="padding: 20px; color: var(--danger);">Error loading logs</div>';
+            } finally {
+                setLoading(list, false);
+            }
         }
 
         // ===========================================
@@ -5597,6 +5682,40 @@
             }
         }
 
+        async function startAllServers() {
+            const btn = document.getElementById('btn-start-all');
+            const originalHtml = btn.innerHTML;
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-color:white;border-top-color:transparent;margin-right:8px;"></div> Starting...';
+                await api('/services/start-all', 'POST');
+                showToast('All services started');
+                loadServices();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        async function stopAllServers() {
+            const btn = document.getElementById('btn-stop-all');
+            const originalHtml = btn.innerHTML;
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-color:white;border-top-color:transparent;margin-right:8px;"></div> Stopping...';
+                await api('/services/stop-all', 'POST');
+                showToast('All services stopped');
+                loadServices();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
         async function backupHosts() {
             try {
                 const result = await api('/hosts/backup', 'POST');
@@ -5789,7 +5908,10 @@
         // Initialization
         // ==========================================
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // First wait for translations
+            await loadTranslations(currentLang);
+
             document.getElementById('server-status-text').textContent = 'Server running on :' + window.location.port;
             if (!window.location.hash) {
                 window.location.hash = '#dashboard';
