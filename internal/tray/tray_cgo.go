@@ -101,23 +101,19 @@ func (tm *TrayManager) onReady() {
 	phpMenuItems := make([]*systray.MenuItem, 0)
 
 	for _, v := range phpVersions {
-		item := mPHP.AddSubMenuItem("PHP "+v.Version, "Switch to PHP "+v.Version)
+		item := mPHP.AddSubMenuItem("PHP "+v.Version, "Open PHP "+v.Version+" directory")
 		if v.Default {
 			item.Check()
 		}
 		phpMenuItems = append(phpMenuItems, item)
 	}
 
-	mPHP.AddSubMenuItem("", "")
-	mXDebug := mPHP.AddSubMenuItem("XDebug: Off", "Toggle XDebug")
-
-	systray.AddSeparator()
+	// Services submenu
 
 	// Services submenu
 	mServices := systray.AddMenuItem("Services", "Manage services")
 	mStartAll := mServices.AddSubMenuItem("Start All", "Start all services")
 	mStopAll := mServices.AddSubMenuItem("Stop All", "Stop all services")
-	mServices.AddSubMenuItem("", "")
 
 	// Get installed services and create menu items
 	svcs := tm.svcManager.GetServices()
@@ -126,7 +122,7 @@ func (tm *TrayManager) onReady() {
 	if len(svcs) == 0 {
 		defaultServices := []string{"mysql", "mariadb", "nginx", "apache", "redis"}
 		for _, svcType := range defaultServices {
-			item := mServices.AddSubMenuItem(fmt.Sprintf("○ %s (not installed)", strings.ToUpper(svcType)), fmt.Sprintf("%s not installed", svcType))
+			item := mServices.AddSubMenuItem(fmt.Sprintf("🔴 %s (not installed)", strings.ToUpper(svcType)), fmt.Sprintf("%s not installed", svcType))
 			item.Disable()
 			tm.serviceMenuItems[svcType] = item
 		}
@@ -134,9 +130,9 @@ func (tm *TrayManager) onReady() {
 
 	// Installed services
 	for _, svc := range svcs {
-		statusIcon := "○"
+		statusIcon := "🔴"
 		if svc.Status == "running" {
-			statusIcon = "●"
+			statusIcon = "🟢"
 		}
 
 		title := fmt.Sprintf("%s %s (%s)", statusIcon, strings.ToUpper(svc.Type), svc.Version)
@@ -144,20 +140,6 @@ func (tm *TrayManager) onReady() {
 		tm.serviceMenuItems[svc.Name] = item
 		tm.serviceTitles[svc.Name] = title
 	}
-
-	systray.AddSeparator()
-
-	// Tools
-	mDumps := systray.AddMenuItem("Dumps", "View dumps")
-	mMail := systray.AddMenuItem("Mail", "View captured emails")
-	mLogs := systray.AddMenuItem("Logs", "View logs")
-
-	systray.AddSeparator()
-
-	// Node.js submenu
-	mNode := systray.AddMenuItem("Node.js", "Manage Node.js versions")
-	mNodeCurrent := mNode.AddSubMenuItem("Current: -", "Current Node.js version")
-	mNodeCurrent.Disable()
 
 	systray.AddSeparator()
 
@@ -182,30 +164,21 @@ func (tm *TrayManager) onReady() {
 			case <-mOpenSites.ClickedCh:
 				tm.openSitesFolder()
 
-			case <-mXDebug.ClickedCh:
-				tm.xdebugEnabled = !tm.xdebugEnabled
-				if tm.xdebugEnabled {
-					mXDebug.SetTitle("XDebug: On")
-					mXDebug.Check()
-				} else {
-					mXDebug.SetTitle("XDebug: Off")
-					mXDebug.Uncheck()
+			case <-mStartAll.ClickedCh:
+				svcs := tm.svcManager.GetServices()
+				for _, svc := range svcs {
+					if svc.Status != "running" {
+						go tm.svcManager.StartService(svc.Name)
+					}
 				}
 
-			case <-mStartAll.ClickedCh:
-				tm.svcManager.StartAll()
-
 			case <-mStopAll.ClickedCh:
-				tm.svcManager.StopAll()
-
-			case <-mDumps.ClickedCh:
-				tm.openBrowserPath("/#dumps")
-
-			case <-mMail.ClickedCh:
-				tm.openBrowserPath("/#mail")
-
-			case <-mLogs.ClickedCh:
-				tm.openBrowserPath("/#logs")
+				svcs := tm.svcManager.GetServices()
+				for _, svc := range svcs {
+					if svc.Status == "running" {
+						go tm.svcManager.StopService(svc.Name)
+					}
+				}
 
 			case <-mSettings.ClickedCh:
 				tm.openBrowserPath("/#settings")
@@ -224,8 +197,17 @@ func (tm *TrayManager) onReady() {
 			menuItem := item
 			go func() {
 				for range menuItem.ClickedCh {
-					version := phpVersions[idx].Version
-					tm.phpManager.SetDefault(version)
+					version := phpVersions[idx]
+					tm.phpManager.SetDefault(version.Version)
+
+					// Open PHP folder as requested
+					phpDir := filepath.Dir(version.Path)
+					// Usually PHP binaries are in bin/, so go one level up
+					if strings.HasSuffix(phpDir, "bin") {
+						phpDir = filepath.Dir(phpDir)
+					}
+					tm.openPath(phpDir)
+
 					// Update checkmarks
 					for j, mi := range phpMenuItems {
 						if j == idx {
@@ -288,10 +270,10 @@ func (tm *TrayManager) updateServiceStatus() {
 	svcs := tm.svcManager.GetServices()
 
 	for name, item := range tm.serviceMenuItems {
-		statusIcon := "○"
+		statusIcon := "🔴"
 		for _, svc := range svcs {
 			if svc.Name == name && svc.Status == "running" {
-				statusIcon = "●"
+				statusIcon = "🟢"
 				break
 			}
 		}
@@ -378,17 +360,19 @@ func (tm *TrayManager) openURL(url string) {
 func (tm *TrayManager) openSitesFolder() {
 	homeDir, _ := os.UserHomeDir()
 	sitesPath := filepath.Join(homeDir, "Sites")
-
 	os.MkdirAll(sitesPath, 0755)
+	tm.openPath(sitesPath)
+}
 
+func (tm *TrayManager) openPath(path string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", sitesPath)
+		cmd = exec.Command("open", path)
 	case "windows":
-		cmd = exec.Command("explorer", sitesPath)
+		cmd = exec.Command("explorer", path)
 	default:
-		cmd = exec.Command("xdg-open", sitesPath)
+		cmd = exec.Command("xdg-open", path)
 	}
 	cmd.Start()
 }

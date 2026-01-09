@@ -3003,10 +3003,10 @@ func (sm *ServiceManager) stopServiceInternal(svc *Service) error {
 }
 
 func (sm *ServiceManager) GetStatus(name string) string {
-	sm.mu.RLock()
-	svc, ok := sm.services[name]
-	sm.mu.RUnlock()
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
 
+	svc, ok := sm.services[name]
 	if !ok {
 		return "none"
 	}
@@ -3029,36 +3029,54 @@ func (sm *ServiceManager) GetStatus(name string) string {
 
 				// Verify if it's actually listening on its port (only for TCP services)
 				if svc.Type != "composer" && svc.Type != "nodejs" {
-					if err := sm.checkPortAvailable(svc.Port); err != nil {
-						// Port is not listening yet or closed
-						// We keep it as running if PID is alive, but maybe mark as "starting" or "unhealthy"?
-						// For now, let's just log it if unhealthy
-						svc.PortInUse = false
-					} else {
-						svc.PortInUse = true
+					// Drop lock for network check to avoid blocking the whole manager
+					port := svc.Port
+					sm.mu.Unlock()
+
+					portErr := sm.checkPortAvailable(port)
+
+					sm.mu.Lock()
+					// Re-fetch in case it was deleted/changed
+					svc, ok = sm.services[name]
+					if ok {
+						if portErr != nil {
+							svc.PortInUse = false
+						} else {
+							svc.PortInUse = true
+						}
 					}
 				}
 			} else {
+				if ok {
+					svc.Status = "stopped"
+					svc.PID = 0
+				}
+			}
+		} else {
+			if ok {
 				svc.Status = "stopped"
 				svc.PID = 0
 			}
-		} else {
-			svc.Status = "stopped"
-			svc.PID = 0
 		}
 	} else {
-		svc.Status = "stopped"
-	}
-
-	svc.LastCheck = time.Now().Format(time.RFC3339)
-
-	if oldStatus != svc.Status {
-		if sm.OnStatusChange != nil {
-			sm.OnStatusChange()
+		if ok {
+			svc.Status = "stopped"
 		}
 	}
 
-	return svc.Status
+	if ok {
+		svc.LastCheck = time.Now().Format(time.RFC3339)
+
+		if oldStatus != svc.Status {
+			if sm.OnStatusChange != nil {
+				// Prevent deadlocks
+				go sm.OnStatusChange()
+			}
+		}
+		return svc.Status
+	}
+
+	return "none"
 }
 
 func (sm *ServiceManager) GetServices() []*Service {
@@ -3067,7 +3085,9 @@ func (sm *ServiceManager) GetServices() []*Service {
 
 	var result []*Service
 	for _, svc := range sm.services {
-		result = append(result, svc)
+		// Return clones to prevent external modification and races during serialization
+		clone := *svc
+		result = append(result, &clone)
 	}
 
 	sort.Slice(result, func(i, j int) bool {
@@ -3080,7 +3100,15 @@ func (sm *ServiceManager) GetServices() []*Service {
 func (sm *ServiceManager) GetService(name string) *Service {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	return sm.services[name]
+
+	svc, ok := sm.services[name]
+	if !ok {
+		return nil
+	}
+
+	// Return a clone
+	clone := *svc
+	return &clone
 }
 
 func (sm *ServiceManager) StartAll() {

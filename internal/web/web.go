@@ -1558,13 +1558,17 @@ func (ws *WebServer) getPHPPort(version string) int {
 func (ws *WebServer) handleServices(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	// First update statuses to ensure fresh data
+	allSvcs := ws.serviceManager.GetServices()
+	for _, s := range allSvcs {
+		ws.serviceManager.GetStatus(s.Name)
+	}
+
+	// Get fresh clones after status updates
 	svcs := ws.serviceManager.GetServices()
 	var filteredSvcs []*services.Service
 
-	// Update status and filter out PHP services from main services list
 	for _, svc := range svcs {
-		ws.serviceManager.GetStatus(svc.Name)
-
 		// Hide php services from "Services" page (they go to PHP page)
 		if !strings.HasPrefix(svc.Type, "php") {
 			filteredSvcs = append(filteredSvcs, svc)
