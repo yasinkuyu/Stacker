@@ -81,7 +81,9 @@ func (mm *MailManager) AddEmail(email Email) error {
 	email.Read = false
 
 	mm.emails = append(mm.emails, email)
-	mm.saveEmail(email)
+	if err := mm.saveEmail(email); err != nil {
+		return fmt.Errorf("failed to save email: %w", err)
+	}
 
 	return nil
 }
@@ -100,7 +102,10 @@ func (mm *MailManager) MarkAsRead(id string) {
 	for i := range mm.emails {
 		if mm.emails[i].ID == id {
 			mm.emails[i].Read = true
-			mm.saveEmail(mm.emails[i])
+			if err := mm.saveEmail(mm.emails[i]); err != nil {
+				// Log error but don't fail - email is marked as read in memory
+				fmt.Printf("Warning: failed to save email %s: %v\n", id, err)
+			}
 			return
 		}
 	}
@@ -114,32 +119,38 @@ func (mm *MailManager) ClearEmails() {
 }
 
 func (mm *MailManager) loadEmails() {
-	files, _ := os.ReadDir(mm.mailDir)
+	files, err := os.ReadDir(mm.mailDir)
+	if err != nil {
+		// Directory might not exist yet, which is fine
+		return
+	}
+	
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".json") {
-			data, _ := os.ReadFile(filepath.Join(mm.mailDir, file.Name()))
-			var email Email
-			if err := json.Unmarshal(data, &email); err == nil {
-				mm.emails = append(mm.emails, email)
+			data, err := os.ReadFile(filepath.Join(mm.mailDir, file.Name()))
+			if err != nil {
+				continue // Skip files that can't be read
 			}
+			var email Email
+			if err := json.Unmarshal(data, &email); err != nil {
+				continue // Skip malformed JSON files
+			}
+			mm.emails = append(mm.emails, email)
 		}
 	}
 }
 
-func (mm *MailManager) saveEmail(email Email) {
-	data := fmt.Sprintf(`{
-		"id": "%s",
-		"site": "%s",
-		"from": "%s",
-		"to": %v,
-		"subject": "%s",
-		"body": "%s",
-		"html": "%s",
-		"timestamp": "%s",
-		"read": %v
-	}`, email.ID, email.Site, email.From, email.To, email.Subject, email.Body, email.HTML, email.Timestamp.Format(time.RFC3339), email.Read)
+func (mm *MailManager) saveEmail(email Email) error {
+	// Use json.Marshal for safe JSON serialization
+	data, err := json.MarshalIndent(email, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal email: %w", err)
+	}
 
-	os.WriteFile(filepath.Join(mm.mailDir, email.ID+".json"), []byte(data), 0644)
+	if err := os.WriteFile(filepath.Join(mm.mailDir, email.ID+".json"), data, 0644); err != nil {
+		return fmt.Errorf("failed to write email file: %w", err)
+	}
+	return nil
 }
 
 func generateID() string {

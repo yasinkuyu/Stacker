@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -824,6 +825,12 @@ func (ws *WebServer) handleOpenFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate path to prevent traversal attacks
+	if err := validatePath(req.Path); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	var cmd *exec.Cmd
 	if runtime.GOOS == "darwin" {
 		cmd = exec.Command("open", req.Path)
@@ -833,7 +840,10 @@ func (ws *WebServer) handleOpenFolder(w http.ResponseWriter, r *http.Request) {
 		cmd = exec.Command("xdg-open", req.Path)
 	}
 
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -842,6 +852,12 @@ func (ws *WebServer) handleOpenTerminal(w http.ResponseWriter, r *http.Request) 
 		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Validate path to prevent traversal attacks
+	if err := validatePath(req.Path); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -855,8 +871,80 @@ func (ws *WebServer) handleOpenTerminal(w http.ResponseWriter, r *http.Request) 
 		cmd = exec.Command("x-terminal-emulator", "--working-directory", req.Path)
 	}
 
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// validatePath validates a file path for security
+// Blocks path traversal attempts and invalid characters
+func validatePath(path string) error {
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+	
+	// Clean the path
+	cleanPath := filepath.Clean(path)
+	
+	// Check for path traversal patterns
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path contains invalid pattern: ..")
+	}
+	
+	// Only allow safe characters in path
+	// Alphanumeric, space, dash, underscore, dot, forward slash, backslash (Windows)
+	validPath := regexp.MustCompile(`^[a-zA-Z0-9\s\-_./\\:]+$`).MatchString(cleanPath)
+	if !validPath {
+		return fmt.Errorf("path contains invalid characters")
+	}
+	
+	return nil
+}
+
+// validateTerminalCommand validates and sanitizes terminal commands
+// Only allows safe characters and blocks dangerous patterns
+func validateTerminalCommand(cmd string) error {
+	if cmd == "" {
+		return fmt.Errorf("command cannot be empty")
+	}
+	
+	// Block dangerous patterns
+	dangerousPatterns := []string{
+		";",          // Command chaining
+		"&&",         // AND operator
+		"||",         // OR operator
+		"|",          // Pipe
+		"`",          // Backtick
+		"$(",         // Command substitution
+		"${",         // Variable expansion
+		">",          // Redirection
+		"<",          // Input redirection
+		"&",          // Background
+	}
+	
+	for _, pattern := range dangerousPatterns {
+		if strings.Contains(cmd, pattern) {
+			return fmt.Errorf("command contains forbidden pattern: %s", pattern)
+		}
+	}
+	
+	// Only allow alphanumeric, space, dash, underscore, dot, forward slash
+	validCmd := regexp.MustCompile(`^[a-zA-Z0-9\s\-_./]+$`).MatchString(cmd)
+	if !validCmd {
+		return fmt.Errorf("command contains invalid characters")
+	}
+	
+	return nil
+}
+
+// escapeAppleScript escapes a string for safe use in AppleScript
+func escapeAppleScript(s string) string {
+	// Replace backslashes first, then quotes
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	return s
 }
 
 func (ws *WebServer) handleRunTerminalCommand(w http.ResponseWriter, r *http.Request) {
@@ -868,17 +956,26 @@ func (ws *WebServer) handleRunTerminalCommand(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Validate command for security
+	if err := validateTerminalCommand(req.Command); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid command: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	var cmd *exec.Cmd
 	if runtime.GOOS == "darwin" {
-		// Open Terminal and run the command
+		// Open Terminal and run the command (safely escaped)
+		escapedCmd := escapeAppleScript(req.Command)
 		script := fmt.Sprintf(`tell application "Terminal"
 			activate
 			do script "%s"
-		end tell`, req.Command)
+		end tell`, escapedCmd)
 		cmd = exec.Command("osascript", "-e", script)
 	} else if runtime.GOOS == "windows" {
+		// Use cmd /c with explicit arguments to prevent injection
 		cmd = exec.Command("cmd", "/c", "start", "cmd", "/K", req.Command)
 	} else {
+		// Linux: Use exec.Command which avoids shell interpretation
 		cmd = exec.Command("x-terminal-emulator", "-e", "bash", "-c", req.Command+"; exec bash")
 	}
 

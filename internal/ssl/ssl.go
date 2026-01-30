@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 // EnsureMkcert downloads and verifies mkcert binary if not present
@@ -51,7 +52,11 @@ func EnsureMkcert(stackerDir string) (string, error) {
 		return "", fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
 
-	resp, err := http.Get(downloadURL)
+	// Use http.Client with timeout to prevent hanging
+	client := &http.Client{
+		Timeout: 120 * time.Second,
+	}
+	resp, err := client.Get(downloadURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to download mkcert: %w", err)
 	}
